@@ -1,31 +1,9 @@
 import { useState } from "react";
 import { TIME_LABELS } from "../../constants/time.js";
+import { formatGameType } from "../../utils/gameType.js";
 import { getTimeSlot } from "../../utils/time.js";
 import ProgressBar from "./ProgressBar.jsx";
 import StatusBadge from "./StatusBadge.jsx";
-
-const counterBtn = {
-  width: 30,
-  height: 30,
-  borderRadius: 7,
-  background: "#1a1a1a",
-  border: "1px solid #2a2a2a",
-  color: "#e8e8e8",
-  fontSize: 17,
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "center",
-  flexShrink: 0,
-};
-
-const actionBtn = {
-  flex: 1,
-  padding: "9px 12px",
-  borderRadius: 9,
-  fontSize: 14,
-  fontWeight: 600,
-  fontFamily: "'DM Sans',sans-serif",
-};
 
 function disabledStyle(enabled) {
   return {
@@ -37,7 +15,7 @@ function disabledStyle(enabled) {
 function SignupNames({ entries, profileId }) {
   if (entries.length === 0) {
     return (
-      <p style={{ margin: 0, fontSize: 13, color: "#444", fontFamily: "'DM Mono',monospace" }}>
+      <p style={{ margin: 0, color: "var(--text-faint)", fontFamily: "'DM Mono',monospace" }}>
         no signups yet
       </p>
     );
@@ -52,20 +30,20 @@ function SignupNames({ entries, profileId }) {
             key={entry.userId}
             title={entry.plusOnes > 0 ? `${entry.name} + ${entry.plusOnes} guest${entry.plusOnes !== 1 ? "s" : ""}` : entry.name}
             style={{
-              fontSize: 13,
+              fontSize: "inherit",
               lineHeight: 1.3,
               padding: "4px 10px",
               borderRadius: 999,
-              background: isYou ? "#0d3320" : "#1a1a1a",
-              border: `1px solid ${isYou ? "#22c55e" : "#2a2a2a"}`,
-              color: isYou ? "#4ade80" : "#bbb",
+              background: isYou ? "var(--chip-you-bg)" : "var(--chip-bg)",
+              border: `1px solid ${isYou ? "var(--chip-you-border)" : "var(--chip-border)"}`,
+              color: isYou ? "var(--chip-you-text)" : "var(--chip-text)",
               fontFamily: "'DM Mono',monospace",
               whiteSpace: "nowrap",
             }}
           >
             {entry.name}
-            {entry.plusOnes > 0 && <span style={{ color: "#666" }}> +{entry.plusOnes}</span>}
-            {isYou && <span style={{ color: "#4ade80" }}> · you</span>}
+            {entry.plusOnes > 0 && <span style={{ color: "var(--text-subtle)" }}> +{entry.plusOnes}</span>}
+            {isYou && <span style={{ color: "var(--chip-you-text)" }}> · you</span>}
           </span>
         );
       })}
@@ -89,36 +67,16 @@ export default function GameCard({
   const [plusOnes, setPlusOnes] = useState(myRsvp?.plusOnes ?? 0);
 
   const stop = (event) => event.stopPropagation();
+  const cardClass = ["game-card", rsvpd && !cancelled ? "game-card--rsvpd" : "", cancelled ? "game-card--cancelled" : ""]
+    .filter(Boolean)
+    .join(" ");
 
   return (
-    <div
-      style={{
-        background: "#111",
-        border: `1px solid ${rsvpd ? "#2a4a2a" : "#1e1e1e"}`,
-        borderRadius: 14,
-        padding: "16px 18px",
-        opacity: cancelled ? 0.45 : 1,
-        height: "100%",
-        display: "flex",
-        flexDirection: "column",
-      }}
-    >
+    <div className={cardClass}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 10, marginBottom: 8 }}>
         <div style={{ minWidth: 0, flex: 1 }}>
-          <h3 style={{ margin: 0, fontSize: 17, fontWeight: 700, color: "#f0f0f0", lineHeight: 1.2 }}>
-            {game.name}
-          </h3>
-          <p
-            style={{
-              margin: "4px 0 0",
-              fontSize: 12,
-              color: "#555",
-              fontFamily: "'DM Mono',monospace",
-              overflow: "hidden",
-              textOverflow: "ellipsis",
-              whiteSpace: "nowrap",
-            }}
-          >
+          <h3 className="game-card__title">{game.name}</h3>
+          <p className="game-card__meta">
             {game.location} · {game.city}
           </p>
         </div>
@@ -126,12 +84,12 @@ export default function GameCard({
           style={{
             flexShrink: 0,
             alignSelf: "center",
-            fontSize: 10,
+            fontSize: "0.72em",
             padding: "2px 7px",
             borderRadius: 999,
-            background: "#0d3320",
-            border: "1px solid #22c55e",
-            color: "#4ade80",
+            background: "var(--chip-you-bg)",
+            border: "1px solid var(--chip-you-border)",
+            color: "var(--chip-you-text)",
             fontFamily: "'DM Mono',monospace",
             visibility: rsvpd && !cancelled ? "visible" : "hidden",
           }}
@@ -141,44 +99,36 @@ export default function GameCard({
         <StatusBadge count={count} target={game.target} cancelled={cancelled} />
       </div>
 
-      <p style={{ margin: "0 0 10px", fontSize: 12, color: "#666", fontFamily: "'DM Mono',monospace", lineHeight: 1.4 }}>
-        {game.time} · {TIME_LABELS[slot]} · {game.type === "big" ? "🔴 big" : "🟡 small"}
+      <p className="game-card__detail">
+        {game.time} · {TIME_LABELS[slot]} · {formatGameType(game.type)}
       </p>
 
       {!cancelled && <ProgressBar count={count} target={game.target} compact />}
 
       <div style={{ marginTop: 10, flex: 1 }}>
-        <p style={{ margin: "0 0 8px", fontSize: 12, color: "#555", fontFamily: "'DM Mono',monospace" }}>
-          signed up ({entries.length})
-        </p>
+        <p className="game-card__section-label">signed up ({entries.length})</p>
         <SignupNames entries={entries} profileId={profile?.id} />
       </div>
 
       {!cancelled && (
-        <div style={{ marginTop: 12, paddingTop: 12, borderTop: "1px solid #1a1a1a" }} onClick={stop}>
+        <div className="game-card__divider" onClick={stop}>
           <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginBottom: 10 }}>
             <button
               type="button"
+              className="game-card__counter"
               onClick={() => setPlusOnes(Math.max(0, plusOnes - 1))}
               disabled={rsvpd}
-              style={{
-                ...counterBtn,
-                ...disabledStyle(!rsvpd),
-              }}
+              style={disabledStyle(!rsvpd)}
             >
               −
             </button>
-            <span style={{ fontSize: 15, fontWeight: 600, minWidth: 18, textAlign: "center", fontFamily: "'DM Mono',monospace" }}>
-              {plusOnes}
-            </span>
+            <span className="game-card__plus-value">{plusOnes}</span>
             <button
               type="button"
+              className="game-card__counter"
               onClick={() => setPlusOnes(plusOnes + 1)}
               disabled={rsvpd}
-              style={{
-                ...counterBtn,
-                ...disabledStyle(!rsvpd),
-              }}
+              style={disabledStyle(!rsvpd)}
             >
               +
             </button>
@@ -186,30 +136,19 @@ export default function GameCard({
           <div style={{ display: "flex", gap: 8 }}>
             <button
               type="button"
+              className={`game-card__action game-card__action--rsvp${saving && !rsvpd ? " game-card__action--saving" : ""}`}
               onClick={() => onRequestRsvp(game, plusOnes)}
               disabled={rsvpd || saving}
-              style={{
-                ...actionBtn,
-                ...disabledStyle(!rsvpd && !saving),
-                background: saving && !rsvpd ? "#0d3320" : "#166534",
-                border: "1px solid #22c55e",
-                color: "#4ade80",
-              }}
+              style={disabledStyle(!rsvpd && !saving)}
             >
               {saving && !rsvpd ? "..." : "Count me in"}
             </button>
             <button
               type="button"
+              className="game-card__action game-card__action--cancel"
               onClick={() => onCancel(game.id)}
               disabled={!rsvpd || saving}
-              style={{
-                ...actionBtn,
-                ...disabledStyle(rsvpd && !saving),
-                background: "#1a0707",
-                border: "1px solid #7f1d1d",
-                color: "#f87171",
-                fontFamily: "'DM Mono',monospace",
-              }}
+              style={disabledStyle(rsvpd && !saving)}
             >
               {saving && rsvpd ? "..." : "Cancel"}
             </button>

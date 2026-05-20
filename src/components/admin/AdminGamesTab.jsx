@@ -2,6 +2,7 @@ import GameForm from "../games/GameForm.jsx";
 import { TIME_LABELS } from "../../constants/time.js";
 import { card, smallButton } from "../../styles/theme.js";
 import { countPlayers } from "../../utils/format.js";
+import { formatGameType } from "../../utils/gameType.js";
 import { getTimeSlot } from "../../utils/time.js";
 
 export default function AdminGamesTab({
@@ -100,7 +101,7 @@ export default function AdminGamesTab({
                         {TIME_LABELS[getTimeSlot(game.time)]}
                       </span>
                       <span style={{ fontSize: 12, color: "#666", fontFamily: "'DM Mono',monospace" }}>
-                        {game.type === "big" ? "🔴 big" : "🟡 small"} · {game.target}+
+                        {formatGameType(game.type)} · {game.target}+
                       </span>
                       <span style={{ fontSize: 12, color: "#666", fontFamily: "'DM Mono',monospace" }}>
                         👥 {count} signed up

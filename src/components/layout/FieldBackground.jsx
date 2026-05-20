@@ -7,7 +7,7 @@ export default function FieldBackground() {
         pointerEvents: "none",
         zIndex: 0,
         overflow: "hidden",
-        opacity: 0.03,
+        opacity: "var(--grid-opacity)",
       }}
     >
       {[...Array(8)].map((_, index) => (
@@ -19,7 +19,7 @@ export default function FieldBackground() {
             top: 0,
             bottom: 0,
             width: 1,
-            background: "#fff",
+            background: "var(--grid-line)",
           }}
         />
       ))}
@@ -32,7 +32,7 @@ export default function FieldBackground() {
             left: 0,
             right: 0,
             height: 1,
-            background: "#fff",
+            background: "var(--grid-line)",
           }}
         />
       ))}

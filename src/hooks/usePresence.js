@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   CHAT_TTL_MS,
+  CURSOR_IDLE_MS,
   CURSOR_THROTTLE_MS,
   DRAFT_THROTTLE_MS,
   MAX_CHAT_LENGTH,
@@ -30,6 +31,7 @@ function mergeRemoteUser(existing, incoming) {
     y: incoming.y ?? existing?.y ?? 0.5,
     draft: incoming.draft !== undefined ? incoming.draft : existing?.draft || "",
     chat: incoming.chat !== undefined ? incoming.chat : existing?.chat ?? null,
+    lastActiveAt: incoming.lastActiveAt ?? existing?.lastActiveAt ?? Date.now(),
   };
 }
 
@@ -53,12 +55,15 @@ export function usePresence(profile) {
   const [draft, setDraft] = useState("");
   const [connected, setConnected] = useState(false);
   const [cursor, setCursor] = useState({ x: 0.5, y: 0.5 });
+  const [idle, setIdle] = useState(false);
 
   const channelRef = useRef(null);
   const draftRef = useRef("");
   const cursorRef = useRef({ x: 0.5, y: 0.5 });
   const lastSentRef = useRef(0);
   const lastDraftSentRef = useRef(0);
+  const lastActiveRef = useRef(Date.now());
+  const idleRef = useRef(false);
   const identityRef = useRef({
     id: getPresenceSessionId(profile),
     name: getPresenceName(profile),
@@ -71,7 +76,11 @@ export function usePresence(profile) {
 
   identityRef.current = { id: sessionId, name: displayName, color };
 
-  const broadcast = useCallback((event, payload) => {
+  const sendBroadcast = useCallback((event, payload, markActiveOnSend = true) => {
+    if (markActiveOnSend) {
+      lastActiveRef.current = Date.now();
+    }
+
     channelRef.current?.send({
       type: "broadcast",
       event,
@@ -80,8 +89,24 @@ export function usePresence(profile) {
         id: identityRef.current.id,
         name: identityRef.current.name,
         color: identityRef.current.color,
+        lastActiveAt: lastActiveRef.current,
       },
     });
+  }, []);
+
+  const broadcast = useCallback(
+    (event, payload) => {
+      sendBroadcast(event, payload, true);
+    },
+    [sendBroadcast],
+  );
+
+  const markActive = useCallback(() => {
+    lastActiveRef.current = Date.now();
+    if (idleRef.current) {
+      idleRef.current = false;
+      setIdle(false);
+    }
   }, []);
 
   useEffect(() => {
@@ -149,6 +174,7 @@ export function usePresence(profile) {
             color,
             x: 0.5,
             y: 0.5,
+            lastActiveAt: Date.now(),
           });
           applyPresence();
           return;
@@ -184,6 +210,7 @@ export function usePresence(profile) {
     if (!connected) return undefined;
 
     const onMove = (event) => {
+      markActive();
       const x = event.clientX / window.innerWidth;
       const y = event.clientY / window.innerHeight;
       const next = { x, y };
@@ -203,7 +230,7 @@ export function usePresence(profile) {
 
     window.addEventListener("mousemove", onMove);
     return () => window.removeEventListener("mousemove", onMove);
-  }, [broadcast, connected]);
+  }, [broadcast, connected, markActive]);
 
   const broadcastDraft = useCallback(
     (message) => {
@@ -223,6 +250,8 @@ export function usePresence(profile) {
     const onKeyDown = (event) => {
       if (event.metaKey || event.ctrlKey || event.altKey) return;
       if (isEditableTarget(event.target)) return;
+
+      markActive();
 
       if (event.key === "Enter") {
         event.preventDefault();
@@ -271,7 +300,29 @@ export function usePresence(profile) {
 
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [broadcast, broadcastDraft, connected]);
+  }, [broadcast, broadcastDraft, connected, markActive]);
+
+  useEffect(() => {
+    if (!connected) return undefined;
+
+    const interval = window.setInterval(() => {
+      const now = Date.now();
+      const hasDraft = draftRef.current.length > 0;
+      const shouldIdle = !hasDraft && now - lastActiveRef.current >= CURSOR_IDLE_MS;
+
+      if (shouldIdle !== idleRef.current) {
+        idleRef.current = shouldIdle;
+        setIdle(shouldIdle);
+
+        if (shouldIdle) {
+          const { x, y } = cursorRef.current;
+          sendBroadcast("cursor", { x, y, idle: true }, false);
+        }
+      }
+    }, 500);
+
+    return () => clearInterval(interval);
+  }, [connected, sendBroadcast]);
 
   useEffect(() => {
     const interval = window.setInterval(() => {
@@ -301,6 +352,7 @@ export function usePresence(profile) {
     localChat,
     draft,
     cursor,
+    idle,
     connected,
     self: { id: sessionId, name: displayName, color },
   };

@@ -6,7 +6,7 @@ const DEFAULT_FORM = {
   location: "",
   city: "",
   time: "",
-  type: "small",
+  type: "goaltimate",
   target: 8,
   status: "open",
 };
@@ -61,14 +61,14 @@ export default function GameForm({ initial, onSave, onCancel }) {
           <label style={label}>Game size</label>
           <select
             style={{ ...input, cursor: "pointer" }}
-            value={form.type}
+            value={form.type === "small" ? "goaltimate" : form.type}
             onChange={(event) => {
               const type = event.target.value;
               setField("type", type);
               setField("target", type === "big" ? 14 : 8);
             }}
           >
-            <option value="small">Small (8+)</option>
+            <option value="goaltimate">Goaltimate (8+)</option>
             <option value="big">Big (14+)</option>
           </select>
         </div>

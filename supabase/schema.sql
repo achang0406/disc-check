@@ -7,7 +7,7 @@ CREATE TABLE IF NOT EXISTS games (
   location TEXT NOT NULL,
   city TEXT NOT NULL,
   time TEXT NOT NULL,
-  type TEXT NOT NULL DEFAULT 'small',
+  type TEXT NOT NULL DEFAULT 'goaltimate',
   target INTEGER NOT NULL DEFAULT 8,
   status TEXT NOT NULL DEFAULT 'open',
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()

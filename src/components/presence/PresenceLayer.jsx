@@ -1,9 +1,24 @@
 import { useEffect, useState } from "react";
+import { CURSOR_IDLE_MS } from "../../constants/presence.js";
 import { isSupabaseConfigured } from "../../lib/supabase.js";
 
-function CursorPointer({ color }) {
+function isUserIdle(user) {
+  const now = Date.now();
+  const hasActiveChat = user.chat && user.chat.expiresAt > now;
+  const hasDraft = Boolean(user.draft);
+  if (hasActiveChat || hasDraft) return false;
+  return now - (user.lastActiveAt || 0) >= CURSOR_IDLE_MS;
+}
+
+function CursorPointer({ color, idle }) {
   return (
-    <svg width="16" height="20" viewBox="0 0 16 20" fill="none" style={{ display: "block" }}>
+    <svg
+      width="16"
+      height="20"
+      viewBox="0 0 16 20"
+      fill="none"
+      style={{ display: "block", opacity: idle ? 0.45 : 1 }}
+    >
       <path
         d="M1 1L1 16L5.5 11.5L9 19L11.5 18L8 10.5L14 10.5L1 1Z"
         fill={color}
@@ -14,9 +29,20 @@ function CursorPointer({ color }) {
   );
 }
 
-function SpeechBubble({ message, color, isDraft, expiresAt }) {
+function TypingIndicator() {
+  return (
+    <div className="typing-indicator" aria-label="typing">
+      <span />
+      <span />
+      <span />
+    </div>
+  );
+}
+
+function SpeechBubble({ message, color, isDraft, typingOnly, expiresAt }) {
   const remaining = expiresAt ? expiresAt - Date.now() : null;
   const fadeOpacity = remaining != null && remaining < 400 ? Math.max(0, remaining / 400) : 1;
+  const draftStyle = isDraft || typingOnly;
 
   return (
     <div
@@ -26,20 +52,20 @@ function SpeechBubble({ message, color, isDraft, expiresAt }) {
         maxWidth: 220,
         padding: "8px 12px",
         borderRadius: 10,
-        background: isDraft ? "rgba(17,17,17,0.92)" : color,
-        border: `1px solid ${isDraft ? "#2a2a2a" : color}`,
-        color: isDraft ? "#d0d0d0" : "#0a0a0a",
+        background: draftStyle ? "var(--card-bg)" : color,
+        border: `1px solid ${draftStyle ? "var(--card-ring)" : color}`,
+        color: draftStyle ? "var(--text-subtle)" : "#0a0a0a",
         fontSize: 13,
         lineHeight: 1.4,
         fontFamily: "'DM Sans',sans-serif",
         boxShadow: "0 8px 24px rgba(0,0,0,0.35)",
         wordBreak: "break-word",
-        opacity: isDraft ? 0.85 : fadeOpacity,
-        animation: isDraft ? undefined : "presenceFadeIn 0.15s ease",
+        opacity: draftStyle ? 0.92 : fadeOpacity,
+        animation: draftStyle ? undefined : "presenceFadeIn 0.15s ease",
         transition: "opacity 0.2s ease",
       }}
     >
-      {message}
+      {typingOnly ? <TypingIndicator /> : message}
     </div>
   );
 }
@@ -49,9 +75,11 @@ function RemoteCursor({ user }) {
   const top = `${user.y * 100}vh`;
   const activeChat = user.chat && user.chat.expiresAt > Date.now() ? user.chat.message : null;
   const activeDraft = !activeChat && user.draft ? user.draft : null;
+  const idle = isUserIdle(user);
 
   return (
     <div
+      className={`presence-cursor${idle ? " presence-cursor--idle" : ""}`}
       style={{
         position: "fixed",
         left,
@@ -59,11 +87,12 @@ function RemoteCursor({ user }) {
         zIndex: 150,
         pointerEvents: "none",
         transform: "translate(-2px, -2px)",
-        transition: "left 80ms linear, top 80ms linear",
+        transition: idle ? "opacity 0.4s ease" : "left 80ms linear, top 80ms linear, opacity 0.4s ease",
       }}
     >
-      <CursorPointer color={user.color} />
+      <CursorPointer color={user.color} idle={idle} />
       <div
+        className="presence-cursor__name"
         style={{
           marginTop: 2,
           marginLeft: 12,
@@ -77,7 +106,7 @@ function RemoteCursor({ user }) {
       >
         {user.name}
       </div>
-      {activeDraft && <SpeechBubble message={activeDraft} color={user.color} isDraft />}
+      {activeDraft && <SpeechBubble color={user.color} typingOnly />}
       {activeChat && (
         <SpeechBubble message={activeChat} color={user.color} expiresAt={user.chat.expiresAt} />
       )}
@@ -113,7 +142,7 @@ function LocalPresence({ self, cursor, draft, localChat }) {
               marginTop: 4,
               marginLeft: 10,
               fontSize: 10,
-              color: "#555",
+              color: "var(--text-muted)",
               fontFamily: "'DM Mono',monospace",
             }}
           >
@@ -146,6 +175,40 @@ export default function PresenceLayer({ others, self, cursor, draft, localChat, 
           from { opacity: 0; transform: translateY(4px); }
           to { opacity: 1; transform: translateY(0); }
         }
+        @keyframes typingBounce {
+          0%, 60%, 100% { transform: translateY(0); opacity: 0.35; }
+          30% { transform: translateY(-5px); opacity: 1; }
+        }
+        @keyframes presenceIdlePulse {
+          0%, 100% { opacity: 0.35; }
+          50% { opacity: 0.55; }
+        }
+        .presence-cursor--idle {
+          opacity: 0.45;
+          animation: presenceIdlePulse 2.5s ease-in-out infinite;
+        }
+        .presence-cursor--idle .presence-cursor__name {
+          opacity: 0.6;
+          font-style: italic;
+          font-weight: 500;
+        }
+        .typing-indicator {
+          display: inline-flex;
+          align-items: center;
+          gap: 5px;
+          padding: 2px 4px;
+          min-width: 36px;
+          min-height: 14px;
+        }
+        .typing-indicator span {
+          width: 7px;
+          height: 7px;
+          border-radius: 50%;
+          background: currentColor;
+          animation: typingBounce 1.1s infinite ease-in-out;
+        }
+        .typing-indicator span:nth-child(2) { animation-delay: 0.15s; }
+        .typing-indicator span:nth-child(3) { animation-delay: 0.3s; }
       `}</style>
 
       {!connected && isSupabaseConfigured() && (

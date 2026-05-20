@@ -6,26 +6,30 @@ import EditProfileModal from "./components/auth/EditProfileModal.jsx";
 import PresenceLayer from "./components/presence/PresenceLayer.jsx";
 import { useAppData } from "./hooks/useAppData.js";
 import { usePresence } from "./hooks/usePresence.js";
+import { useTheme } from "./hooks/useTheme.js";
 import { useToast } from "./hooks/useToast.js";
 import GamesListScreen from "./screens/GamesListScreen.jsx";
 import { globalStyles } from "./styles/theme.js";
 
 export default function App() {
   const { toast, showToast } = useToast();
+  const { theme, toggleTheme, cssVars } = useTheme();
   const app = useAppData(showToast);
   const presence = usePresence(app.profile);
 
   if (app.loading) {
-    return <LoadingScreen />;
+    return <LoadingScreen cssVars={cssVars} />;
   }
 
   return (
     <div
       style={{
-        background: "#0a0a0a",
+        ...cssVars,
+        background: "var(--bg)",
         minHeight: "100vh",
+        width: "100%",
         fontFamily: "'DM Sans',sans-serif",
-        color: "#e8e8e8",
+        color: "var(--text)",
         position: "relative",
       }}
     >
@@ -61,6 +65,8 @@ export default function App() {
         onRequestRsvp={app.handleRequestRsvp}
         onCancel={app.handleCancel}
         onProfileClick={app.openEditProfile}
+        theme={theme}
+        onToggleTheme={toggleTheme}
       />
     </div>
   );
