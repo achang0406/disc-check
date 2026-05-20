@@ -1,0 +1,42 @@
+-- Run in Supabase SQL Editor after creating a project.
+-- Dashboard → SQL → New query → paste and run.
+
+CREATE TABLE IF NOT EXISTS games (
+  id TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  location TEXT NOT NULL,
+  city TEXT NOT NULL,
+  time TEXT NOT NULL,
+  type TEXT NOT NULL DEFAULT 'small',
+  target INTEGER NOT NULL DEFAULT 8,
+  status TEXT NOT NULL DEFAULT 'open',
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS rsvps (
+  id BIGSERIAL PRIMARY KEY,
+  game_id TEXT NOT NULL REFERENCES games(id) ON DELETE CASCADE,
+  user_id TEXT NOT NULL,
+  name TEXT NOT NULL,
+  plus_ones INTEGER NOT NULL DEFAULT 0,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  UNIQUE (game_id, user_id)
+);
+
+CREATE INDEX IF NOT EXISTS rsvps_game_id_idx ON rsvps (game_id);
+
+ALTER TABLE games ENABLE ROW LEVEL SECURITY;
+ALTER TABLE rsvps ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "games_public_read" ON games FOR SELECT USING (true);
+CREATE POLICY "rsvps_public_read" ON rsvps FOR SELECT USING (true);
+CREATE POLICY "rsvps_public_insert" ON rsvps FOR INSERT WITH CHECK (true);
+CREATE POLICY "rsvps_public_update" ON rsvps FOR UPDATE USING (true);
+CREATE POLICY "rsvps_public_delete" ON rsvps FOR DELETE USING (true);
+
+ALTER TABLE rsvps REPLICA IDENTITY FULL;
+
+-- Enable Realtime for RSVP live updates.
+-- If this line errors because the table is already added, that's OK.
+-- You can also enable it in Dashboard → Database → Publications → supabase_realtime.
+ALTER PUBLICATION supabase_realtime ADD TABLE rsvps;
