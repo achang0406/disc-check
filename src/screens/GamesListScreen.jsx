@@ -3,11 +3,11 @@ import { countPlayers, getInitials } from "../utils/format.js";
 
 const gameGrid = {
   display: "grid",
-  gridTemplateColumns: "repeat(auto-fit, minmax(280px, 280px))",
-  gap: 8,
+  gridTemplateColumns: "repeat(auto-fit, minmax(340px, 340px))",
+  gap: 12,
   justifyContent: "center",
   width: "100%",
-  maxWidth: 1280,
+  maxWidth: 1400,
 };
 
 export default function GamesListScreen({

@@ -5,13 +5,13 @@ import ProgressBar from "./ProgressBar.jsx";
 import StatusBadge from "./StatusBadge.jsx";
 
 const counterBtn = {
-  width: 26,
-  height: 26,
-  borderRadius: 6,
+  width: 30,
+  height: 30,
+  borderRadius: 7,
   background: "#1a1a1a",
   border: "1px solid #2a2a2a",
   color: "#e8e8e8",
-  fontSize: 15,
+  fontSize: 17,
   display: "flex",
   alignItems: "center",
   justifyContent: "center",
@@ -20,9 +20,9 @@ const counterBtn = {
 
 const actionBtn = {
   flex: 1,
-  padding: "7px 10px",
-  borderRadius: 8,
-  fontSize: 12,
+  padding: "9px 12px",
+  borderRadius: 9,
+  fontSize: 14,
   fontWeight: 600,
   fontFamily: "'DM Sans',sans-serif",
 };
@@ -37,7 +37,7 @@ function disabledStyle(enabled) {
 function SignupNames({ entries, profileId }) {
   if (entries.length === 0) {
     return (
-      <p style={{ margin: 0, fontSize: 11, color: "#444", fontFamily: "'DM Mono',monospace" }}>
+      <p style={{ margin: 0, fontSize: 13, color: "#444", fontFamily: "'DM Mono',monospace" }}>
         no signups yet
       </p>
     );
@@ -52,9 +52,9 @@ function SignupNames({ entries, profileId }) {
             key={entry.userId}
             title={entry.plusOnes > 0 ? `${entry.name} + ${entry.plusOnes} guest${entry.plusOnes !== 1 ? "s" : ""}` : entry.name}
             style={{
-              fontSize: 11,
+              fontSize: 13,
               lineHeight: 1.3,
-              padding: "3px 8px",
+              padding: "4px 10px",
               borderRadius: 999,
               background: isYou ? "#0d3320" : "#1a1a1a",
               border: `1px solid ${isYou ? "#22c55e" : "#2a2a2a"}`,
@@ -95,23 +95,23 @@ export default function GameCard({
       style={{
         background: "#111",
         border: `1px solid ${rsvpd ? "#2a4a2a" : "#1e1e1e"}`,
-        borderRadius: 12,
-        padding: "12px 14px",
+        borderRadius: 14,
+        padding: "16px 18px",
         opacity: cancelled ? 0.45 : 1,
         height: "100%",
         display: "flex",
         flexDirection: "column",
       }}
     >
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8, marginBottom: 6 }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 10, marginBottom: 8 }}>
         <div style={{ minWidth: 0, flex: 1 }}>
-          <h3 style={{ margin: 0, fontSize: 14, fontWeight: 700, color: "#f0f0f0", lineHeight: 1.2 }}>
+          <h3 style={{ margin: 0, fontSize: 17, fontWeight: 700, color: "#f0f0f0", lineHeight: 1.2 }}>
             {game.name}
           </h3>
           <p
             style={{
-              margin: "2px 0 0",
-              fontSize: 10,
+              margin: "4px 0 0",
+              fontSize: 12,
               color: "#555",
               fontFamily: "'DM Mono',monospace",
               overflow: "hidden",
@@ -126,8 +126,8 @@ export default function GameCard({
           style={{
             flexShrink: 0,
             alignSelf: "center",
-            fontSize: 9,
-            padding: "1px 6px",
+            fontSize: 10,
+            padding: "2px 7px",
             borderRadius: 999,
             background: "#0d3320",
             border: "1px solid #22c55e",
@@ -141,22 +141,22 @@ export default function GameCard({
         <StatusBadge count={count} target={game.target} cancelled={cancelled} />
       </div>
 
-      <p style={{ margin: "0 0 8px", fontSize: 10, color: "#666", fontFamily: "'DM Mono',monospace", lineHeight: 1.4 }}>
+      <p style={{ margin: "0 0 10px", fontSize: 12, color: "#666", fontFamily: "'DM Mono',monospace", lineHeight: 1.4 }}>
         {game.time} · {TIME_LABELS[slot]} · {game.type === "big" ? "🔴 big" : "🟡 small"}
       </p>
 
       {!cancelled && <ProgressBar count={count} target={game.target} compact />}
 
-      <div style={{ marginTop: 8, flex: 1 }}>
-        <p style={{ margin: "0 0 6px", fontSize: 10, color: "#555", fontFamily: "'DM Mono',monospace" }}>
+      <div style={{ marginTop: 10, flex: 1 }}>
+        <p style={{ margin: "0 0 8px", fontSize: 12, color: "#555", fontFamily: "'DM Mono',monospace" }}>
           signed up ({entries.length})
         </p>
         <SignupNames entries={entries} profileId={profile?.id} />
       </div>
 
       {!cancelled && (
-        <div style={{ marginTop: 10, paddingTop: 10, borderTop: "1px solid #1a1a1a" }} onClick={stop}>
-          <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap", marginBottom: 8 }}>
+        <div style={{ marginTop: 12, paddingTop: 12, borderTop: "1px solid #1a1a1a" }} onClick={stop}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginBottom: 10 }}>
             <button
               type="button"
               onClick={() => setPlusOnes(Math.max(0, plusOnes - 1))}
@@ -168,7 +168,7 @@ export default function GameCard({
             >
               −
             </button>
-            <span style={{ fontSize: 13, fontWeight: 600, minWidth: 16, textAlign: "center", fontFamily: "'DM Mono',monospace" }}>
+            <span style={{ fontSize: 15, fontWeight: 600, minWidth: 18, textAlign: "center", fontFamily: "'DM Mono',monospace" }}>
               {plusOnes}
             </span>
             <button

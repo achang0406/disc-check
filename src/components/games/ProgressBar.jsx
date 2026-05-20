@@ -5,12 +5,12 @@ export default function ProgressBar({ count, target, compact }) {
   return (
     <div style={{ marginTop: compact ? 0 : 8 }}>
       <div style={{ display: "flex", justifyContent: "space-between", marginBottom: compact ? 2 : 4 }}>
-        <span style={{ fontSize: compact ? 10 : 11, color: "#888", fontFamily: "'DM Mono',monospace" }}>
+        <span style={{ fontSize: compact ? 12 : 11, color: "#888", fontFamily: "'DM Mono',monospace" }}>
           {count} / {target}
         </span>
         <span
           style={{
-            fontSize: compact ? 10 : 11,
+            fontSize: compact ? 12 : 11,
             color: go ? "#4ade80" : "#888",
             fontFamily: "'DM Mono',monospace",
           }}
@@ -18,7 +18,7 @@ export default function ProgressBar({ count, target, compact }) {
           {Math.round(pct)}%
         </span>
       </div>
-      <div style={{ height: compact ? 4 : 6, background: "#1a1a1a", borderRadius: 999, overflow: "hidden" }}>
+      <div style={{ height: compact ? 5 : 6, background: "#1a1a1a", borderRadius: 999, overflow: "hidden" }}>
         <div
           style={{
             height: "100%",

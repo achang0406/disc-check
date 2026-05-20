@@ -13,18 +13,18 @@ export default function StatusBadge({ count, target, large, cancelled }) {
         background: bg,
         border: `1.5px solid ${color}`,
         borderRadius: 999,
-        padding: large ? "8px 20px" : "4px 12px",
+        padding: large ? "8px 20px" : "5px 14px",
         color,
         fontFamily: "'DM Mono',monospace",
         fontWeight: 600,
-        fontSize: large ? 18 : 12,
+        fontSize: large ? 18 : 14,
         letterSpacing: "0.06em",
       }}
     >
       <span
         style={{
-          width: large ? 10 : 7,
-          height: large ? 10 : 7,
+          width: large ? 10 : 8,
+          height: large ? 10 : 8,
           borderRadius: "50%",
           background: color,
           boxShadow: `0 0 8px ${color}`,
