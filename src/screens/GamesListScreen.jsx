@@ -26,11 +26,7 @@ export default function GamesListScreen({
       style={{
         position: "relative",
         zIndex: 1,
-        minHeight: "100vh",
         width: "100%",
-        display: "flex",
-        flexDirection: "column",
-        boxSizing: "border-box",
         color: "var(--text)",
       }}
     >
@@ -123,18 +119,7 @@ export default function GamesListScreen({
         </div>
       </header>
 
-      <main
-        style={{
-          flex: 1,
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          overflow: "auto",
-          padding: 16,
-          width: "100%",
-          boxSizing: "border-box",
-        }}
-      >
+      <main className="games-screen__main">
         {games.length === 0 ? (
           <div style={{ textAlign: "center", margin: "auto" }}>
             <p style={{ fontSize: 32, marginBottom: 8 }}>🌬️</p>

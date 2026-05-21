@@ -31,10 +31,10 @@ export default function App() {
 
   return (
     <div
+      className="app-shell"
       style={{
         ...cssVars,
         background: "var(--bg)",
-        minHeight: "100vh",
         width: "100%",
         fontFamily: "'DM Sans',sans-serif",
         color: "var(--text)",

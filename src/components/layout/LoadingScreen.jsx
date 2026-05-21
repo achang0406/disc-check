@@ -1,12 +1,12 @@
 export default function LoadingScreen({ cssVars }) {
   return (
     <div
+      className="app-shell"
       style={{
         ...cssVars,
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
-        minHeight: "100vh",
         background: "var(--bg)",
         color: "var(--text)",
       }}

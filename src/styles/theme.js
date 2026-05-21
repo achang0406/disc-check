@@ -32,7 +32,23 @@ export const globalStyles = `
   html, body, #root {
     margin: 0;
     padding: 0;
-    min-height: 100%;
+    height: 100%;
+    overflow: hidden;
+    overscroll-behavior: none;
+  }
+
+  html {
+    height: 100vh;
+    height: 100dvh;
+  }
+
+  body, #root {
+    height: 100%;
+  }
+
+  .app-shell {
+    height: 100%;
+    overflow: hidden;
   }
 
   * { box-sizing: border-box; }
@@ -372,7 +388,26 @@ export const globalStyles = `
   }
 
   .games-screen {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    box-sizing: border-box;
     padding-bottom: calc(64px + env(safe-area-inset-bottom, 0px));
+  }
+
+  .games-screen__main {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: auto;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+    padding: 16px;
+    width: 100%;
+    box-sizing: border-box;
   }
 
   .chat-bar-anchor {
