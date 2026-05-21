@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { TIME_LABELS, formatGameTime, getTimeSlot } from "../../utils/time.js";
 import { formatGameType } from "../../utils/gameType.js";
+import { formatGameLocation } from "../../utils/location.js";
+import LocationDisplay from "./LocationDisplay.jsx";
 import ProgressBar from "./ProgressBar.jsx";
 import StatusBadge from "./StatusBadge.jsx";
 
@@ -60,9 +62,12 @@ export default function GameCard({
   saving,
   onRequestRsvp,
   onCancel,
+  isAdmin,
+  onEditGame,
 }) {
   const cancelled = game.status === "cancelled";
   const slot = getTimeSlot(game.startsAt);
+  const { display: locationDisplay, tooltip: locationTooltip, city } = formatGameLocation(game);
   const [plusOnes, setPlusOnes] = useState(myRsvp?.plusOnes ?? 0);
 
   const stop = (event) => event.stopPropagation();
@@ -74,9 +79,22 @@ export default function GameCard({
     <div className={cardClass}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 10, marginBottom: 8 }}>
         <div style={{ minWidth: 0, flex: 1 }}>
-          <h3 className="game-card__title">{game.name}</h3>
+          <div className="game-card__title-row">
+            <h3 className="game-card__title">{game.name}</h3>
+            {isAdmin && (
+              <button
+                type="button"
+                className="game-card__edit-btn"
+                onClick={() => onEditGame(game)}
+                aria-label={`Edit ${game.name}`}
+              >
+                Edit
+              </button>
+            )}
+          </div>
           <p className="game-card__meta">
-            {game.location} · {game.city}
+            <LocationDisplay display={locationDisplay} tooltip={locationTooltip} />
+            {city ? <> · {city}</> : null}
           </p>
         </div>
         <span
@@ -102,10 +120,9 @@ export default function GameCard({
         {formatGameTime(game.startsAt)} · {TIME_LABELS[slot]} · {formatGameType(game.type)}
       </p>
 
-      {!cancelled && <ProgressBar count={count} target={game.target} compact />}
+      {!cancelled && <ProgressBar count={count} target={game.target} />}
 
       <div style={{ marginTop: 10, flex: 1 }}>
-        <p className="game-card__section-label">signed up ({entries.length})</p>
         <SignupNames entries={entries} profileId={profile?.id} />
       </div>
 

@@ -3,9 +3,14 @@ import LoadingScreen from "./components/layout/LoadingScreen.jsx";
 import Toast from "./components/layout/Toast.jsx";
 import SignUpModal from "./components/auth/SignUpModal.jsx";
 import EditProfileModal from "./components/auth/EditProfileModal.jsx";
+import AdminLoginModal from "./components/auth/AdminLoginModal.jsx";
 import MobileChatBar from "./components/presence/MobileChatBar.jsx";
 import PresenceLayer from "./components/presence/PresenceLayer.jsx";
+import GameFormModal from "./components/games/GameFormModal.jsx";
+import DeleteGameModal from "./components/games/DeleteGameModal.jsx";
 import { useAppData } from "./hooks/useAppData.js";
+import { useAdminActions } from "./hooks/useAdmin.js";
+import { useAdminSession } from "./hooks/useAdminSession.js";
 import { usePresence } from "./hooks/usePresence.js";
 import { useTheme } from "./hooks/useTheme.js";
 import { useToast } from "./hooks/useToast.js";
@@ -17,6 +22,8 @@ export default function App() {
   const { theme, toggleTheme, cssVars } = useTheme();
   const app = useAppData(showToast);
   const presence = usePresence(app.profile);
+  const adminSession = useAdminSession();
+  const admin = useAdminActions({ showToast, refresh: app.refresh });
 
   if (app.loading) {
     return <LoadingScreen cssVars={cssVars} />;
@@ -35,7 +42,14 @@ export default function App() {
       }}
     >
       <FieldBackground />
-      <PresenceLayer {...presence} />
+      <PresenceLayer
+        others={presence.others}
+        self={presence.self}
+        cursor={presence.cursor}
+        localChat={presence.localChat}
+        connected={presence.connected}
+        isMobile={presence.isMobile}
+      />
       <Toast toast={toast} />
       <style>{globalStyles}</style>
 
@@ -56,6 +70,38 @@ export default function App() {
         />
       )}
 
+      {admin.showLogin && (
+        <AdminLoginModal
+          saving={false}
+          onSubmit={(passcode) => {
+            const ok = adminSession.login(passcode);
+            if (ok) admin.setShowLogin(false);
+            return ok;
+          }}
+          onClose={() => admin.setShowLogin(false)}
+        />
+      )}
+
+      {admin.modal && (
+        <GameFormModal
+          mode={admin.modal.mode}
+          initial={admin.modal.mode === "edit" ? admin.modal.game : null}
+          saving={admin.saving}
+          onSave={admin.saveGame}
+          onClose={admin.closeModal}
+          onDelete={admin.modal.mode === "edit" ? admin.requestDelete : undefined}
+        />
+      )}
+
+      {admin.deleteTarget && (
+        <DeleteGameModal
+          game={admin.deleteTarget}
+          saving={admin.saving}
+          onConfirm={admin.executeDelete}
+          onClose={admin.closeDelete}
+        />
+      )}
+
       <GamesListScreen
         profile={app.profile}
         games={app.gamesMeta}
@@ -68,17 +114,21 @@ export default function App() {
         onProfileClick={app.openEditProfile}
         theme={theme}
         onToggleTheme={toggleTheme}
-        isMobile={presence.isMobile}
+        adminAvailable={adminSession.adminAvailable}
+        isAdmin={adminSession.isAdmin}
+        onAdminLoginClick={() => admin.setShowLogin(true)}
+        onAdminLogout={adminSession.logout}
+        onAddGame={admin.openCreate}
+        onEditGame={admin.openEdit}
       />
 
-      {presence.isMobile && (
-        <MobileChatBar
-          value={presence.draft}
-          onChange={presence.setMobileDraft}
-          onSend={presence.sendChat}
-          connected={presence.connected}
-        />
-      )}
+      <MobileChatBar
+        inputRef={presence.chatInputRef}
+        value={presence.draft}
+        onChange={presence.setMobileDraft}
+        onSend={presence.sendChat}
+        connected={presence.connected}
+      />
     </div>
   );
 }

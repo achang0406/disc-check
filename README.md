@@ -30,6 +30,7 @@ From Supabase **Settings → API**, copy into `.env.local`:
 |----------|--------|
 | `VITE_SUPABASE_URL` | Project URL |
 | `VITE_SUPABASE_ANON_KEY` | anon public key |
+| `VITE_ADMIN_PASSCODE` | shared admin passcode (optional) |
 | `SUPABASE_SERVICE_ROLE_KEY` | service_role key (seed only) |
 
 ### 3. Seed games
@@ -47,6 +48,14 @@ npm run dev
 
 Open `http://localhost:5173`. Supabase env vars are required for game and RSVP data.
 
+## Admin
+
+Set `VITE_ADMIN_PASSCODE` in `.env.local` and on Vercel. Run `npm run db:seed` to sync the passcode into Supabase `app_config` (required for game create/edit/delete RPCs).
+
+On the games screen, tap the lock icon in the header and enter the passcode. Admins see **+ Add game**, **Edit**, and **Delete** controls on each card. Changes sync live to all viewers via Supabase Realtime.
+
+The passcode is included in the client bundle (`VITE_*`) — suitable for a trusted pickup group, not multi-tenant security.
+
 ## Deploy to Vercel
 
 1. Push to GitHub and import the repo in Vercel
@@ -55,15 +64,17 @@ Open `http://localhost:5173`. Supabase env vars are required for game and RSVP d
 4. Add environment variables:
    - `VITE_SUPABASE_URL`
    - `VITE_SUPABASE_ANON_KEY`
+   - `VITE_ADMIN_PASSCODE` (if using admin)
 5. Deploy — no separate WebSocket or API server needed
 
-Run `npm run db:seed` once against your production Supabase project to insert default games.
+Run `npm run db:seed` once against your production Supabase project to insert default games and the admin passcode.
 
 ## Realtime features
 
 | Feature | Supabase mechanism |
 |---------|-------------------|
 | Live RSVPs (counts, names) | Postgres changes on `rsvps` table |
+| Live game updates | Postgres changes on `games` table |
 | Live cursors | Realtime broadcast |
 | Chat bubbles & typing | Realtime broadcast |
 

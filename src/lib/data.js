@@ -9,7 +9,7 @@ function formatGame(row) {
     id: row.id,
     name: row.name,
     location: row.location,
-    city: row.city,
+    address: row.address ?? null,
     startsAt: row.starts_at ?? null,
     type: row.type,
     target: Number(row.target),
@@ -57,6 +57,54 @@ function groupRsvps(rows) {
     });
   }
   return map;
+}
+
+function toRpcGame(game) {
+  return {
+    id: game.id,
+    name: game.name?.trim(),
+    location: game.location?.trim(),
+    address: game.address?.trim() || null,
+    starts_at: game.startsAt,
+    type: game.type || "goaltimate",
+    target: Number(game.target) || 8,
+    status: game.status || "open",
+  };
+}
+
+function newGameId() {
+  return `g_${crypto.randomUUID().slice(0, 8)}`;
+}
+
+export async function createGame(secret, payload) {
+  const supabase = getSupabase();
+  const game = { ...payload, id: newGameId() };
+  const { error } = await supabase.rpc("admin_upsert_game", {
+    p_secret: secret,
+    p_game: toRpcGame(game),
+  });
+  if (error) throw error;
+  return fetchAppData();
+}
+
+export async function updateGame(secret, id, payload) {
+  const supabase = getSupabase();
+  const { error } = await supabase.rpc("admin_upsert_game", {
+    p_secret: secret,
+    p_game: toRpcGame({ ...payload, id }),
+  });
+  if (error) throw error;
+  return fetchAppData();
+}
+
+export async function deleteGame(secret, id) {
+  const supabase = getSupabase();
+  const { error } = await supabase.rpc("admin_delete_game", {
+    p_secret: secret,
+    p_game_id: id,
+  });
+  if (error) throw error;
+  return fetchAppData();
 }
 
 export async function fetchAppData() {
@@ -147,6 +195,29 @@ export async function handleRsvpAction(body) {
   }
 
   throw new Error("Unknown action");
+}
+
+export function subscribeToGames(onChange) {
+  const supabase = getSupabase();
+
+  const channel = supabase
+    .channel("disc-check:games")
+    .on(
+      "postgres_changes",
+      { event: "*", schema: "public", table: "games" },
+      () => {
+        fetchAppData()
+          .then((data) => onChange(data))
+          .catch(() => {
+            // Keep last known data if a refresh fails temporarily.
+          });
+      },
+    )
+    .subscribe();
+
+  return () => {
+    supabase.removeChannel(channel);
+  };
 }
 
 export function subscribeToRsvps(onChange) {

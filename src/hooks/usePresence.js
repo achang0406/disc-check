@@ -50,6 +50,11 @@ function presenceStateToUsers(state, selfId) {
   return users;
 }
 
+function isChatInput(target) {
+  if (!(target instanceof HTMLElement)) return false;
+  return Boolean(target.closest(".mobile-chat-bar__input"));
+}
+
 function isTouchIgnoredTarget(target) {
   if (isEditableTarget(target)) return true;
   if (!(target instanceof HTMLElement)) return false;
@@ -67,6 +72,7 @@ export function usePresence(profile) {
   const [cursor, setCursor] = useState({ x: 0.5, y: 0.5 });
 
   const channelRef = useRef(null);
+  const chatInputRef = useRef(null);
   const draftRef = useRef("");
   const cursorRef = useRef({ x: 0.5, y: 0.5 });
   const lastSentRef = useRef(0);
@@ -302,25 +308,36 @@ export function usePresence(profile) {
   );
 
   useEffect(() => {
-    if (!connected || isMobile) return undefined;
+    if (!connected) return undefined;
 
     const onKeyDown = (event) => {
       if (event.metaKey || event.ctrlKey || event.altKey) return;
-      if (isEditableTarget(event.target)) return;
+      if (isEditableTarget(event.target) && !isChatInput(event.target)) return;
+
+      const input = chatInputRef.current;
+      if (!input || input.disabled) return;
 
       if (event.key === "Enter") {
-        event.preventDefault();
-        sendChat(draftRef.current);
+        if (!isChatInput(event.target)) {
+          event.preventDefault();
+          input.focus();
+          sendChat(draftRef.current);
+        }
         return;
       }
 
       if (event.key === "Escape") {
+        event.preventDefault();
         setDraft("");
         draftRef.current = "";
         const { x, y } = getPosition();
         broadcast("chat_draft", { message: "", x, y });
         return;
       }
+
+      if (isChatInput(event.target)) return;
+
+      input.focus({ preventScroll: true });
 
       if (event.key === "Backspace") {
         event.preventDefault();
@@ -347,7 +364,7 @@ export function usePresence(profile) {
 
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [broadcast, broadcastDraft, connected, getPosition, isMobile, sendChat]);
+  }, [broadcast, broadcastDraft, connected, getPosition, sendChat]);
 
   useEffect(() => {
     const interval = window.setInterval(() => {
@@ -379,6 +396,7 @@ export function usePresence(profile) {
     cursor,
     connected,
     isMobile,
+    chatInputRef,
     setMobileDraft,
     sendChat,
     self: { id: sessionId, name: displayName, color, mode },

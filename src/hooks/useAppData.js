@@ -4,6 +4,7 @@ import {
   fetchAppData,
   handleRsvpAction,
   isSupabaseConfigured,
+  subscribeToGames,
   subscribeToRsvps,
 } from "../lib/data.js";
 import { deriveMyRsvps } from "../utils/games.js";
@@ -35,7 +36,6 @@ function saveProfile(profile) {
 function applyData({ games, rsvps }, setGamesMeta, setRsvps) {
   if (games) {
     setGamesMeta(games);
-    localStorage.setItem(STORAGE_KEYS.META, JSON.stringify(games));
   }
   if (rsvps) {
     setRsvps(rsvps);
@@ -98,9 +98,22 @@ export function useAppData(showToast) {
   }, []);
 
   useEffect(() => {
-    const nextMyRsvps = deriveMyRsvps(rsvps, profile?.id);
-    setMyRsvps(nextMyRsvps);
-    localStorage.setItem(STORAGE_KEYS.MY_RSVPS, JSON.stringify(nextMyRsvps));
+    if (!useSupabaseRef.current) return undefined;
+
+    return subscribeToGames((data) => {
+      applyData(data, setGamesMeta, setRsvps);
+    });
+  }, []);
+
+  const refresh = useCallback(async () => {
+    if (!useSupabaseRef.current) return;
+    const data = await fetchAppData();
+    applyData(data, setGamesMeta, setRsvps);
+    return data;
+  }, []);
+
+  useEffect(() => {
+    setMyRsvps(deriveMyRsvps(rsvps, profile?.id));
   }, [rsvps, profile?.id]);
 
   const isRsvpd = useCallback((gameId) => !!myRsvps[gameId], [myRsvps]);
@@ -272,5 +285,6 @@ export function useAppData(showToast) {
     closeEditProfile,
     handleUpdateProfile,
     isRsvpd,
+    refresh,
   };
 }

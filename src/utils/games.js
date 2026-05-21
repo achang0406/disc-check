@@ -1,10 +1,3 @@
-export function createEmptyRsvpMap(games) {
-  return games.reduce((map, game) => {
-    map[game.id] = [];
-    return map;
-  }, {});
-}
-
 export function deriveMyRsvps(rsvps, profileId) {
   if (!profileId) return {};
 

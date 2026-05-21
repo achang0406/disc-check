@@ -13,11 +13,16 @@ export default function GamesListScreen({
   onProfileClick,
   theme,
   onToggleTheme,
-  isMobile,
+  adminAvailable,
+  isAdmin,
+  onAdminLoginClick,
+  onAdminLogout,
+  onAddGame,
+  onEditGame,
 }) {
   return (
     <div
-      className={isMobile ? "games-screen--mobile" : undefined}
+      className="games-screen"
       style={{
         position: "relative",
         zIndex: 1,
@@ -42,8 +47,32 @@ export default function GamesListScreen({
         <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}>
           <span style={{ fontSize: 22 }}>🥏</span>
           <span style={{ fontSize: 17, fontWeight: 700 }}>DiscCheck</span>
+          {isAdmin && (
+            <>
+              <span className="games-screen__admin-badge">ADMIN</span>
+              <button type="button" className="games-screen__admin-link" onClick={onAdminLogout}>
+                Sign out
+              </button>
+            </>
+          )}
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 10, flexShrink: 0 }}>
+          {adminAvailable && !isAdmin && (
+            <button
+              type="button"
+              className="theme-toggle"
+              onClick={onAdminLoginClick}
+              aria-label="Admin login"
+              title="Admin login"
+            >
+              🔒
+            </button>
+          )}
+          {isAdmin && (
+            <button type="button" className="games-screen__add-game games-screen__add-game--header" onClick={onAddGame}>
+              + Add game
+            </button>
+          )}
           <button
             type="button"
             className="theme-toggle"
@@ -110,6 +139,11 @@ export default function GamesListScreen({
           <div style={{ textAlign: "center", margin: "auto" }}>
             <p style={{ fontSize: 32, marginBottom: 8 }}>🌬️</p>
             <p style={{ color: "var(--text-muted)", fontFamily: "'DM Mono',monospace", fontSize: 13 }}>no games yet</p>
+            {isAdmin && (
+              <button type="button" className="games-screen__add-game" onClick={onAddGame} style={{ marginTop: 12 }}>
+                + Add game
+              </button>
+            )}
           </div>
         ) : (
           <div className="game-grid">
@@ -125,6 +159,8 @@ export default function GamesListScreen({
                   saving={savingGameId === game.id}
                   onRequestRsvp={onRequestRsvp}
                   onCancel={onCancel}
+                  isAdmin={isAdmin}
+                  onEditGame={onEditGame}
                 />
               </div>
             ))}

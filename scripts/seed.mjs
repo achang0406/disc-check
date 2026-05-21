@@ -27,7 +27,7 @@ const { error } = await supabase.from("games").upsert(
       id: game.id,
       name: game.name,
       location: game.location,
-      city: game.city,
+      address: game.address ?? null,
       starts_at: startsAt,
       type: game.type,
       target: game.target,
@@ -40,6 +40,19 @@ const { error } = await supabase.from("games").upsert(
 if (error) {
   console.error("Seed failed:", error.message);
   process.exit(1);
+}
+
+const adminPasscode = process.env.VITE_ADMIN_PASSCODE || process.env.ADMIN_PASSCODE;
+if (adminPasscode) {
+  const configResult = await supabase.from("app_config").upsert(
+    { key: "admin_passcode", value: adminPasscode },
+    { onConflict: "key" },
+  );
+  if (configResult.error) {
+    console.error("Admin passcode seed failed:", configResult.error.message);
+    process.exit(1);
+  }
+  console.log("Seeded admin passcode.");
 }
 
 console.log(`Seeded ${SEED_GAMES.length} game(s).`);

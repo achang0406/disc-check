@@ -5,6 +5,7 @@ import {
   parseWeekdayFromTime,
 } from "../src/utils/gameSchedule.js";
 import { formatGameTime, getTimeSlot } from "../src/utils/time.js";
+import { parseCityFromAddress } from "../src/utils/location.js";
 
 function assert(condition, message) {
   if (!condition) {
@@ -56,5 +57,6 @@ assert(derived === ANCHOR, `derive anchor: expected ${ANCHOR}, got ${derived}`);
 
 assert(formatGameTime(ANCHOR) === "Wed 6:00 PM", `format game time: got ${formatGameTime(ANCHOR)}`);
 assert(getTimeSlot(ANCHOR) === "evening", "Wed 6 PM is evening");
+assert(parseCityFromAddress("11100 NE 68th St, Kirkland, WA 98033") === "Kirkland", "parse city");
 
-console.log(`All ${cases.length + 5} game schedule checks passed.`);
+console.log(`All ${cases.length + 6} game schedule checks passed.`);
