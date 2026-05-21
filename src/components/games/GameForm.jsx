@@ -1,20 +1,33 @@
 import { useState } from "react";
 import { input, label } from "../../styles/theme.js";
+import { fromDatetimeLocalInput, toDatetimeLocalInput } from "../../utils/time.js";
 
 const DEFAULT_FORM = {
   name: "",
   location: "",
   city: "",
-  time: "",
+  startsAt: "",
   type: "goaltimate",
   target: 8,
   status: "open",
 };
 
 export default function GameForm({ initial, onSave, onCancel }) {
-  const [form, setForm] = useState(initial || DEFAULT_FORM);
+  const [form, setForm] = useState(() => {
+    if (!initial) return DEFAULT_FORM;
+    return {
+      ...initial,
+      startsAt: toDatetimeLocalInput(initial.startsAt),
+    };
+  });
 
   const setField = (key, value) => setForm((current) => ({ ...current, [key]: value }));
+
+  const handleSave = () => {
+    const startsAt = fromDatetimeLocalInput(form.startsAt);
+    if (!startsAt) return;
+    onSave({ ...form, startsAt });
+  };
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
@@ -49,12 +62,12 @@ export default function GameForm({ initial, onSave, onCancel }) {
       </div>
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10 }}>
         <div>
-          <label style={label}>Date & Time</label>
+          <label style={label}>Weekly start time</label>
           <input
             style={input}
-            value={form.time}
-            onChange={(event) => setField("time", event.target.value)}
-            placeholder="Sat 10:00 AM"
+            type="datetime-local"
+            value={form.startsAt}
+            onChange={(event) => setField("startsAt", event.target.value)}
           />
         </div>
         <div>
@@ -86,7 +99,7 @@ export default function GameForm({ initial, onSave, onCancel }) {
       </div>
       <div style={{ display: "flex", gap: 8, marginTop: 4 }}>
         <button
-          onClick={() => onSave(form)}
+          onClick={handleSave}
           style={{
             flex: 1,
             padding: "10px",

@@ -1,7 +1,6 @@
 import { useState } from "react";
-import { TIME_LABELS } from "../../constants/time.js";
+import { TIME_LABELS, formatGameTime, getTimeSlot } from "../../utils/time.js";
 import { formatGameType } from "../../utils/gameType.js";
-import { getTimeSlot } from "../../utils/time.js";
 import ProgressBar from "./ProgressBar.jsx";
 import StatusBadge from "./StatusBadge.jsx";
 
@@ -63,7 +62,7 @@ export default function GameCard({
   onCancel,
 }) {
   const cancelled = game.status === "cancelled";
-  const slot = getTimeSlot(game.time);
+  const slot = getTimeSlot(game.startsAt);
   const [plusOnes, setPlusOnes] = useState(myRsvp?.plusOnes ?? 0);
 
   const stop = (event) => event.stopPropagation();
@@ -100,7 +99,7 @@ export default function GameCard({
       </div>
 
       <p className="game-card__detail">
-        {game.time} · {TIME_LABELS[slot]} · {formatGameType(game.type)}
+        {formatGameTime(game.startsAt)} · {TIME_LABELS[slot]} · {formatGameType(game.type)}
       </p>
 
       {!cancelled && <ProgressBar count={count} target={game.target} compact />}

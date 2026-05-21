@@ -4,6 +4,7 @@ import {
   parseClockFromTime,
   parseWeekdayFromTime,
 } from "../src/utils/gameSchedule.js";
+import { formatGameTime, getTimeSlot } from "../src/utils/time.js";
 
 function assert(condition, message) {
   if (!condition) {
@@ -53,4 +54,7 @@ const derived = deriveWeeklyAnchorUtc("Wed 6:00 PM", {
 });
 assert(derived === ANCHOR, `derive anchor: expected ${ANCHOR}, got ${derived}`);
 
-console.log(`All ${cases.length + 3} game schedule checks passed.`);
+assert(formatGameTime(ANCHOR) === "Wed 6:00 PM", `format game time: got ${formatGameTime(ANCHOR)}`);
+assert(getTimeSlot(ANCHOR) === "evening", "Wed 6 PM is evening");
+
+console.log(`All ${cases.length + 5} game schedule checks passed.`);

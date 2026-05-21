@@ -10,7 +10,6 @@ function formatGame(row) {
     name: row.name,
     location: row.location,
     city: row.city,
-    time: row.time,
     startsAt: row.starts_at ?? null,
     type: row.type,
     target: Number(row.target),

@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { DEFAULT_GAMES } from "../constants/games.js";
 import { STORAGE_KEYS } from "../constants/storageKeys.js";
 import {
   fetchAppData,
@@ -7,7 +6,7 @@ import {
   isSupabaseConfigured,
   subscribeToRsvps,
 } from "../lib/data.js";
-import { createEmptyRsvpMap, deriveMyRsvps } from "../utils/games.js";
+import { deriveMyRsvps } from "../utils/games.js";
 import { colorForId, getPresenceSessionId } from "../constants/presence.js";
 
 function getStoredJson(key) {
@@ -34,7 +33,7 @@ function saveProfile(profile) {
 }
 
 function applyData({ games, rsvps }, setGamesMeta, setRsvps) {
-  if (games?.length) {
+  if (games) {
     setGamesMeta(games);
     localStorage.setItem(STORAGE_KEYS.META, JSON.stringify(games));
   }
@@ -44,28 +43,9 @@ function applyData({ games, rsvps }, setGamesMeta, setRsvps) {
   }
 }
 
-function loadLocalData(setGamesMeta, setRsvps) {
-  const storedMeta = getStoredJson(STORAGE_KEYS.META);
-  if (storedMeta) {
-    setGamesMeta(storedMeta);
-  } else {
-    localStorage.setItem(STORAGE_KEYS.META, JSON.stringify(DEFAULT_GAMES));
-    setGamesMeta(DEFAULT_GAMES);
-  }
-
-  const storedRsvps = getStoredJson(STORAGE_KEYS.RSVPS);
-  if (storedRsvps) {
-    setRsvps(storedRsvps);
-  } else {
-    const initialRsvps = createEmptyRsvpMap(DEFAULT_GAMES);
-    localStorage.setItem(STORAGE_KEYS.RSVPS, JSON.stringify(initialRsvps));
-    setRsvps(initialRsvps);
-  }
-}
-
 export function useAppData(showToast) {
   const [profile, setProfile] = useState(null);
-  const [gamesMeta, setGamesMeta] = useState(DEFAULT_GAMES);
+  const [gamesMeta, setGamesMeta] = useState([]);
   const [rsvps, setRsvps] = useState({});
   const [myRsvps, setMyRsvps] = useState({});
   const [loading, setLoading] = useState(true);
@@ -86,17 +66,16 @@ export function useAppData(showToast) {
           setProfile(storedProfile);
         }
 
-        if (useSupabaseRef.current) {
-          const data = await fetchAppData();
-          if (cancelled) return;
-          applyData(data, setGamesMeta, setRsvps);
-        } else {
-          loadLocalData(setGamesMeta, setRsvps);
+        if (!useSupabaseRef.current) {
+          return;
         }
+
+        const data = await fetchAppData();
+        if (cancelled) return;
+        applyData(data, setGamesMeta, setRsvps);
       } catch {
         if (!cancelled) {
-          loadLocalData(setGamesMeta, setRsvps);
-          useSupabaseRef.current = false;
+          showToast("Couldn't load games — try again", "error");
         }
       } finally {
         if (!cancelled) setLoading(false);
@@ -107,7 +86,7 @@ export function useAppData(showToast) {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [showToast]);
 
   useEffect(() => {
     if (!useSupabaseRef.current) return undefined;

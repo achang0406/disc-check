@@ -1,7 +1,7 @@
 import dotenv from "dotenv";
 import { createClient } from "@supabase/supabase-js";
-import { DEFAULT_GAMES } from "../src/constants/games.js";
 import { deriveWeeklyAnchorUtc } from "../src/utils/gameSchedule.js";
+import { SEED_GAMES } from "./seed-data.mjs";
 
 dotenv.config({ path: ".env.local" });
 dotenv.config();
@@ -17,10 +17,10 @@ if (!url || !serviceKey) {
 const supabase = createClient(url, serviceKey);
 
 const { error } = await supabase.from("games").upsert(
-  DEFAULT_GAMES.map((game) => {
-    const startsAt = game.startsAt ?? deriveWeeklyAnchorUtc(game.time);
+  SEED_GAMES.map((game) => {
+    const startsAt = game.startsAt ?? deriveWeeklyAnchorUtc(game.schedule);
     if (!startsAt) {
-      throw new Error(`Could not derive starts_at for game ${game.id} (${game.time})`);
+      throw new Error(`Could not derive starts_at for game ${game.id} (${game.schedule})`);
     }
 
     return {
@@ -28,7 +28,6 @@ const { error } = await supabase.from("games").upsert(
       name: game.name,
       location: game.location,
       city: game.city,
-      time: game.time,
       starts_at: startsAt,
       type: game.type,
       target: game.target,
@@ -43,4 +42,4 @@ if (error) {
   process.exit(1);
 }
 
-console.log(`Seeded ${DEFAULT_GAMES.length} game(s).`);
+console.log(`Seeded ${SEED_GAMES.length} game(s).`);

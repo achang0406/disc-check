@@ -3,6 +3,7 @@ import ProgressBar from "../games/ProgressBar.jsx";
 import StatusBadge from "../games/StatusBadge.jsx";
 import { card, smallButton } from "../../styles/theme.js";
 import { countPlayers, getInitials } from "../../utils/format.js";
+import { formatGameTime } from "../../utils/time.js";
 
 export default function AdminPlayersTab({
   gamesMeta,
@@ -63,7 +64,7 @@ export default function AdminPlayersTab({
               <div>
                 <span style={{ fontSize: 15, fontWeight: 700, color: "#f0f0f0" }}>{game.name}</span>
                 <span style={{ marginLeft: 8, fontSize: 11, color: "#555", fontFamily: "'DM Mono',monospace" }}>
-                  {game.time} · {game.city}
+                  {formatGameTime(game.startsAt)} · {game.city}
                 </span>
               </div>
               <StatusBadge count={count} target={game.target} cancelled={cancelled} />

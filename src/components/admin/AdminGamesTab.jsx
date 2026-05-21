@@ -1,9 +1,8 @@
 import GameForm from "../games/GameForm.jsx";
-import { TIME_LABELS } from "../../constants/time.js";
+import { TIME_LABELS, formatGameTime, getTimeSlot } from "../../utils/time.js";
 import { card, smallButton } from "../../styles/theme.js";
 import { countPlayers } from "../../utils/format.js";
 import { formatGameType } from "../../utils/gameType.js";
-import { getTimeSlot } from "../../utils/time.js";
 
 export default function AdminGamesTab({
   gamesMeta,
@@ -96,9 +95,11 @@ export default function AdminGamesTab({
                       {game.location} · {game.city}
                     </p>
                     <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
-                      <span style={{ fontSize: 12, color: "#666", fontFamily: "'DM Mono',monospace" }}>📅 {game.time}</span>
                       <span style={{ fontSize: 12, color: "#666", fontFamily: "'DM Mono',monospace" }}>
-                        {TIME_LABELS[getTimeSlot(game.time)]}
+                        📅 {formatGameTime(game.startsAt)}
+                      </span>
+                      <span style={{ fontSize: 12, color: "#666", fontFamily: "'DM Mono',monospace" }}>
+                        {TIME_LABELS[getTimeSlot(game.startsAt)]}
                       </span>
                       <span style={{ fontSize: 12, color: "#666", fontFamily: "'DM Mono',monospace" }}>
                         {formatGameType(game.type)} · {game.target}+

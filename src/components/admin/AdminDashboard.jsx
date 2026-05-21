@@ -1,5 +1,6 @@
 import ProgressBar from "../games/ProgressBar.jsx";
 import StatusBadge from "../games/StatusBadge.jsx";
+import { formatGameTime } from "../../utils/time.js";
 import { card, smallButton } from "../../styles/theme.js";
 import { countPlayers } from "../../utils/format.js";
 
@@ -74,7 +75,7 @@ export default function AdminDashboard({
                   <div>
                     <span style={{ fontSize: 14, fontWeight: 600, color: "#e8e8e8" }}>{game.name}</span>
                     <span style={{ marginLeft: 8, fontSize: 11, color: "#555", fontFamily: "'DM Mono',monospace" }}>
-                      {game.time} · {game.city}
+                      {formatGameTime(game.startsAt)} · {game.city}
                     </span>
                   </div>
                   <StatusBadge count={count} target={game.target} cancelled={cancelled} />

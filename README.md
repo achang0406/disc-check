@@ -45,7 +45,7 @@ npm run db:seed
 npm run dev
 ```
 
-Open `http://localhost:5173`. Without Supabase env vars, the app falls back to browser `localStorage`.
+Open `http://localhost:5173`. Supabase env vars are required for game and RSVP data.
 
 ## Deploy to Vercel
 
