@@ -3,6 +3,7 @@ import LoadingScreen from "./components/layout/LoadingScreen.jsx";
 import Toast from "./components/layout/Toast.jsx";
 import SignUpModal from "./components/auth/SignUpModal.jsx";
 import EditProfileModal from "./components/auth/EditProfileModal.jsx";
+import MobileChatBar from "./components/presence/MobileChatBar.jsx";
 import PresenceLayer from "./components/presence/PresenceLayer.jsx";
 import { useAppData } from "./hooks/useAppData.js";
 import { usePresence } from "./hooks/usePresence.js";
@@ -67,7 +68,17 @@ export default function App() {
         onProfileClick={app.openEditProfile}
         theme={theme}
         onToggleTheme={toggleTheme}
+        isMobile={presence.isMobile}
       />
+
+      {presence.isMobile && (
+        <MobileChatBar
+          value={presence.draft}
+          onChange={presence.setMobileDraft}
+          onSend={presence.sendChat}
+          connected={presence.connected}
+        />
+      )}
     </div>
   );
 }

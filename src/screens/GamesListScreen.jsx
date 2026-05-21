@@ -13,9 +13,11 @@ export default function GamesListScreen({
   onProfileClick,
   theme,
   onToggleTheme,
+  isMobile,
 }) {
   return (
     <div
+      className={isMobile ? "games-screen--mobile" : undefined}
       style={{
         position: "relative",
         zIndex: 1,

@@ -7,7 +7,8 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "db:seed": "node scripts/seed.mjs"
+    "db:seed": "node scripts/seed.mjs",
+    "verify:schedule": "node scripts/verify-game-schedule.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.49.8",

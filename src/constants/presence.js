@@ -13,9 +13,12 @@ export const CURSOR_COLORS = [
 
 export const CHAT_TTL_MS = 3000;
 export const CURSOR_THROTTLE_MS = 50;
-export const CURSOR_IDLE_MS = 5000;
 export const DRAFT_THROTTLE_MS = 80;
 export const MAX_CHAT_LENGTH = 120;
+
+export function getPresenceMode(isMobile) {
+  return isMobile ? "mobile" : "cursor";
+}
 
 export function colorForId(id) {
   let hash = 0;

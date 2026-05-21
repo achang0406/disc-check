@@ -1,4 +1,8 @@
 import { getSupabase, isSupabaseConfigured } from "./supabase.js";
+import {
+  getCurrentRsvpCycleStartUtc,
+  normalizeCycleAt,
+} from "../utils/gameSchedule.js";
 
 function formatGame(row) {
   return {
@@ -7,10 +11,40 @@ function formatGame(row) {
     location: row.location,
     city: row.city,
     time: row.time,
+    startsAt: row.starts_at ?? null,
     type: row.type,
     target: Number(row.target),
     status: row.status,
+    rsvpCycleAt: row.rsvp_cycle_at ?? null,
   };
+}
+
+async function ensureGameCycles(supabase, games) {
+  const tasks = [];
+
+  for (const game of games) {
+    if (game.status === "cancelled") continue;
+    if (!game.starts_at) continue;
+
+    const currentCycle = getCurrentRsvpCycleStartUtc(game.starts_at);
+    if (!currentCycle) continue;
+
+    const storedCycle = normalizeCycleAt(game.rsvp_cycle_at);
+    if (storedCycle === currentCycle) continue;
+
+    tasks.push(
+      supabase.rpc("reset_game_rsvp_cycle", {
+        p_game_id: game.id,
+        p_cycle: currentCycle,
+      }),
+    );
+  }
+
+  if (tasks.length === 0) return;
+
+  const results = await Promise.all(tasks);
+  const error = results.find((result) => result.error)?.error;
+  if (error) throw error;
 }
 
 function groupRsvps(rows) {
@@ -29,15 +63,21 @@ function groupRsvps(rows) {
 export async function fetchAppData() {
   const supabase = getSupabase();
 
-  const [gamesResult, rsvpsResult] = await Promise.all([
-    supabase.from("games").select("*").order("created_at", { ascending: true }).order("id", { ascending: true }),
-    supabase
-      .from("rsvps")
-      .select("game_id, user_id, name, plus_ones")
-      .order("created_at", { ascending: true }),
-  ]);
+  const gamesResult = await supabase
+    .from("games")
+    .select("*")
+    .order("created_at", { ascending: true })
+    .order("id", { ascending: true });
 
   if (gamesResult.error) throw gamesResult.error;
+
+  await ensureGameCycles(supabase, gamesResult.data || []);
+
+  const rsvpsResult = await supabase
+    .from("rsvps")
+    .select("game_id, user_id, name, plus_ones")
+    .order("created_at", { ascending: true });
+
   if (rsvpsResult.error) throw rsvpsResult.error;
 
   return {

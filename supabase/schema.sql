@@ -7,9 +7,11 @@ CREATE TABLE IF NOT EXISTS games (
   location TEXT NOT NULL,
   city TEXT NOT NULL,
   time TEXT NOT NULL,
+  starts_at TIMESTAMPTZ NOT NULL,
   type TEXT NOT NULL DEFAULT 'goaltimate',
   target INTEGER NOT NULL DEFAULT 8,
   status TEXT NOT NULL DEFAULT 'open',
+  rsvp_cycle_at TIMESTAMPTZ,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
@@ -40,3 +42,18 @@ ALTER TABLE rsvps REPLICA IDENTITY FULL;
 -- If this line errors because the table is already added, that's OK.
 -- You can also enable it in Dashboard → Database → Publications → supabase_realtime.
 ALTER PUBLICATION supabase_realtime ADD TABLE rsvps;
+
+-- Weekly RSVP reset: clears signups when the pickup week rolls over (24h after game start, UTC).
+CREATE OR REPLACE FUNCTION reset_game_rsvp_cycle(p_game_id TEXT, p_cycle TIMESTAMPTZ)
+RETURNS void
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+BEGIN
+  DELETE FROM rsvps WHERE game_id = p_game_id;
+  UPDATE games SET rsvp_cycle_at = p_cycle WHERE id = p_game_id;
+END;
+$$;
+
+GRANT EXECUTE ON FUNCTION reset_game_rsvp_cycle(TEXT, TIMESTAMPTZ) TO anon, authenticated, service_role;

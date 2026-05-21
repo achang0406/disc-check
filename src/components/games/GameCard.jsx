@@ -112,28 +112,7 @@ export default function GameCard({
 
       {!cancelled && (
         <div className="game-card__divider" onClick={stop}>
-          <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginBottom: 10 }}>
-            <button
-              type="button"
-              className="game-card__counter"
-              onClick={() => setPlusOnes(Math.max(0, plusOnes - 1))}
-              disabled={rsvpd}
-              style={disabledStyle(!rsvpd)}
-            >
-              −
-            </button>
-            <span className="game-card__plus-value">{plusOnes}</span>
-            <button
-              type="button"
-              className="game-card__counter"
-              onClick={() => setPlusOnes(plusOnes + 1)}
-              disabled={rsvpd}
-              style={disabledStyle(!rsvpd)}
-            >
-              +
-            </button>
-          </div>
-          <div style={{ display: "flex", gap: 8 }}>
+          <div className="game-card__actions">
             <button
               type="button"
               className={`game-card__action game-card__action--rsvp${saving && !rsvpd ? " game-card__action--saving" : ""}`}
@@ -143,6 +122,29 @@ export default function GameCard({
             >
               {saving && !rsvpd ? "..." : "Count me in"}
             </button>
+            <div className="game-card__plus-ones" aria-label="Plus ones">
+              <button
+                type="button"
+                className="game-card__plus-btn"
+                onClick={() => setPlusOnes(Math.max(0, plusOnes - 1))}
+                disabled={rsvpd}
+                style={disabledStyle(!rsvpd)}
+                aria-label="Remove plus one"
+              >
+                −
+              </button>
+              <span className="game-card__plus-value">{plusOnes}</span>
+              <button
+                type="button"
+                className="game-card__plus-btn"
+                onClick={() => setPlusOnes(plusOnes + 1)}
+                disabled={rsvpd}
+                style={disabledStyle(!rsvpd)}
+                aria-label="Add plus one"
+              >
+                +
+              </button>
+            </div>
             <button
               type="button"
               className="game-card__action game-card__action--cancel"

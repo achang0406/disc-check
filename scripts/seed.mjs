@@ -1,6 +1,7 @@
 import dotenv from "dotenv";
 import { createClient } from "@supabase/supabase-js";
 import { DEFAULT_GAMES } from "../src/constants/games.js";
+import { deriveWeeklyAnchorUtc } from "../src/utils/gameSchedule.js";
 
 dotenv.config({ path: ".env.local" });
 dotenv.config();
@@ -16,16 +17,24 @@ if (!url || !serviceKey) {
 const supabase = createClient(url, serviceKey);
 
 const { error } = await supabase.from("games").upsert(
-  DEFAULT_GAMES.map((game) => ({
-    id: game.id,
-    name: game.name,
-    location: game.location,
-    city: game.city,
-    time: game.time,
-    type: game.type,
-    target: game.target,
-    status: game.status,
-  })),
+  DEFAULT_GAMES.map((game) => {
+    const startsAt = game.startsAt ?? deriveWeeklyAnchorUtc(game.time);
+    if (!startsAt) {
+      throw new Error(`Could not derive starts_at for game ${game.id} (${game.time})`);
+    }
+
+    return {
+      id: game.id,
+      name: game.name,
+      location: game.location,
+      city: game.city,
+      time: game.time,
+      starts_at: startsAt,
+      type: game.type,
+      target: game.target,
+      status: game.status,
+    };
+  }),
   { onConflict: "id" },
 );
 

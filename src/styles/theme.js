@@ -121,6 +121,50 @@ export const globalStyles = `
     border-top: 1px solid var(--card-divider);
   }
 
+  .game-card__actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .game-card__plus-ones {
+    display: inline-flex;
+    align-items: center;
+    gap: 2px;
+    padding: 3px;
+    border-radius: 999px;
+    border: 1px solid var(--card-ring);
+    background: transparent;
+    flex-shrink: 0;
+    opacity: 0.85;
+  }
+
+  .game-card__plus-btn {
+    width: 24px;
+    height: 24px;
+    border-radius: 999px;
+    background: transparent;
+    border: none;
+    color: var(--text-subtle);
+    font-size: 14px;
+    line-height: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    cursor: pointer;
+  }
+
+  .game-card__plus-btn:disabled {
+    cursor: not-allowed;
+    opacity: 0.35;
+  }
+
+  .game-card__plus-btn:not(:disabled):hover {
+    color: var(--text);
+    background: var(--btn-bg);
+  }
+
   .game-card__counter {
     width: clamp(28px, 2.5vw, 34px);
     height: clamp(28px, 2.5vw, 34px);
@@ -142,12 +186,12 @@ export const globalStyles = `
   }
 
   .game-card__plus-value {
-    font-size: clamp(14px, 0.4vw + 13px, 16px);
-    font-weight: 600;
-    min-width: 18px;
+    font-size: 12px;
+    font-weight: 500;
+    min-width: 14px;
     text-align: center;
     font-family: 'DM Mono', monospace;
-    color: var(--text);
+    color: var(--text-muted);
   }
 
   .game-card__action {
@@ -216,6 +260,12 @@ export const globalStyles = `
     color: var(--status-not-color);
   }
 
+  .status-badge--almost {
+    background: var(--status-almost-bg);
+    border-color: var(--status-almost-color);
+    color: var(--status-almost-color);
+  }
+
   .status-badge--cancelled {
     background: var(--status-cancelled-bg);
     border-color: var(--status-cancelled-color);
@@ -251,5 +301,97 @@ export const globalStyles = `
     font-size: 16px;
     line-height: 1;
     flex-shrink: 0;
+  }
+
+  .games-screen--mobile {
+    padding-bottom: calc(64px + env(safe-area-inset-bottom, 0px));
+  }
+
+  .mobile-chat-bar {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 160;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 14px calc(10px + env(safe-area-inset-bottom, 0px));
+    background: transparent;
+    pointer-events: none;
+  }
+
+  .mobile-chat-bar__input {
+    flex: 1;
+    min-width: 0;
+    background: transparent;
+    border: 1px solid var(--card-ring);
+    border-radius: 999px;
+    padding: 10px 14px;
+    color: var(--text);
+    font-size: 15px;
+    font-family: 'DM Sans', sans-serif;
+    outline: none;
+    pointer-events: auto;
+    opacity: 0.85;
+  }
+
+  .mobile-chat-bar__input:focus {
+    opacity: 1;
+    border-color: var(--text-faint);
+  }
+
+  .mobile-chat-bar__input::placeholder {
+    color: var(--text-faint);
+  }
+
+  .mobile-chat-bar__send {
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    background: transparent;
+    border: 1px solid var(--card-ring);
+    color: var(--text-subtle);
+    font-size: 17px;
+    font-weight: 600;
+    cursor: pointer;
+    flex-shrink: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    pointer-events: auto;
+    opacity: 0.85;
+  }
+
+  .mobile-chat-bar__send:not(:disabled):active {
+    opacity: 1;
+    border-color: var(--text-faint);
+    color: var(--text);
+  }
+
+  .mobile-chat-bar__send:disabled {
+    opacity: 0.35;
+    cursor: not-allowed;
+  }
+
+  .presence-connecting {
+    position: fixed;
+    bottom: 16px;
+    right: 16;
+    z-index: 149;
+    pointer-events: none;
+    font-size: 11px;
+    color: var(--text-muted);
+    font-family: 'DM Mono', monospace;
+    background: var(--card-bg);
+    border: 1px solid var(--card-ring);
+    border-radius: 8px;
+    padding: 6px 10px;
+  }
+
+  @media (min-width: 769px) {
+    .mobile-chat-bar {
+      display: none;
+    }
   }
 `;
