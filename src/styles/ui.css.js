@@ -298,6 +298,66 @@ export const uiStyles = `
     color: var(--text-subtle);
   }
 
+  .chip-list--locked-rsvp {
+    gap: var(--space-2);
+  }
+
+  .chip-anchor {
+    position: relative;
+    display: inline-flex;
+  }
+
+  .chip--interactive {
+    cursor: pointer;
+    font: inherit;
+    transition: border-color 0.15s ease, background 0.15s ease;
+  }
+
+  .chip--interactive:hover:not(:disabled) {
+    border-color: var(--text-subtle);
+  }
+
+  .chip--interactive:disabled {
+    cursor: default;
+    opacity: 0.7;
+  }
+
+  .chip--active {
+    border-color: var(--chip-you-border);
+  }
+
+  .chip--bailed {
+    text-decoration: line-through;
+    opacity: 0.55;
+  }
+
+  .chip-popover {
+    position: absolute;
+    top: calc(100% + var(--space-1));
+    left: 0;
+    z-index: 2;
+    min-width: 160px;
+    padding: var(--space-2);
+    border-radius: var(--radius-md);
+    background: var(--card-bg);
+    border: 1px solid var(--card-ring);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+  }
+
+  .chip-popover__note {
+    margin: 0;
+    font-size: var(--font-body);
+    color: var(--text-muted);
+    font-family: var(--font-sans);
+  }
+
+  .chip-popover .btn {
+    width: 100%;
+  }
+
   .toast {
     position: fixed;
     bottom: var(--space-5);

@@ -336,6 +336,15 @@ export function useAppData(showToast) {
 
     if (!ok) return;
 
+    const rsvpStore = getStoredJson(STORAGE_KEYS.RSVPS) || {};
+    const selfRsvp = (rsvpStore[game.id] || []).find((entry) => entry.userId === checkInProfile.id);
+    if (selfRsvp?.bailed) {
+      await persistRsvpChange(
+        { action: "unbail", gameId: game.id, userId: checkInProfile.id },
+        game.id,
+      );
+    }
+
     showToast(
       `You're here!${plusOnes > 0 ? ` +${plusOnes} guest${plusOnes !== 1 ? "s" : ""}` : ""}`,
     );
@@ -458,6 +467,33 @@ export function useAppData(showToast) {
     );
 
     if (ok) showToast("Bailed");
+  };
+
+  const handleSetRsvpBail = async (gameId, entry, bailed) => {
+    if (!profile) return;
+
+    const game = gamesMeta.find((item) => item.id === gameId);
+    if (!game || !isGameLive(game)) {
+      showToast("Can only mark bails after the game starts", "error");
+      return;
+    }
+
+    const current = getStoredJson(STORAGE_KEYS.RSVPS) || {};
+    const nextEntries = (current[gameId] || []).map((item) =>
+      item.userId === entry.userId ? { ...item, bailed } : item,
+    );
+    current[gameId] = nextEntries;
+    localStorage.setItem(STORAGE_KEYS.RSVPS, JSON.stringify(current));
+    setRsvps({ ...current });
+
+    const ok = await persistRsvpChange(
+      { action: bailed ? "bail" : "unbail", gameId, userId: entry.userId },
+      gameId,
+    );
+
+    if (ok) {
+      showToast(bailed ? `${entry.name} marked as bailed` : `${entry.name} unbailed`);
+    }
   };
 
   const handleCheckOut = async (gameId) => {
@@ -608,6 +644,7 @@ export function useAppData(showToast) {
     handleRequestCheckIn,
     handleSignUp,
     handleCancel,
+    handleSetRsvpBail,
     handleCheckOut,
     closeSignUp,
     openEditProfile,

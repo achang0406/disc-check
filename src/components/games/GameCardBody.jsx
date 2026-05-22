@@ -1,4 +1,4 @@
-import ChipList from "../ui/ChipList.jsx";
+import LockedRsvpChipList from "./LockedRsvpChipList.jsx";
 import GameDetailPlayersSection from "./GameDetailPlayersSection.jsx";
 import ProgressBar from "./ProgressBar.jsx";
 
@@ -10,7 +10,11 @@ export default function GameCardBody({
   rsvpEntries,
   checkInCount,
   checkInEntries,
+  onSetRsvpBail,
+  saving = false,
 }) {
+  const checkedInUserIds = new Set(checkInEntries.map((entry) => entry.userId));
+
   return (
     <div className="game-card__phase-stack">
       <section className={`game-card__phase game-card__phase--rsvp${isLive ? " game-card__phase--exit" : ""}`}>
@@ -31,11 +35,13 @@ export default function GameCardBody({
             <p className="game-detail-players__label game-detail-players__label--locked">
               <span aria-hidden="true">🔒</span> RSVP locked · {rsvpCount} signed up
             </p>
-            <ChipList
+            <LockedRsvpChipList
               entries={rsvpEntries}
               profileId={profile?.id}
+              checkedInUserIds={checkedInUserIds}
               emptyLabel="no one signed up"
-              className="game-card__chips--compact-hide"
+              disabled={!profile || saving}
+              onSetBailed={(entry, bailed) => onSetRsvpBail?.(game.id, entry, bailed)}
             />
           </div>
 

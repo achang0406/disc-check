@@ -11,6 +11,8 @@ export default function GameCard({
   rsvpEntries,
   checkInCount,
   checkInEntries,
+  onSetRsvpBail,
+  saving = false,
   embedded = false,
   className = "",
   onAddressCopy,
@@ -34,6 +36,8 @@ export default function GameCard({
     rsvpEntries,
     checkInCount,
     checkInEntries,
+    onSetRsvpBail,
+    saving,
   };
 
   return (

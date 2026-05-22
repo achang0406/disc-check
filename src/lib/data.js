@@ -60,6 +60,7 @@ function groupRsvps(rows) {
       userId: row.user_id,
       name: row.name,
       plusOnes: Number(row.plus_ones) || 0,
+      bailed: Boolean(row.bailed),
     });
   }
   return map;
@@ -208,7 +209,7 @@ export async function fetchAppData() {
 
   const rsvpsResult = await supabase
     .from("rsvps")
-    .select("game_id, user_id, name, plus_ones")
+    .select("game_id, user_id, name, plus_ones, bailed")
     .order("created_at", { ascending: true });
 
   if (rsvpsResult.error) throw rsvpsResult.error;
@@ -256,6 +257,18 @@ export async function upsertRsvp({ gameId, userId, name, plusOnes }) {
 export async function cancelRsvp({ gameId, userId }) {
   const supabase = getSupabase();
   const { error } = await supabase.from("rsvps").delete().eq("game_id", gameId).eq("user_id", userId);
+
+  if (error) throw error;
+  return fetchAppData();
+}
+
+export async function setRsvpBailed({ gameId, userId, bailed }) {
+  const supabase = getSupabase();
+  const { error } = await supabase
+    .from("rsvps")
+    .update({ bailed })
+    .eq("game_id", gameId)
+    .eq("user_id", userId);
 
   if (error) throw error;
   return fetchAppData();
@@ -330,6 +343,17 @@ export async function handleRsvpAction(body) {
       throw new Error("Missing rename fields");
     }
     return renameRsvps({ userId: body.userId, name: body.name.trim() });
+  }
+
+  if (action === "bail" || action === "unbail") {
+    if (!body.gameId || !body.userId) {
+      throw new Error("Missing bail fields");
+    }
+    return setRsvpBailed({
+      gameId: body.gameId,
+      userId: body.userId,
+      bailed: action === "bail",
+    });
   }
 
   throw new Error("Unknown action");

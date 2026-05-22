@@ -1,3 +1,4 @@
+import LockedRsvpChipList from "./LockedRsvpChipList.jsx";
 import GameDetailPlayersSection from "./GameDetailPlayersSection.jsx";
 import GameDetailHeader from "./GameDetailHeader.jsx";
 import ProgressBar from "./ProgressBar.jsx";
@@ -15,9 +16,11 @@ export default function GameCommitStrip({
   expanded,
   onToggleExpanded,
   onAddressCopy,
+  onSetRsvpBail,
+  saving = false,
 }) {
   const cancelled = game.status === "cancelled";
-  const playerEntries = isLive ? checkInEntries : rsvpEntries;
+  const checkedInUserIds = new Set(checkInEntries.map((entry) => entry.userId));
 
   return (
     <section
@@ -46,19 +49,38 @@ export default function GameCommitStrip({
 
         <div className="game-commit-strip__expandable" aria-hidden={!expanded}>
           <div className="game-commit-strip__expandable-inner">
-            {!cancelled && (
+            {!cancelled && !isLive && (
               <GameDetailPlayersSection
-                label={isLive ? "Who's here" : "Signed up"}
-                entries={playerEntries}
+                label="Signed up"
+                entries={rsvpEntries}
                 profileId={profile?.id}
-                emptyLabel={isLive ? "no one checked in yet" : "no signups yet"}
+                emptyLabel="no signups yet"
               />
             )}
 
-            {isLive && (
-              <p className="game-commit-strip__locked-note">
-                <span aria-hidden="true">🔒</span> RSVP locked · {rsvpCount} signed up before start
-              </p>
+            {!cancelled && isLive && (
+              <>
+                <div className="game-card__locked-rsvp">
+                  <p className="game-detail-players__label game-detail-players__label--locked">
+                    <span aria-hidden="true">🔒</span> RSVP locked · {rsvpCount} signed up
+                  </p>
+                  <LockedRsvpChipList
+                    entries={rsvpEntries}
+                    profileId={profile?.id}
+                    checkedInUserIds={checkedInUserIds}
+                    emptyLabel="no one signed up"
+                    disabled={!profile || saving}
+                    onSetBailed={(entry, bailed) => onSetRsvpBail?.(game.id, entry, bailed)}
+                  />
+                </div>
+
+                <GameDetailPlayersSection
+                  label="Who's here"
+                  entries={checkInEntries}
+                  profileId={profile?.id}
+                  emptyLabel="no one checked in yet"
+                />
+              </>
             )}
           </div>
         </div>

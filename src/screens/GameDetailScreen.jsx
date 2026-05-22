@@ -26,6 +26,7 @@ export default function GameDetailScreen({
   onCancel,
   onRequestCheckIn,
   onCheckOut,
+  onSetRsvpBail,
   onProfileClick,
   theme,
   onToggleTheme,
@@ -68,6 +69,8 @@ export default function GameDetailScreen({
     rsvpd,
     checkedIn,
     onAddressCopy: () => showToast?.("Address copied"),
+    onSetRsvpBail,
+    saving,
   };
 
   useEffect(() => {
@@ -178,6 +181,8 @@ export default function GameDetailScreen({
                   expanded={stripExpanded}
                   onToggleExpanded={() => setStripExpanded((value) => !value)}
                   onAddressCopy={() => showToast("Address copied")}
+                  onSetRsvpBail={onSetRsvpBail}
+                  saving={saving}
                 />
               }
             />

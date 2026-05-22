@@ -22,6 +22,7 @@ CREATE TABLE IF NOT EXISTS rsvps (
   user_id TEXT NOT NULL,
   name TEXT NOT NULL,
   plus_ones INTEGER NOT NULL DEFAULT 0,
+  bailed BOOLEAN NOT NULL DEFAULT false,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   UNIQUE (game_id, user_id)
 );
@@ -190,6 +191,15 @@ BEGIN
   WHERE id = v_game_id;
 
   IF is_game_live(v_weekday, v_start_time, v_timezone) THEN
+    IF TG_OP = 'UPDATE'
+       AND NEW.game_id IS NOT DISTINCT FROM OLD.game_id
+       AND NEW.user_id IS NOT DISTINCT FROM OLD.user_id
+       AND NEW.name IS NOT DISTINCT FROM OLD.name
+       AND NEW.plus_ones IS NOT DISTINCT FROM OLD.plus_ones
+       AND NEW.bailed IS DISTINCT FROM OLD.bailed THEN
+      RETURN NEW;
+    END IF;
+
     RAISE EXCEPTION 'RSVP is locked while the game is live';
   END IF;
 

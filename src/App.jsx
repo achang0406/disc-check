@@ -73,6 +73,7 @@ function AppRoutes() {
     onCancel: app.handleCancel,
     onRequestCheckIn: app.handleRequestCheckIn,
     onCheckOut: app.handleCheckOut,
+    onSetRsvpBail: app.handleSetRsvpBail,
     onProfileClick: app.openEditProfile,
     theme,
     onToggleTheme: toggleTheme,
