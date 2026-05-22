@@ -1,5 +1,6 @@
 import LockedRsvpChipList from "./LockedRsvpChipList.jsx";
 import GameDetailPlayersSection from "./GameDetailPlayersSection.jsx";
+import GameWalkInsSection from "./GameWalkInsSection.jsx";
 import GameDetailHeader from "./GameDetailHeader.jsx";
 import ProgressBar from "./ProgressBar.jsx";
 
@@ -13,10 +14,13 @@ export default function GameCommitStrip({
   rsvpCount,
   rsvpEntries,
   checkInEntries,
+  walkInEntries = [],
   expanded,
   onToggleExpanded,
   onAddressCopy,
   onSetRsvpBail,
+  onAddWalkIn,
+  onRemoveWalkIn,
   saving = false,
 }) {
   const cancelled = game.status === "cancelled";
@@ -60,14 +64,15 @@ export default function GameCommitStrip({
 
             {!cancelled && isLive && (
               <>
-                <div className="game-card__locked-rsvp">
-                  <p className="game-detail-players__label game-detail-players__label--locked">
-                    <span aria-hidden="true">🔒</span> RSVP locked · {rsvpCount} signed up
+                <div className="game-detail-players game-detail-players--locked">
+                  <p className="game-detail-players__label">
+                    RSVP locked · {rsvpCount} signed up
                   </p>
                   <LockedRsvpChipList
                     entries={rsvpEntries}
                     profileId={profile?.id}
                     checkedInUserIds={checkedInUserIds}
+                    viewerCheckedIn={checkedIn}
                     emptyLabel="no one signed up"
                     disabled={!profile || saving}
                     onSetBailed={(entry, bailed) => onSetRsvpBail?.(game.id, entry, bailed)}
@@ -79,6 +84,14 @@ export default function GameCommitStrip({
                   entries={checkInEntries}
                   profileId={profile?.id}
                   emptyLabel="no one checked in yet"
+                />
+
+                <GameWalkInsSection
+                  entries={walkInEntries}
+                  disabled={!profile || saving}
+                  showInput={expanded}
+                  onAdd={(name) => onAddWalkIn?.(game.id, name)}
+                  onRemove={(guestId) => onRemoveWalkIn?.(game.id, guestId)}
                 />
               </>
             )}

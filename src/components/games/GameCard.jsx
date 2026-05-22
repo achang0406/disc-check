@@ -11,7 +11,10 @@ export default function GameCard({
   rsvpEntries,
   checkInCount,
   checkInEntries,
+  walkInEntries,
   onSetRsvpBail,
+  onAddWalkIn,
+  onRemoveWalkIn,
   saving = false,
   embedded = false,
   className = "",
@@ -36,7 +39,11 @@ export default function GameCard({
     rsvpEntries,
     checkInCount,
     checkInEntries,
+    walkInEntries,
+    checkedIn,
     onSetRsvpBail,
+    onAddWalkIn,
+    onRemoveWalkIn,
     saving,
   };
 

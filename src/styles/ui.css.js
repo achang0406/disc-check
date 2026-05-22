@@ -299,63 +299,113 @@ export const uiStyles = `
   }
 
   .chip-list--locked-rsvp {
-    gap: var(--space-2);
+    gap: var(--space-1) var(--space-2);
+    overflow: visible;
   }
 
-  .chip-anchor {
-    position: relative;
-    display: inline-flex;
+  .chip-list--locked-rsvp .chip {
+    background: transparent;
+    border-color: transparent;
+    color: var(--text-subtle);
+    padding: 0;
+    font-size: var(--font-body);
   }
 
-  .chip--interactive {
-    cursor: pointer;
-    font: inherit;
-    transition: border-color 0.15s ease, background 0.15s ease;
+  .chip-list--locked-rsvp .chip--you {
+    background: transparent;
+    border-color: transparent;
+    color: var(--chip-you-text);
+    opacity: 0.9;
   }
 
-  .chip--interactive:hover:not(:disabled) {
-    border-color: var(--text-subtle);
-  }
-
-  .chip--interactive:disabled {
-    cursor: default;
-    opacity: 0.7;
-  }
-
-  .chip--active {
-    border-color: var(--chip-you-border);
-  }
-
-  .chip--bailed {
+  .chip-list--locked-rsvp .chip--bailed {
     text-decoration: line-through;
-    opacity: 0.55;
+    color: var(--text-faint);
+    opacity: 1;
   }
 
-  .chip-popover {
-    position: absolute;
-    top: calc(100% + var(--space-1));
-    left: 0;
-    z-index: 2;
-    min-width: 160px;
-    padding: var(--space-2);
-    border-radius: var(--radius-md);
-    background: var(--card-bg);
-    border: 1px solid var(--card-ring);
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
+  .locked-rsvp-chip {
+    display: inline;
+    margin: 0;
+    padding: 0;
+    border: none;
+    background: none;
+    cursor: pointer;
+    font-family: var(--font-mono);
+    font-size: var(--font-body);
+    line-height: 1.3;
+    color: var(--text-subtle);
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .locked-rsvp-chip__label {
+    white-space: nowrap;
+    transition: color 0.12s ease, text-decoration-color 0.12s ease;
+  }
+
+  .locked-rsvp-chip:not(.locked-rsvp-chip--bailed):hover .locked-rsvp-chip__label {
+    text-decoration: line-through;
+    color: var(--text-faint);
+  }
+
+  .locked-rsvp-chip--bailed .locked-rsvp-chip__label {
+    text-decoration: line-through;
+    color: var(--text-faint);
+  }
+
+  .locked-rsvp-chip:focus-visible {
+    outline: 2px solid var(--chip-you-border);
+    outline-offset: 2px;
+    border-radius: var(--radius-sm);
+  }
+
+  .game-walk-ins {
     display: flex;
     flex-direction: column;
+    gap: var(--space-1);
+    flex-shrink: 0;
+  }
+
+  .game-walk-ins__row {
+    display: flex;
     gap: var(--space-2);
+    align-items: stretch;
   }
 
-  .chip-popover__note {
-    margin: 0;
+  .game-walk-ins__input {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .game-walk-ins__list {
+    flex-wrap: wrap;
+    min-height: 0;
+  }
+
+  .chip--walk-in {
+    background: var(--btn-bg);
+    border-color: var(--card-ring);
+    color: var(--text-subtle);
+  }
+
+  .walk-in-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-1);
+  }
+
+  .walk-in-chip__remove {
+    border: none;
+    background: none;
+    color: var(--text-faint);
+    cursor: pointer;
     font-size: var(--font-body);
-    color: var(--text-muted);
-    font-family: var(--font-sans);
+    line-height: 1;
+    padding: 0;
   }
 
-  .chip-popover .btn {
-    width: 100%;
+  .walk-in-chip__remove:hover {
+    color: var(--text-muted);
   }
 
   .toast {
@@ -363,11 +413,23 @@ export const uiStyles = `
     bottom: var(--space-5);
     left: var(--space-5);
     z-index: var(--z-toast);
-    padding: 10px var(--space-5);
+    padding: var(--chat-bar-inset-y) var(--chat-bar-inset-x);
     border-radius: var(--radius-sm);
     font-size: var(--font-body);
     font-family: var(--font-mono);
     box-shadow: 0 0 0 1px var(--card-ring);
+  }
+
+  @media (max-width: 767px) {
+    .toast {
+      bottom: calc(
+        var(--chat-bar-height, 0px) + var(--chat-bar-lift, 0px) + var(--chat-bar-inset-y)
+      );
+      left: var(--chat-bar-offset-left);
+      max-width: calc(
+        100vw - var(--chat-bar-offset-left) - var(--chat-bar-offset-right)
+      );
+    }
   }
 
   .toast--success {

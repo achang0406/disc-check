@@ -10,13 +10,14 @@ import Button from "../components/ui/Button.jsx";
 import { useBreakpoint } from "../hooks/useBreakpoint.js";
 import { useGameClock } from "../hooks/useGameClock.js";
 import { isGameLive } from "../utils/gameSchedule.js";
-import { countPlayers } from "../utils/format.js";
+import { countHeadcount, countPlayers } from "../utils/format.js";
 
 export default function GameDetailScreen({
   profile,
   games,
   rsvps,
   checkIns,
+  guests,
   myRsvps,
   myCheckIns,
   savingGameId,
@@ -27,6 +28,8 @@ export default function GameDetailScreen({
   onRequestCheckIn,
   onCheckOut,
   onSetRsvpBail,
+  onAddWalkIn,
+  onRemoveWalkIn,
   onProfileClick,
   theme,
   onToggleTheme,
@@ -50,9 +53,10 @@ export default function GameDetailScreen({
   const live = isGameLive(game, now);
   const showBack = games.length > 1;
   const rsvpCount = countPlayers(rsvps, game.id);
-  const checkInCount = countPlayers(checkIns, game.id);
+  const checkInCount = countHeadcount(checkIns, guests, game.id);
   const rsvpEntries = rsvps[game.id] || [];
   const checkInEntries = checkIns[game.id] || [];
+  const walkInEntries = guests[game.id] || [];
   const rsvpd = isRsvpd(game.id);
   const checkedIn = isCheckedIn(game.id);
   const saving = savingGameId === game.id;
@@ -66,10 +70,13 @@ export default function GameDetailScreen({
     rsvpEntries,
     checkInCount,
     checkInEntries,
+    walkInEntries,
     rsvpd,
     checkedIn,
     onAddressCopy: () => showToast?.("Address copied"),
     onSetRsvpBail,
+    onAddWalkIn,
+    onRemoveWalkIn,
     saving,
   };
 
@@ -182,6 +189,8 @@ export default function GameDetailScreen({
                   onToggleExpanded={() => setStripExpanded((value) => !value)}
                   onAddressCopy={() => showToast("Address copied")}
                   onSetRsvpBail={onSetRsvpBail}
+                  onAddWalkIn={onAddWalkIn}
+                  onRemoveWalkIn={onRemoveWalkIn}
                   saving={saving}
                 />
               }

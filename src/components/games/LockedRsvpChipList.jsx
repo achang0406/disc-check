@@ -1,5 +1,4 @@
-import { useEffect, useRef, useState } from "react";
-import Button from "../ui/Button.jsx";
+import HoverTooltip from "../ui/HoverTooltip.jsx";
 
 function cx(...parts) {
   return parts.filter(Boolean).join(" ");
@@ -9,26 +8,12 @@ export default function LockedRsvpChipList({
   entries,
   profileId,
   checkedInUserIds,
+  viewerCheckedIn = false,
   emptyLabel,
   disabled = false,
   onSetBailed,
   className = "",
 }) {
-  const [activeId, setActiveId] = useState(null);
-  const listRef = useRef(null);
-
-  useEffect(() => {
-    if (!activeId) return undefined;
-
-    const onPointerDown = (event) => {
-      if (listRef.current?.contains(event.target)) return;
-      setActiveId(null);
-    };
-
-    document.addEventListener("pointerdown", onPointerDown);
-    return () => document.removeEventListener("pointerdown", onPointerDown);
-  }, [activeId]);
-
   if (entries.length === 0) {
     return <p className="chip-list__empty">{emptyLabel}</p>;
   }
@@ -36,72 +21,59 @@ export default function LockedRsvpChipList({
   const checkedIn = checkedInUserIds ?? new Set();
 
   return (
-    <div className={cx("chip-list", "chip-list--locked-rsvp", className)} ref={listRef}>
+    <div className={cx("chip-list", "chip-list--locked-rsvp", className)}>
       {entries.map((entry) => {
         const isYou = entry.userId === profileId;
         const isHere = checkedIn.has(entry.userId);
-        const isActive = activeId === entry.userId;
-        const label =
-          entry.plusOnes > 0
-            ? `${entry.name} + ${entry.plusOnes} guest${entry.plusOnes !== 1 ? "s" : ""}`
-            : entry.name;
+        const canMark = viewerCheckedIn && Boolean(profileId) && !disabled && !isYou && !isHere;
 
-        return (
-          <span key={entry.userId} className="chip-anchor">
-            <button
-              type="button"
-              className={cx(
-                "chip",
-                "chip--interactive",
-                isYou && "chip--you",
-                entry.bailed && "chip--bailed",
-                isActive && "chip--active",
-              )}
-              title={label}
-              disabled={disabled}
-              aria-expanded={isActive}
-              onClick={() => setActiveId(isActive ? null : entry.userId)}
+        if (!canMark) {
+          if (entry.bailed) {
+            return (
+              <HoverTooltip
+                key={entry.userId}
+                text="Flaked"
+                className={cx("chip", isYou && "chip--you", "chip--bailed")}
+              >
+                {entry.name}
+                {entry.plusOnes > 0 && <span className="chip__muted"> +{entry.plusOnes}</span>}
+              </HoverTooltip>
+            );
+          }
+
+          return (
+            <span
+              key={entry.userId}
+              className={cx("chip", isYou && "chip--you")}
+              title={isHere ? `${entry.name} is checked in` : undefined}
             >
               {entry.name}
               {entry.plusOnes > 0 && <span className="chip__muted"> +{entry.plusOnes}</span>}
-            </button>
+            </span>
+          );
+        }
 
-            {isActive && (
-              <div className="chip-popover" role="dialog" aria-label={`${entry.name} RSVP status`}>
-                {isHere ? (
-                  <p className="chip-popover__note">{entry.name} is checked in</p>
-                ) : entry.bailed ? (
-                  <>
-                    <p className="chip-popover__note">Marked as bailed</p>
-                    <Button
-                      variant="secondary"
-                      disabled={disabled}
-                      onClick={() => {
-                        onSetBailed?.(entry, false);
-                        setActiveId(null);
-                      }}
-                    >
-                      Unbail
-                    </Button>
-                  </>
-                ) : (
-                  <>
-                    <p className="chip-popover__note">Didn&apos;t show up?</p>
-                    <Button
-                      variant="secondary"
-                      disabled={disabled}
-                      onClick={() => {
-                        onSetBailed?.(entry, true);
-                        setActiveId(null);
-                      }}
-                    >
-                      Mark as bailed
-                    </Button>
-                  </>
-                )}
-              </div>
-            )}
-          </span>
+        const tooltip = entry.bailed ? "Flaked · click to undo" : "Flaked";
+
+        return (
+          <HoverTooltip
+            key={entry.userId}
+            as="button"
+            type="button"
+            text={tooltip}
+            className={cx("locked-rsvp-chip", entry.bailed && "locked-rsvp-chip--bailed")}
+            aria-label={
+              entry.bailed
+                ? `Undo flaked mark for ${entry.name}`
+                : `Mark ${entry.name} as flaked`
+            }
+            onClick={() => onSetBailed?.(entry, !entry.bailed)}
+          >
+            <span className="locked-rsvp-chip__label">
+              {entry.name}
+              {entry.plusOnes > 0 && <span className="chip__muted"> +{entry.plusOnes}</span>}
+            </span>
+          </HoverTooltip>
         );
       })}
     </div>

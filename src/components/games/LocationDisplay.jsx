@@ -1,5 +1,5 @@
-import { useCallback, useRef, useState } from "react";
-import { createPortal } from "react-dom";
+import { useCallback, useRef } from "react";
+import HoverTooltip from "../ui/HoverTooltip.jsx";
 import { copyTextToClipboard } from "../../utils/clipboard.js";
 
 const DOUBLE_TAP_MS = 350;
@@ -12,24 +12,9 @@ export default function LocationDisplay({
   copyEnabled = false,
   onCopy,
 }) {
-  const [hoverTip, setHoverTip] = useState(null);
   const lastTapRef = useRef(0);
   const canCopy = copyEnabled && Boolean(copyText);
   const showTooltip = Boolean(tooltip);
-
-  const updateHoverTip = useCallback((target) => {
-    if (!tooltip || !target) {
-      setHoverTip(null);
-      return;
-    }
-
-    const rect = target.getBoundingClientRect();
-    setHoverTip({
-      x: rect.left,
-      y: rect.bottom + 6,
-      text: tooltip,
-    });
-  }, [tooltip]);
 
   const copyAddress = useCallback(async (event) => {
     if (!canCopy) return;
@@ -73,27 +58,13 @@ export default function LocationDisplay({
     .join(" ");
 
   return (
-    <>
-      <span
-        className={rootClass}
-        onMouseEnter={(event) => updateHoverTip(event.currentTarget)}
-        onMouseLeave={() => setHoverTip(null)}
-        onDoubleClick={canCopy ? handleDoubleClick : undefined}
-        onTouchEnd={canCopy ? handleTouchEnd : undefined}
-      >
-        <span className="location-display__label">{display}</span>
-      </span>
-      {hoverTip &&
-        createPortal(
-          <span
-            className="location-display__tooltip location-display__tooltip--floating"
-            style={{ left: hoverTip.x, top: hoverTip.y }}
-            role="tooltip"
-          >
-            {hoverTip.text}
-          </span>,
-          document.body,
-        )}
-    </>
+    <HoverTooltip
+      text={showTooltip ? tooltip : undefined}
+      className={rootClass}
+      onDoubleClick={canCopy ? handleDoubleClick : undefined}
+      onTouchEnd={canCopy ? handleTouchEnd : undefined}
+    >
+      <span className="location-display__label">{display}</span>
+    </HoverTooltip>
   );
 }

@@ -5,13 +5,14 @@ import GameListItem from "../components/games/GameListItem.jsx";
 import EmptyState from "../components/ui/EmptyState.jsx";
 import { useGameClock } from "../hooks/useGameClock.js";
 import { isGameLive, sortGamesForLanding } from "../utils/gameSchedule.js";
-import { countPlayers } from "../utils/format.js";
+import { countHeadcount, countPlayers } from "../utils/format.js";
 
 export default function GamesLandingScreen({
   profile,
   games,
   rsvps,
   checkIns,
+  guests,
   isRsvpd,
   isCheckedIn,
   onProfileClick,
@@ -64,7 +65,9 @@ export default function GamesLandingScreen({
           <div className="game-list">
             {sortedGames.map((game, index) => {
               const live = isGameLive(game, now);
-              const count = live ? countPlayers(checkIns, game.id) : countPlayers(rsvps, game.id);
+              const count = live
+                ? countHeadcount(checkIns, guests, game.id)
+                : countPlayers(rsvps, game.id);
 
               return (
                 <div key={game.id} style={{ animation: `fadeUp ${0.2 + index * 0.04}s ease` }}>

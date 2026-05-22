@@ -27,6 +27,13 @@ export const TOKENS = {
   "--z-presence": "150",
   "--z-chat": "160",
   "--z-modal": "200",
+  "--chat-bar-inset-x": "14px",
+  "--chat-bar-inset-y": "10px",
+  "--chat-bar-width-wide": "50vw",
+  "--chat-bar-height": "0px",
+  "--chat-bar-lift": "0px",
+  "--chat-bar-offset-left": "max(var(--chat-bar-inset-x), env(safe-area-inset-left, 0px))",
+  "--chat-bar-offset-right": "max(var(--chat-bar-inset-x), env(safe-area-inset-right, 0px))",
 };
 
 export const TOKEN_CSS = Object.entries(TOKENS)

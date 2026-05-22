@@ -1,5 +1,6 @@
 import LockedRsvpChipList from "./LockedRsvpChipList.jsx";
 import GameDetailPlayersSection from "./GameDetailPlayersSection.jsx";
+import GameWalkInsSection from "./GameWalkInsSection.jsx";
 import ProgressBar from "./ProgressBar.jsx";
 
 export default function GameCardBody({
@@ -10,7 +11,11 @@ export default function GameCardBody({
   rsvpEntries,
   checkInCount,
   checkInEntries,
+  walkInEntries = [],
+  checkedIn: viewerCheckedIn = false,
   onSetRsvpBail,
+  onAddWalkIn,
+  onRemoveWalkIn,
   saving = false,
 }) {
   const checkedInUserIds = new Set(checkInEntries.map((entry) => entry.userId));
@@ -31,14 +36,15 @@ export default function GameCardBody({
 
       <section className={`game-card__phase game-card__phase--live${isLive ? " game-card__phase--active" : ""}`}>
         <div className="game-detail-body">
-          <div className="game-card__locked-rsvp">
-            <p className="game-detail-players__label game-detail-players__label--locked">
-              <span aria-hidden="true">🔒</span> RSVP locked · {rsvpCount} signed up
+          <div className="game-detail-players game-detail-players--locked">
+            <p className="game-detail-players__label">
+              RSVP locked · {rsvpCount} signed up
             </p>
             <LockedRsvpChipList
               entries={rsvpEntries}
               profileId={profile?.id}
               checkedInUserIds={checkedInUserIds}
+              viewerCheckedIn={viewerCheckedIn}
               emptyLabel="no one signed up"
               disabled={!profile || saving}
               onSetBailed={(entry, bailed) => onSetRsvpBail?.(game.id, entry, bailed)}
@@ -51,6 +57,13 @@ export default function GameCardBody({
             entries={checkInEntries}
             profileId={profile?.id}
             emptyLabel="no one checked in yet"
+          />
+
+          <GameWalkInsSection
+            entries={walkInEntries}
+            disabled={!profile || saving}
+            onAdd={(name) => onAddWalkIn?.(game.id, name)}
+            onRemove={(guestId) => onRemoveWalkIn?.(game.id, guestId)}
           />
         </div>
       </section>

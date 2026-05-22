@@ -64,6 +64,7 @@ function AppRoutes() {
     games: app.gamesMeta,
     rsvps: app.rsvps,
     checkIns: app.checkIns,
+    guests: app.guests,
     myRsvps: app.myRsvps,
     myCheckIns: app.myCheckIns,
     savingGameId: app.savingGameId,
@@ -74,6 +75,8 @@ function AppRoutes() {
     onRequestCheckIn: app.handleRequestCheckIn,
     onCheckOut: app.handleCheckOut,
     onSetRsvpBail: app.handleSetRsvpBail,
+    onAddWalkIn: app.handleAddWalkIn,
+    onRemoveWalkIn: app.handleRemoveWalkIn,
     onProfileClick: app.openEditProfile,
     theme,
     onToggleTheme: toggleTheme,
@@ -171,6 +174,7 @@ function AppRoutes() {
               games={app.gamesMeta}
               rsvps={app.rsvps}
               checkIns={app.checkIns}
+              guests={app.guests}
               isRsvpd={app.isRsvpd}
               isCheckedIn={app.isCheckedIn}
               onProfileClick={app.openEditProfile}

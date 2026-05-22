@@ -79,6 +79,18 @@ function groupCheckIns(rows) {
   return map;
 }
 
+function groupGuests(rows) {
+  const map = {};
+  for (const row of rows) {
+    if (!map[row.game_id]) map[row.game_id] = [];
+    map[row.game_id].push({
+      id: String(row.id),
+      name: row.name,
+    });
+  }
+  return map;
+}
+
 function toRpcGame(game) {
   return {
     id: game.id,
@@ -221,6 +233,13 @@ export async function fetchAppData() {
 
   if (checkInsResult.error) throw checkInsResult.error;
 
+  const guestsResult = await supabase
+    .from("game_guests")
+    .select("id, game_id, name, cycle_at")
+    .order("created_at", { ascending: true });
+
+  if (guestsResult.error) throw guestsResult.error;
+
   const games = (gamesResult.data || []).map(formatGame);
   const currentCycles = Object.fromEntries(
     games.map((game) => [game.id, normalizeCycleAt(getCurrentRsvpCycleStartUtc(game))]),
@@ -231,10 +250,16 @@ export async function fetchAppData() {
     return expected && normalizeCycleAt(row.cycle_at) === expected;
   });
 
+  const activeGuests = (guestsResult.data || []).filter((row) => {
+    const expected = currentCycles[row.game_id];
+    return expected && normalizeCycleAt(row.cycle_at) === expected;
+  });
+
   return {
     games,
     rsvps: groupRsvps(rsvpsResult.data || []),
     checkIns: groupCheckIns(activeCheckIns),
+    guests: groupGuests(activeGuests),
   };
 }
 
@@ -389,6 +414,50 @@ export async function handleCheckInAction(body) {
   throw new Error("Unknown check-in action");
 }
 
+export async function addWalkInGuest({ gameId, name, cycleAt }) {
+  const supabase = getSupabase();
+  const { error } = await supabase.from("game_guests").insert({
+    game_id: gameId,
+    name: name.trim(),
+    cycle_at: cycleAt,
+  });
+
+  if (error) throw error;
+  return fetchAppData();
+}
+
+export async function removeWalkInGuest({ guestId }) {
+  const supabase = getSupabase();
+  const { error } = await supabase.from("game_guests").delete().eq("id", guestId);
+
+  if (error) throw error;
+  return fetchAppData();
+}
+
+export async function handleGuestAction(body) {
+  const action = body?.action;
+
+  if (action === "add") {
+    if (!body.gameId || !body.name?.trim() || !body.cycleAt) {
+      throw new Error("Missing guest fields");
+    }
+    return addWalkInGuest({
+      gameId: body.gameId,
+      name: body.name.trim(),
+      cycleAt: body.cycleAt,
+    });
+  }
+
+  if (action === "remove") {
+    if (!body.guestId) {
+      throw new Error("Missing guest id");
+    }
+    return removeWalkInGuest({ guestId: body.guestId });
+  }
+
+  throw new Error("Unknown guest action");
+}
+
 export function subscribeToGames(onChange) {
   const supabase = getSupabase();
 
@@ -443,6 +512,29 @@ export function subscribeToCheckIns(onChange) {
     .on(
       "postgres_changes",
       { event: "*", schema: "public", table: "game_check_ins" },
+      () => {
+        fetchAppData()
+          .then((data) => onChange(data))
+          .catch(() => {
+            // Keep last known data if a refresh fails temporarily.
+          });
+      },
+    )
+    .subscribe();
+
+  return () => {
+    supabase.removeChannel(channel);
+  };
+}
+
+export function subscribeToGuests(onChange) {
+  const supabase = getSupabase();
+
+  const channel = supabase
+    .channel("disc-check:guests")
+    .on(
+      "postgres_changes",
+      { event: "*", schema: "public", table: "game_guests" },
       () => {
         fetchAppData()
           .then((data) => onChange(data))

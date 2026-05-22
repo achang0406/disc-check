@@ -7,8 +7,16 @@ export function getInitials(name) {
     .slice(0, 2);
 }
 
-export function countPlayers(rsvps, gameId) {
-  return (rsvps[gameId] || []).reduce((sum, entry) => sum + 1 + (entry.plusOnes || 0), 0);
+export function countPlayers(entriesByGame, gameId) {
+  return (entriesByGame[gameId] || []).reduce((sum, entry) => sum + 1 + (entry.plusOnes || 0), 0);
+}
+
+export function countWalkIns(guests, gameId) {
+  return (guests[gameId] || []).length;
+}
+
+export function countHeadcount(checkIns, guests, gameId) {
+  return countPlayers(checkIns, gameId) + countWalkIns(guests, gameId);
 }
 
 export function totalRsvpCount(rsvps) {
