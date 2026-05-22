@@ -130,6 +130,14 @@ END;
 $$;
 
 -- Weekly RSVP reset: clears signups when the pickup week rolls over (24h after game start, UTC).
+CREATE OR REPLACE FUNCTION is_cycle_reset_in_progress()
+RETURNS BOOLEAN
+LANGUAGE sql
+STABLE
+AS $$
+  SELECT COALESCE(current_setting('disc_check.resetting_cycle', true), '') = 'true';
+$$;
+
 CREATE OR REPLACE FUNCTION reset_game_rsvp_cycle(p_game_id TEXT, p_cycle TIMESTAMPTZ)
 RETURNS void
 LANGUAGE plpgsql
@@ -137,6 +145,7 @@ SECURITY DEFINER
 SET search_path = public
 AS $$
 BEGIN
+  PERFORM set_config('disc_check.resetting_cycle', 'true', true);
   DELETE FROM game_check_ins WHERE game_id = p_game_id;
   DELETE FROM rsvps WHERE game_id = p_game_id;
   UPDATE games SET rsvp_cycle_at = p_cycle WHERE id = p_game_id;
@@ -153,6 +162,10 @@ DECLARE
   v_timezone TEXT;
   v_game_id TEXT;
 BEGIN
+  IF is_cycle_reset_in_progress() THEN
+    RETURN COALESCE(NEW, OLD);
+  END IF;
+
   v_game_id := COALESCE(NEW.game_id, OLD.game_id);
   SELECT weekday, start_time, timezone
   INTO v_weekday, v_start_time, v_timezone
@@ -177,6 +190,10 @@ DECLARE
   v_timezone TEXT;
   v_expected_cycle TIMESTAMPTZ;
 BEGIN
+  IF is_cycle_reset_in_progress() THEN
+    RETURN NEW;
+  END IF;
+
   SELECT weekday, start_time, timezone
   INTO v_weekday, v_start_time, v_timezone
   FROM games
@@ -204,6 +221,10 @@ DECLARE
   v_start_time TIME;
   v_timezone TEXT;
 BEGIN
+  IF is_cycle_reset_in_progress() THEN
+    RETURN OLD;
+  END IF;
+
   SELECT weekday, start_time, timezone
   INTO v_weekday, v_start_time, v_timezone
   FROM games

@@ -77,6 +77,7 @@ function AppRoutes() {
     theme,
     onToggleTheme: toggleTheme,
     presence,
+    showToast,
   };
 
   return (

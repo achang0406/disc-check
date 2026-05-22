@@ -1,4 +1,5 @@
 import MetaRow from "../ui/MetaRow.jsx";
+import CommitStatusPill from "./CommitStatusPill.jsx";
 import StatusBadge from "./StatusBadge.jsx";
 
 function HeaderCaret({ expanded }) {
@@ -24,9 +25,13 @@ export default function GameDetailHeader({
   game,
   count,
   cancelled,
+  isLive = false,
+  rsvpd = false,
+  checkedIn = false,
   collapsible = false,
   expanded = false,
   onToggle,
+  onAddressCopy,
 }) {
   const headerClass = [
     "game-detail-header",
@@ -39,6 +44,13 @@ export default function GameDetailHeader({
     <div className="game-detail-header__row">
       <div className="game-detail-header__title-row">
         <h2 className="game-detail-header__title">{game.name}</h2>
+        <CommitStatusPill
+          isLive={isLive}
+          rsvpd={rsvpd}
+          checkedIn={checkedIn}
+          cancelled={cancelled}
+          reserveSpace
+        />
         <StatusBadge count={count} target={game.target} cancelled={cancelled} />
       </div>
       <span className="game-detail-header__caret-slot">
@@ -62,7 +74,12 @@ export default function GameDetailHeader({
       ) : (
         <div className="game-detail-header__row-wrap">{row}</div>
       )}
-      <MetaRow game={game} className="game-detail-header__meta" />
+      <MetaRow
+        game={game}
+        className="game-detail-header__meta"
+        allowAddressCopy
+        onAddressCopy={onAddressCopy}
+      />
     </header>
   );
 }

@@ -1,10 +1,10 @@
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import AppHeader from "../components/layout/AppHeader.jsx";
 import GameListItem from "../components/games/GameListItem.jsx";
 import EmptyState from "../components/ui/EmptyState.jsx";
 import { useGameClock } from "../hooks/useGameClock.js";
-import { isGameLive } from "../utils/gameSchedule.js";
+import { isGameLive, sortGamesForLanding } from "../utils/gameSchedule.js";
 import { countPlayers } from "../utils/format.js";
 
 export default function GamesLandingScreen({
@@ -26,14 +26,15 @@ export default function GamesLandingScreen({
 }) {
   const navigate = useNavigate();
   const now = useGameClock();
+  const sortedGames = useMemo(() => sortGamesForLanding(games, now), [games, now]);
 
   useEffect(() => {
-    if (games.length === 1) {
-      navigate(`/games/${games[0].id}`, { replace: true });
+    if (sortedGames.length === 1) {
+      navigate(`/games/${sortedGames[0].id}`, { replace: true });
     }
-  }, [games, navigate]);
+  }, [sortedGames, navigate]);
 
-  if (games.length === 1) {
+  if (sortedGames.length === 1) {
     return null;
   }
 
@@ -53,7 +54,7 @@ export default function GamesLandingScreen({
       />
 
       <main className="games-screen__main games-screen__main--landing">
-        {games.length === 0 ? (
+        {sortedGames.length === 0 ? (
           <EmptyState
             text="no games yet"
             actionLabel={isAdmin ? "+ Add game" : undefined}
@@ -61,7 +62,7 @@ export default function GamesLandingScreen({
           />
         ) : (
           <div className="game-list">
-            {games.map((game, index) => {
+            {sortedGames.map((game, index) => {
               const live = isGameLive(game, now);
               const count = live ? countPlayers(checkIns, game.id) : countPlayers(rsvps, game.id);
 

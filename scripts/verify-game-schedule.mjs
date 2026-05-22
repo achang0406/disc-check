@@ -1,8 +1,11 @@
 import {
+  compareGamesForLanding,
   getCurrentRsvpCycleStartUtc,
   isGameLive,
+  isLandingPriorityGame,
   isRsvpOpen,
   parseStartTime,
+  sortGamesForLanding,
 } from "../src/utils/gameSchedule.js";
 import { formatGameTime, getTimeSlot } from "../src/utils/time.js";
 import { parseCityFromAddress } from "../src/utils/location.js";
@@ -79,4 +82,55 @@ assert(
   "at start RSVP closed",
 );
 
-console.log(`All ${cases.length + 10} game schedule checks passed.`);
+const THURSDAY_EVENING = {
+  weekday: 4,
+  startTime: "18:00:00",
+  timezone: "America/Los_Angeles",
+};
+
+const wedStart = new Date("2026-05-21T01:00:00.000Z");
+const twoHoursBeforeWed = new Date("2026-05-20T23:00:00.000Z");
+const fourHoursBeforeWed = new Date("2026-05-20T21:00:00.000Z");
+
+assert(isLandingPriorityGame(WEDNESDAY_EVENING, wedStart), "live game is landing priority");
+assert(
+  isLandingPriorityGame(WEDNESDAY_EVENING, twoHoursBeforeWed),
+  "within 3 hours before start is landing priority",
+);
+assert(
+  !isLandingPriorityGame(WEDNESDAY_EVENING, fourHoursBeforeWed),
+  "more than 3 hours before start is not landing priority",
+);
+
+const sorted = sortGamesForLanding(
+  [
+    { id: "b", ...THURSDAY_EVENING },
+    { id: "a", ...WEDNESDAY_EVENING },
+  ],
+  twoHoursBeforeWed,
+);
+assert(sorted[0].id === "a", "earlier start wins among landing-priority games");
+
+const sortedLive = sortGamesForLanding(
+  [
+    { id: "late-live", weekday: 3, startTime: "18:00:00", timezone: "America/Los_Angeles" },
+    { id: "early-live", weekday: 3, startTime: "16:00:00", timezone: "America/Los_Angeles" },
+  ],
+  new Date("2026-05-21T02:00:00.000Z"),
+);
+assert(sortedLive[0].id === "early-live", "earlier live start wins when both are live");
+
+const sortedUpcoming = sortGamesForLanding(
+  [
+    { id: "later", weekday: 5, startTime: "18:00:00", timezone: "America/Los_Angeles" },
+    { id: "sooner", weekday: 4, startTime: "18:00:00", timezone: "America/Los_Angeles" },
+  ],
+  new Date("2026-05-18T19:00:00.000Z"),
+);
+assert(sortedUpcoming[0].id === "sooner", "next upcoming game sorts first");
+assert(
+  compareGamesForLanding(sortedUpcoming[0], sortedUpcoming[1], new Date("2026-05-18T19:00:00.000Z")) < 0,
+  "compareGamesForLanding matches upcoming order",
+);
+
+console.log(`All ${cases.length + 17} game schedule checks passed.`);

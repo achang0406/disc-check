@@ -5,12 +5,15 @@ export default function GameCard({
   profile,
   game,
   isLive,
+  rsvpd = false,
+  checkedIn = false,
   rsvpCount,
   rsvpEntries,
   checkInCount,
   checkInEntries,
   embedded = false,
   className = "",
+  onAddressCopy,
 }) {
   const cancelled = game.status === "cancelled";
   const activeCount = isLive ? checkInCount : rsvpCount;
@@ -35,7 +38,15 @@ export default function GameCard({
 
   return (
     <div className={cardClass}>
-      <GameDetailHeader game={game} count={activeCount} cancelled={cancelled} />
+      <GameDetailHeader
+        game={game}
+        count={activeCount}
+        cancelled={cancelled}
+        isLive={isLive}
+        rsvpd={rsvpd}
+        checkedIn={checkedIn}
+        onAddressCopy={onAddressCopy}
+      />
       {!cancelled && <GameCardBody {...bodyProps} />}
     </div>
   );

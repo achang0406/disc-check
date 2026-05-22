@@ -65,6 +65,9 @@ export default function GameDetailScreen({
     rsvpEntries,
     checkInCount,
     checkInEntries,
+    rsvpd,
+    checkedIn,
+    onAddressCopy: () => showToast?.("Address copied"),
   };
 
   useEffect(() => {
@@ -166,12 +169,15 @@ export default function GameDetailScreen({
                   profile={profile}
                   game={game}
                   isLive={live}
+                  rsvpd={rsvpd}
+                  checkedIn={checkedIn}
                   count={activeCount}
                   rsvpCount={rsvpCount}
                   rsvpEntries={rsvpEntries}
                   checkInEntries={checkInEntries}
                   expanded={stripExpanded}
                   onToggleExpanded={() => setStripExpanded((value) => !value)}
+                  onAddressCopy={() => showToast("Address copied")}
                 />
               }
             />

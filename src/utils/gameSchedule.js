@@ -1,6 +1,7 @@
 import { DEFAULT_GAME_TIMEZONE } from "../constants/gameSchedule.js";
 
 export const RESET_AFTER_MS = 24 * 60 * 60 * 1000;
+export const LANDING_PRIORITY_BEFORE_MS = 3 * 60 * 60 * 1000;
 
 export function getGameSchedule(game) {
   if (!game || game.weekday == null || !game.startTime) return null;
@@ -88,6 +89,37 @@ export function isGameLive(game, now = new Date()) {
 
 export function isRsvpOpen(game, now = new Date()) {
   return !isGameLive(game, now);
+}
+
+/** True when live or within 3 hours of the current occurrence start. */
+export function isLandingPriorityGame(game, now = new Date()) {
+  const startMs = getOccurrenceStartMs(game, now);
+  if (!Number.isFinite(startMs)) return false;
+
+  const nowMs = now.getTime();
+  if (nowMs >= startMs && nowMs < startMs + RESET_AFTER_MS) return true;
+
+  return nowMs < startMs && startMs - nowMs <= LANDING_PRIORITY_BEFORE_MS;
+}
+
+export function getOccurrenceStartMs(game, now = new Date()) {
+  const occurrenceIso = getCurrentRsvpCycleStartUtc(game, now);
+  return occurrenceIso ? Date.parse(occurrenceIso) : Number.POSITIVE_INFINITY;
+}
+
+export function compareGamesForLanding(a, b, now = new Date()) {
+  const aPriority = isLandingPriorityGame(a, now);
+  const bPriority = isLandingPriorityGame(b, now);
+  if (aPriority !== bPriority) return aPriority ? -1 : 1;
+
+  const startDiff = getOccurrenceStartMs(a, now) - getOccurrenceStartMs(b, now);
+  if (startDiff !== 0) return startDiff;
+
+  return a.id.localeCompare(b.id);
+}
+
+export function sortGamesForLanding(games, now = new Date()) {
+  return [...games].sort((a, b) => compareGamesForLanding(a, b, now));
 }
 
 export function normalizeCycleAt(value) {

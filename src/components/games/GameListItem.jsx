@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
 import Button from "../ui/Button.jsx";
 import MetaRow from "../ui/MetaRow.jsx";
+import CommitStatusPill from "./CommitStatusPill.jsx";
 import StatusBadge from "./StatusBadge.jsx";
 
 export default function GameListItem({
@@ -38,6 +39,12 @@ export default function GameListItem({
           )}
         </div>
         <div className="game-list-item__badges">
+          <CommitStatusPill
+            isLive={isLive}
+            rsvpd={rsvpd}
+            checkedIn={checkedIn}
+            cancelled={cancelled}
+          />
           <StatusBadge count={count} target={game.target} cancelled={cancelled} />
         </div>
       </div>

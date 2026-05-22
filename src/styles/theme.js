@@ -343,35 +343,35 @@ export const globalStyles = `
 
   .location-display__label {
     border-bottom: 1px dotted var(--text-faint);
-    cursor: default;
+  }
+
+  .location-display--copyable {
+    touch-action: manipulation;
+  }
+
+  .location-display--copyable .location-display__label {
+    cursor: pointer;
   }
 
   .location-display__tooltip {
-    position: absolute;
-    left: 0;
-    top: calc(100% + 6px);
-    z-index: 20;
     min-width: max-content;
-    max-width: 260px;
+    max-width: min(280px, calc(100vw - 24px));
     padding: 6px 10px;
-    border-radius: 8px;
+    border-radius: var(--radius-sm);
     background: var(--card-bg);
     border: 1px solid var(--card-ring);
-    color: var(--text);
-    font-size: 11px;
+    color: var(--text-muted);
+    font-family: var(--font-mono);
+    font-size: var(--font-body);
     line-height: 1.4;
     white-space: normal;
     box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
-    opacity: 0;
-    visibility: hidden;
     pointer-events: none;
-    transition: opacity 0.12s ease, visibility 0.12s ease;
   }
 
-  .location-display:hover .location-display__tooltip,
-  .location-display:focus-within .location-display__tooltip {
-    opacity: 1;
-    visibility: visible;
+  .location-display__tooltip--floating {
+    position: fixed;
+    z-index: calc(var(--z-toast) + 1);
   }
 
   .game-card__detail {
@@ -520,6 +520,28 @@ export const globalStyles = `
     box-shadow: 0 0 8px currentColor;
     display: inline-block;
     flex-shrink: 0;
+  }
+
+  .commit-status-pill {
+    flex-shrink: 0;
+    font-size: var(--font-label);
+    padding: 2px 7px;
+    border-radius: var(--radius-pill);
+    background: var(--chip-you-bg);
+    border: 1px solid var(--chip-you-border);
+    color: var(--chip-you-text);
+    font-family: var(--font-mono);
+    letter-spacing: 0.06em;
+    font-weight: 600;
+  }
+
+  .commit-status-pill--hidden {
+    visibility: hidden;
+  }
+
+  .game-detail-header__title-row .commit-status-pill {
+    padding: 4px 10px;
+    font-size: 11px;
   }
 
   .theme-toggle {

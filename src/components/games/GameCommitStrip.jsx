@@ -6,12 +6,15 @@ export default function GameCommitStrip({
   profile,
   game,
   isLive,
+  rsvpd = false,
+  checkedIn = false,
   count,
   rsvpCount,
   rsvpEntries,
   checkInEntries,
   expanded,
   onToggleExpanded,
+  onAddressCopy,
 }) {
   const cancelled = game.status === "cancelled";
   const playerEntries = isLive ? checkInEntries : rsvpEntries;
@@ -25,9 +28,13 @@ export default function GameCommitStrip({
         game={game}
         count={count}
         cancelled={cancelled}
+        isLive={isLive}
+        rsvpd={rsvpd}
+        checkedIn={checkedIn}
         collapsible
         expanded={expanded}
         onToggle={onToggleExpanded}
+        onAddressCopy={onAddressCopy}
       />
 
       <div className="game-detail-body">
