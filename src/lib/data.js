@@ -97,6 +97,51 @@ function newGameId() {
   return `g_${crypto.randomUUID().slice(0, 8)}`;
 }
 
+function formatProfileFromRpc(data) {
+  if (!data) return null;
+
+  return {
+    id: data.id,
+    name: data.name,
+    phone: data.phone ?? null,
+    bubbleColor: data.bubbleColor ?? null,
+  };
+}
+
+export async function findProfileByPhone(phone) {
+  if (!isSupabaseConfigured()) return null;
+
+  const supabase = getSupabase();
+  const { data, error } = await supabase.rpc("find_profile_by_phone", { p_phone: phone });
+  if (error) throw error;
+
+  return formatProfileFromRpc(data);
+}
+
+export async function upsertProfile(profile) {
+  if (!isSupabaseConfigured()) {
+    return {
+      id: profile.id,
+      name: profile.name,
+      phone: profile.phone ?? null,
+      bubbleColor: profile.bubbleColor ?? null,
+    };
+  }
+
+  const supabase = getSupabase();
+  const { data, error } = await supabase.rpc("upsert_profile", {
+    p_profile: {
+      id: profile.id,
+      name: profile.name,
+      phone: profile.phone ?? null,
+      bubbleColor: profile.bubbleColor ?? null,
+    },
+  });
+  if (error) throw error;
+
+  return formatProfileFromRpc(data);
+}
+
 export async function createGame(secret, payload) {
   const supabase = getSupabase();
   const game = { ...payload, id: newGameId() };

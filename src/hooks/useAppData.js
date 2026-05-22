@@ -2,15 +2,18 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { STORAGE_KEYS } from "../constants/storageKeys.js";
 import {
   fetchAppData,
+  findProfileByPhone,
   handleCheckInAction,
   handleRsvpAction,
   isSupabaseConfigured,
   subscribeToCheckIns,
   subscribeToGames,
   subscribeToRsvps,
+  upsertProfile,
 } from "../lib/data.js";
 import { deriveMyCheckIns, deriveMyRsvps } from "../utils/games.js";
 import { getOccurrenceStartUtc, isGameLive, isRsvpOpen } from "../utils/gameSchedule.js";
+import { normalizePhone } from "../utils/phone.js";
 import { colorForId, getPresenceSessionId } from "../constants/presence.js";
 
 function getStoredJson(key) {
@@ -274,27 +277,66 @@ export function useAppData(showToast) {
     setShowSignUp(true);
   };
 
-  const handleSignUp = ({ name }) => {
-    setSavingGameId(pendingRsvp?.game?.id ?? pendingCheckIn?.game?.id ?? null);
+  const handleSignUp = async ({ name, phone }) => {
+    const trimmedName = name.trim();
+    const normalizedPhone = normalizePhone(phone);
+    const savingId = pendingRsvp?.game?.id ?? pendingCheckIn?.game?.id ?? "profile";
+    setSavingGameId(savingId);
+
     try {
-      const id = profile?.id || getPresenceSessionId(null);
-      const nextProfile = profile
-        ? { ...profile, name }
-        : { id, name, bubbleColor: colorForId(id) };
+      let id = profile?.id;
+      let bubbleColor = profile?.bubbleColor;
+      let recovered = false;
+
+      if (!id && normalizedPhone && useSupabaseRef.current) {
+        const existing = await findProfileByPhone(normalizedPhone);
+        if (existing) {
+          id = existing.id;
+          bubbleColor = existing.bubbleColor || colorForId(id);
+          recovered = true;
+        }
+      }
+
+      if (!id) {
+        id = getPresenceSessionId(null);
+      }
+
+      if (!bubbleColor) {
+        bubbleColor = colorForId(id);
+      }
+
+      let nextProfile = {
+        id,
+        name: trimmedName,
+        bubbleColor,
+        phone: normalizedPhone,
+      };
+
+      if (useSupabaseRef.current) {
+        nextProfile = await upsertProfile(nextProfile);
+        nextProfile.bubbleColor = nextProfile.bubbleColor || bubbleColor;
+      }
 
       saveProfile(nextProfile);
       setProfile(nextProfile);
 
+      if (recovered) {
+        showToast("Welcome back");
+      }
+
       if (pendingRsvp) {
-        handleRsvp(pendingRsvp.game, pendingRsvp.plusOnes, nextProfile);
+        await handleRsvp(pendingRsvp.game, pendingRsvp.plusOnes, nextProfile);
       } else if (pendingCheckIn) {
-        handleCheckIn(pendingCheckIn.game, pendingCheckIn.plusOnes, nextProfile);
+        await handleCheckIn(pendingCheckIn.game, pendingCheckIn.plusOnes, nextProfile);
       } else {
         setShowSignUp(false);
         setSavingGameId(null);
       }
-    } catch {
-      showToast("Couldn't save — try again", "error");
+    } catch (error) {
+      const message = error?.message?.includes("phone already linked")
+        ? "That phone is linked to another profile"
+        : "Couldn't save — try again";
+      showToast(message, "error");
       setSavingGameId(null);
     }
   };
@@ -362,15 +404,28 @@ export function useAppData(showToast) {
     setShowEditProfile(false);
   };
 
-  const handleUpdateProfile = async ({ name, bubbleColor }) => {
+  const handleUpdateProfile = async ({ name, bubbleColor, phone }) => {
     if (!profile) return;
 
     const trimmedName = name.trim();
     if (!trimmedName) return;
 
+    const normalizedPhone = normalizePhone(phone);
     setSavingGameId("profile");
+
     try {
-      const nextProfile = { ...profile, name: trimmedName, bubbleColor };
+      let nextProfile = {
+        ...profile,
+        name: trimmedName,
+        bubbleColor,
+        phone: normalizedPhone,
+      };
+
+      if (useSupabaseRef.current) {
+        nextProfile = await upsertProfile(nextProfile);
+        nextProfile.bubbleColor = nextProfile.bubbleColor || bubbleColor;
+      }
+
       saveProfile(nextProfile);
       setProfile(nextProfile);
 
@@ -409,8 +464,11 @@ export function useAppData(showToast) {
 
       setShowEditProfile(false);
       showToast("Profile updated");
-    } catch {
-      showToast("Couldn't save — try again", "error");
+    } catch (error) {
+      const message = error?.message?.includes("phone already linked")
+        ? "That phone is linked to another profile"
+        : "Couldn't save — try again";
+      showToast(message, "error");
     }
     setSavingGameId(null);
   };

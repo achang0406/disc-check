@@ -4,11 +4,15 @@ import Button from "../ui/Button.jsx";
 import Field from "../ui/Field.jsx";
 import ModalShell from "../ui/ModalShell.jsx";
 import ColorWheel, { HexColorInput } from "./ColorWheel.jsx";
+import PhoneField from "./PhoneField.jsx";
+import { formatPhoneDisplay, isValidPhone } from "../../utils/phone.js";
 
 export default function EditProfileModal({ profile, saving, onSubmit, onClose }) {
   const [name, setName] = useState(profile.name);
+  const [phone, setPhone] = useState(formatPhoneDisplay(profile.phone));
   const [bubbleColor, setBubbleColor] = useState(profile.bubbleColor || colorForId(profile.id));
   const [error, setError] = useState("");
+  const [phoneError, setPhoneError] = useState("");
 
   const handleSubmit = () => {
     const trimmedName = name.trim();
@@ -16,8 +20,19 @@ export default function EditProfileModal({ profile, saving, onSubmit, onClose })
       setError("enter your name");
       return;
     }
+
+    if (phone.trim() && !isValidPhone(phone)) {
+      setPhoneError("enter a valid phone number");
+      return;
+    }
+
     setError("");
-    onSubmit({ name: trimmedName, bubbleColor });
+    setPhoneError("");
+    onSubmit({
+      name: trimmedName,
+      bubbleColor,
+      phone: phone.trim() || null,
+    });
   };
 
   return (
@@ -48,6 +63,15 @@ export default function EditProfileModal({ profile, saving, onSubmit, onClose })
           onKeyDown={(event) => event.key === "Enter" && handleSubmit()}
         />
       </Field>
+
+      <PhoneField
+        value={phone}
+        onChange={(value) => {
+          setPhone(value);
+          setPhoneError("");
+        }}
+        error={phoneError}
+      />
 
       <Field label="Speech bubble color">
         <ColorWheel color={bubbleColor} onChange={setBubbleColor} />
