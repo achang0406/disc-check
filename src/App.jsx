@@ -1,3 +1,4 @@
+import { BrowserRouter, Route, Routes, useMatch } from "react-router-dom";
 import FieldBackground from "./components/layout/FieldBackground.jsx";
 import LoadingScreen from "./components/layout/LoadingScreen.jsx";
 import Toast from "./components/layout/Toast.jsx";
@@ -14,20 +15,42 @@ import { useAdminSession } from "./hooks/useAdminSession.js";
 import { usePresence } from "./hooks/usePresence.js";
 import { useTheme } from "./hooks/useTheme.js";
 import { useToast } from "./hooks/useToast.js";
-import GamesListScreen from "./screens/GamesListScreen.jsx";
+import GamesLandingScreen from "./screens/GamesLandingScreen.jsx";
+import GameDetailScreen from "./screens/GameDetailScreen.jsx";
 import { globalStyles } from "./styles/theme.js";
 
-export default function App() {
+function AppRoutes() {
   const { toast, showToast } = useToast();
   const { theme, toggleTheme, cssVars } = useTheme();
   const app = useAppData(showToast);
   const presence = usePresence(app.profile);
   const adminSession = useAdminSession();
   const admin = useAdminActions({ showToast, refresh: app.refresh });
+  const isLanding = useMatch({ path: "/", end: true });
+  const isDetail = useMatch("/games/:gameId");
 
   if (app.loading) {
     return <LoadingScreen cssVars={cssVars} />;
   }
+
+  const detailProps = {
+    profile: app.profile,
+    games: app.gamesMeta,
+    rsvps: app.rsvps,
+    checkIns: app.checkIns,
+    myRsvps: app.myRsvps,
+    myCheckIns: app.myCheckIns,
+    savingGameId: app.savingGameId,
+    isRsvpd: app.isRsvpd,
+    isCheckedIn: app.isCheckedIn,
+    onRequestRsvp: app.handleRequestRsvp,
+    onCancel: app.handleCancel,
+    onRequestCheckIn: app.handleRequestCheckIn,
+    onCheckOut: app.handleCheckOut,
+    onProfileClick: app.openEditProfile,
+    theme,
+    onToggleTheme: toggleTheme,
+  };
 
   return (
     <div
@@ -42,14 +65,16 @@ export default function App() {
       }}
     >
       <FieldBackground />
-      <PresenceLayer
-        others={presence.others}
-        self={presence.self}
-        cursor={presence.cursor}
-        localChat={presence.localChat}
-        connected={presence.connected}
-        isMobile={presence.isMobile}
-      />
+      {isDetail && (
+        <PresenceLayer
+          others={presence.others}
+          self={presence.self}
+          cursor={presence.cursor}
+          localChat={presence.localChat}
+          connected={presence.connected}
+          isMobile={presence.isMobile}
+        />
+      )}
       <Toast toast={toast} />
       <style>{globalStyles}</style>
 
@@ -70,7 +95,7 @@ export default function App() {
         />
       )}
 
-      {admin.showLogin && (
+      {isLanding && admin.showLogin && (
         <AdminLoginModal
           saving={false}
           onSubmit={(passcode) => {
@@ -82,7 +107,7 @@ export default function App() {
         />
       )}
 
-      {admin.modal && (
+      {isLanding && admin.modal && (
         <GameFormModal
           mode={admin.modal.mode}
           initial={admin.modal.mode === "edit" ? admin.modal.game : null}
@@ -93,7 +118,7 @@ export default function App() {
         />
       )}
 
-      {admin.deleteTarget && (
+      {isLanding && admin.deleteTarget && (
         <DeleteGameModal
           game={admin.deleteTarget}
           saving={admin.saving}
@@ -102,38 +127,49 @@ export default function App() {
         />
       )}
 
-      <GamesListScreen
-        profile={app.profile}
-        games={app.gamesMeta}
-        rsvps={app.rsvps}
-        checkIns={app.checkIns}
-        myRsvps={app.myRsvps}
-        myCheckIns={app.myCheckIns}
-        savingGameId={app.savingGameId}
-        isRsvpd={app.isRsvpd}
-        isCheckedIn={app.isCheckedIn}
-        onRequestRsvp={app.handleRequestRsvp}
-        onCancel={app.handleCancel}
-        onRequestCheckIn={app.handleRequestCheckIn}
-        onCheckOut={app.handleCheckOut}
-        onProfileClick={app.openEditProfile}
-        theme={theme}
-        onToggleTheme={toggleTheme}
-        adminAvailable={adminSession.adminAvailable}
-        isAdmin={adminSession.isAdmin}
-        onAdminLoginClick={() => admin.setShowLogin(true)}
-        onAdminLogout={adminSession.logout}
-        onAddGame={admin.openCreate}
-        onEditGame={admin.openEdit}
-      />
+      <Routes>
+        <Route
+          path="/"
+          element={
+            <GamesLandingScreen
+              profile={app.profile}
+              games={app.gamesMeta}
+              rsvps={app.rsvps}
+              checkIns={app.checkIns}
+              isRsvpd={app.isRsvpd}
+              isCheckedIn={app.isCheckedIn}
+              onProfileClick={app.openEditProfile}
+              theme={theme}
+              onToggleTheme={toggleTheme}
+              adminAvailable={adminSession.adminAvailable}
+              isAdmin={adminSession.isAdmin}
+              onAdminLoginClick={() => admin.setShowLogin(true)}
+              onAdminLogout={adminSession.logout}
+              onAddGame={admin.openCreate}
+              onEditGame={admin.openEdit}
+            />
+          }
+        />
+        <Route path="/games/:gameId" element={<GameDetailScreen {...detailProps} />} />
+      </Routes>
 
-      <MobileChatBar
-        inputRef={presence.chatInputRef}
-        value={presence.draft}
-        onChange={presence.setMobileDraft}
-        onSend={presence.sendChat}
-        connected={presence.connected}
-      />
+      {isDetail && (
+        <MobileChatBar
+          inputRef={presence.chatInputRef}
+          value={presence.draft}
+          onChange={presence.setMobileDraft}
+          onSend={presence.sendChat}
+          connected={presence.connected}
+        />
+      )}
     </div>
+  );
+}
+
+export default function App() {
+  return (
+    <BrowserRouter>
+      <AppRoutes />
+    </BrowserRouter>
   );
 }

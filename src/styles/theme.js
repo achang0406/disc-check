@@ -1,13 +1,16 @@
+import { uiStyles } from "./ui.css.js";
+import { TOKEN_CSS } from "./tokens.js";
+
 export const card = {
   background: "var(--card-bg)",
-  borderRadius: 14,
-  padding: "16px 18px",
+  borderRadius: "var(--radius-lg)",
+  padding: "var(--space-4) calc(var(--space-4) + 2px)",
 };
 
 export const label = {
-  fontSize: 11,
+  fontSize: "var(--font-label)",
   color: "var(--text-muted)",
-  fontFamily: "'DM Mono',monospace",
+  fontFamily: "var(--font-mono)",
   display: "block",
   marginBottom: 5,
 };
@@ -15,16 +18,22 @@ export const label = {
 export const input = {
   background: "var(--input-bg)",
   border: "1px solid var(--input-border)",
-  borderRadius: 8,
-  padding: "8px 12px",
+  borderRadius: "var(--radius-sm)",
+  padding: "var(--space-2) var(--space-3)",
   color: "var(--text)",
-  fontSize: 13,
-  fontFamily: "'DM Sans',sans-serif",
+  fontSize: "var(--font-body)",
+  fontFamily: "var(--font-sans)",
   width: "100%",
   outline: "none",
 };
 
 export const globalStyles = `
+  :root {
+    ${TOKEN_CSS}
+  }
+
+  ${uiStyles}
+
   @keyframes fadeUp {
     from { opacity: 0; transform: translateY(14px); }
     to { opacity: 1; transform: translateY(0); }
@@ -66,14 +75,48 @@ export const globalStyles = `
   }
 
   .game-card {
-    height: 100%;
     display: flex;
     flex-direction: column;
     background: var(--card-bg);
-    border-radius: clamp(12px, 1.1vw, 16px);
-    padding: clamp(14px, 1.6vw, 20px) clamp(16px, 1.8vw, 22px);
+    border-radius: var(--radius-lg);
+    padding: clamp(14px, 1.6vw, 20px) clamp(var(--space-4), 1.8vw, 22px);
     box-shadow: 0 0 0 1px var(--card-ring);
     font-size: clamp(12px, 0.35vw + 11px, 14px);
+    min-height: 0;
+  }
+
+  .game-card--detail {
+    width: 100%;
+    height: 100%;
+    max-height: 100%;
+    overflow: hidden;
+  }
+
+  .game-card__header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 10px;
+    margin-bottom: 8px;
+    flex-shrink: 0;
+  }
+
+  .game-card__header-main {
+    min-width: 0;
+    flex: 1;
+  }
+
+  .game-card__header-badges {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
+  }
+
+  .game-card__chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
   }
 
   .game-card--rsvpd {
@@ -85,7 +128,7 @@ export const globalStyles = `
   }
 
   .game-card--live {
-    box-shadow: 0 0 0 1px var(--status-almost-color);
+    box-shadow: 0 0 0 1px var(--card-ring-live);
   }
 
   .game-card--cancelled {
@@ -108,6 +151,14 @@ export const globalStyles = `
     position: relative;
     display: grid;
     flex: 1;
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  .game-card--detail .game-card__phase {
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
   }
 
   .game-card__phase {
@@ -376,23 +427,7 @@ export const globalStyles = `
 
   .game-card__action {
     flex: 1;
-    padding: clamp(8px, 0.8vw, 10px) clamp(10px, 1vw, 14px);
-    border-radius: 9px;
-    font-size: clamp(13px, 0.35vw + 12px, 15px);
-    font-weight: 600;
-    font-family: 'DM Sans', sans-serif;
-    cursor: pointer;
-  }
-
-  .game-card__action:disabled {
-    cursor: not-allowed;
-    opacity: 0.4;
-  }
-
-  .game-card__action--rsvp {
-    background: var(--rsvp-btn-bg);
-    border: 1px solid var(--rsvp-btn-border);
-    color: var(--rsvp-btn-text);
+    min-width: 0;
   }
 
   .game-card__action--rsvp.game-card__action--saving {
@@ -402,10 +437,7 @@ export const globalStyles = `
   }
 
   .game-card__action--cancel {
-    background: var(--cancel-btn-bg);
-    border: 1px solid var(--cancel-btn-border);
-    color: var(--cancel-btn-text);
-    font-family: 'DM Mono', monospace;
+    font-family: var(--font-mono);
   }
 
   .games-screen__admin-badge {
@@ -511,11 +543,18 @@ export const globalStyles = `
   }
 
   .games-screen {
+    position: relative;
+    z-index: 1;
+    width: 100%;
+    color: var(--text);
     height: 100%;
     display: flex;
     flex-direction: column;
     overflow: hidden;
     box-sizing: border-box;
+  }
+
+  .games-screen--with-chat {
     padding-bottom: calc(64px + env(safe-area-inset-bottom, 0px));
   }
 
@@ -531,6 +570,272 @@ export const globalStyles = `
     padding: 16px;
     width: 100%;
     box-sizing: border-box;
+  }
+
+  .games-screen__main--landing {
+    align-items: flex-start;
+    padding-top: 12px;
+  }
+
+  .games-screen__main--detail {
+    align-items: center;
+    justify-content: center;
+    padding: clamp(8px, 2.5vw, 32px);
+    overflow: hidden;
+  }
+
+  .games-screen__empty {
+    text-align: center;
+    margin: auto;
+  }
+
+  .games-screen__empty-text {
+    color: var(--text-muted);
+    font-family: 'DM Mono', monospace;
+    font-size: 13px;
+    margin: 0 0 12px;
+  }
+
+  .app-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 16px 0;
+    flex-shrink: 0;
+    gap: 12px;
+  }
+
+  .app-header__leading {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+  }
+
+  .app-header__brand {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+  }
+
+  .app-header__logo {
+    font-size: 22px;
+    line-height: 1;
+  }
+
+  .app-header__title {
+    font-size: 17px;
+    font-weight: 700;
+  }
+
+  .app-header__back {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 34px;
+    height: 34px;
+    border-radius: 8px;
+    background: var(--toggle-bg);
+    border: 1px solid var(--toggle-border);
+    color: var(--text);
+    cursor: pointer;
+    font-size: 16px;
+    line-height: 1;
+    flex-shrink: 0;
+  }
+
+  .app-header__actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-shrink: 0;
+  }
+
+  .app-header__profile {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: none;
+    border: none;
+    padding: 0;
+    cursor: pointer;
+    color: inherit;
+  }
+
+  .app-header__avatar {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: var(--profile-bg);
+    border: 1px solid var(--profile-border);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 10px;
+    font-weight: 600;
+    color: var(--profile-text);
+    font-family: 'DM Mono', monospace;
+  }
+
+  .app-header__profile-name {
+    font-size: 12px;
+    color: var(--header-muted);
+    font-family: 'DM Mono', monospace;
+  }
+
+  .game-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    width: 100%;
+    max-width: min(640px, 92vw);
+    margin: 0 auto;
+  }
+
+  .game-list-item {
+    display: block;
+    text-decoration: none;
+    color: inherit;
+    padding: clamp(14px, 1.6vw, 18px) clamp(var(--space-4), 1.8vw, 20px);
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+  }
+
+  .game-list-item:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 0 0 1px var(--text-faint);
+  }
+
+  .game-list-item--cancelled {
+    opacity: 0.45;
+  }
+
+  .game-list-item__top {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 10px;
+    margin-bottom: 6px;
+  }
+
+  .game-list-item__title-wrap {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+    flex: 1;
+  }
+
+  .game-list-item__title {
+    margin: 0;
+    font-size: clamp(15px, 0.9vw + 13px, 18px);
+    font-weight: 700;
+    color: var(--text-strong);
+    line-height: 1.2;
+  }
+
+  .game-list-item__badges {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
+  }
+
+  .game-list-item__meta {
+    margin: 0;
+    font-size: clamp(11px, 0.25vw + 10px, 13px);
+  }
+
+  .game-list-item__detail,
+  .meta-row--schedule.game-list-item__detail {
+    margin: 4px 0 0;
+    color: var(--text-subtle);
+  }
+
+  .game-list-item__footer {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 1px solid var(--card-divider);
+  }
+
+  .game-list-item__count {
+    font-size: 11px;
+    color: var(--text-subtle);
+    font-family: 'DM Mono', monospace;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+
+  .game-list-item__live {
+    font-size: 10px;
+    padding: 2px 8px;
+    border-radius: 999px;
+    background: var(--status-almost-bg);
+    border: 1px solid var(--status-almost-color);
+    color: var(--status-almost-color);
+    font-family: 'DM Mono', monospace;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+
+  .game-list-item__cta {
+    margin-left: auto;
+    color: var(--text-faint);
+    font-size: 16px;
+    line-height: 1;
+  }
+
+  .game-detail {
+    container-type: inline-size;
+    container-name: game-detail;
+    width: min(var(--max-detail), calc(100vw - 2 * clamp(8px, 2.5vw, 32px)));
+    height: min(
+      680px,
+      calc(100dvh - 6.5rem - env(safe-area-inset-bottom, 0px) - 2 * clamp(8px, 2.5vw, 32px))
+    );
+    max-height: 100%;
+    min-height: 0;
+    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    flex-shrink: 0;
+  }
+
+  .game-detail .game-card {
+    width: 100%;
+  }
+
+  @container game-detail (max-width: 380px) {
+    .meta-row__city,
+    .game-card__meta-city,
+    .meta-row__slot,
+    .game-card__detail-slot,
+    .meta-row__type,
+    .game-card__detail-type,
+    .game-card__section-label,
+    .game-card__chips--compact-hide {
+      display: none;
+    }
+
+    .game-card__header-badges .status-badge {
+      padding: 4px 10px;
+      font-size: 11px;
+    }
+
+    .game-card__locked-rsvp {
+      margin-bottom: 8px;
+      padding: 8px 10px;
+    }
+  }
+
+  @media (max-width: 480px) {
+    .app-header__profile-name {
+      display: none;
+    }
   }
 
   .chat-bar-anchor {

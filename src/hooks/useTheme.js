@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { TOKENS } from "../styles/tokens.js";
 import { THEMES } from "../styles/themes.js";
 
 const STORAGE_KEY = "disc_theme";
@@ -21,6 +22,9 @@ export function useTheme() {
 
     const vars = THEMES[theme];
     const root = document.documentElement;
+    for (const [key, value] of Object.entries(TOKENS)) {
+      root.style.setProperty(key, value);
+    }
     for (const [key, value] of Object.entries(vars)) {
       root.style.setProperty(key, value);
     }
