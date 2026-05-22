@@ -1,11 +1,13 @@
 import Field from "../ui/Field.jsx";
 
-export default function PhoneField({ value, onChange, error = "" }) {
+const DEFAULT_HINT = "Links your RSVPs across devices. Never shown to other players.";
+
+export default function PhoneField({ value, onChange, error = "", hint = DEFAULT_HINT }) {
   return (
     <Field
       label="Phone (optional)"
       error={error}
-      hint="Links your RSVPs across devices. Never shown to other players."
+      hint={hint}
     >
       <input
         className="field__input"

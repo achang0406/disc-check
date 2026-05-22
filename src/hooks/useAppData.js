@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { STORAGE_KEYS } from "../constants/storageKeys.js";
 import {
   fetchAppData,
+  fetchProfileById,
   findProfileByPhone,
   handleCheckInAction,
   handleRsvpAction,
@@ -39,6 +40,34 @@ function saveProfile(profile) {
   localStorage.setItem(STORAGE_KEYS.PROFILE, JSON.stringify(profile));
 }
 
+async function syncProfileFromServer(localProfile) {
+  if (!localProfile?.id || !isSupabaseConfigured()) return localProfile;
+
+  try {
+    const remote = await fetchProfileById(localProfile.id);
+    if (!remote) return localProfile;
+
+    const merged = {
+      ...localProfile,
+      name: remote.name,
+      phone: remote.phone ?? localProfile.phone ?? null,
+      bubbleColor: remote.bubbleColor || localProfile.bubbleColor,
+    };
+
+    if (
+      merged.name !== localProfile.name ||
+      merged.phone !== localProfile.phone ||
+      merged.bubbleColor !== localProfile.bubbleColor
+    ) {
+      saveProfile(merged);
+    }
+
+    return merged;
+  } catch {
+    return localProfile;
+  }
+}
+
 function applyData({ games, rsvps, checkIns }, setGamesMeta, setRsvps, setCheckIns) {
   if (games) {
     setGamesMeta(games);
@@ -68,13 +97,21 @@ export function useAppData(showToast) {
   const [pendingCheckIn, setPendingCheckIn] = useState(null);
 
   const useSupabaseRef = useRef(isSupabaseConfigured());
+  const profileRef = useRef(null);
+
+  useEffect(() => {
+    profileRef.current = profile;
+  }, [profile]);
 
   useEffect(() => {
     let cancelled = false;
 
     async function bootstrap() {
       try {
-        const storedProfile = getStoredJson(STORAGE_KEYS.PROFILE) ?? migrateLegacyUser();
+        let storedProfile = getStoredJson(STORAGE_KEYS.PROFILE) ?? migrateLegacyUser();
+        if (storedProfile && useSupabaseRef.current) {
+          storedProfile = await syncProfileFromServer(storedProfile);
+        }
         if (storedProfile && !cancelled) {
           setProfile(storedProfile);
         }
@@ -106,6 +143,17 @@ export function useAppData(showToast) {
 
     return subscribeToRsvps((data) => {
       applyData(data, setGamesMeta, setRsvps, setCheckIns);
+      const local = profileRef.current;
+      if (!local?.id) return;
+      syncProfileFromServer(local).then((merged) => {
+        if (
+          merged.name !== local.name ||
+          merged.phone !== local.phone ||
+          merged.bubbleColor !== local.bubbleColor
+        ) {
+          setProfile(merged);
+        }
+      });
     });
   }, []);
 
@@ -114,7 +162,40 @@ export function useAppData(showToast) {
 
     return subscribeToCheckIns((data) => {
       applyData(data, setGamesMeta, setRsvps, setCheckIns);
+      const local = profileRef.current;
+      if (!local?.id) return;
+      syncProfileFromServer(local).then((merged) => {
+        if (
+          merged.name !== local.name ||
+          merged.phone !== local.phone ||
+          merged.bubbleColor !== local.bubbleColor
+        ) {
+          setProfile(merged);
+        }
+      });
     });
+  }, []);
+
+  useEffect(() => {
+    if (!useSupabaseRef.current) return undefined;
+
+    const onVisible = () => {
+      if (document.visibilityState !== "visible") return;
+      const local = profileRef.current;
+      if (!local?.id) return;
+      syncProfileFromServer(local).then((merged) => {
+        if (
+          merged.name !== local.name ||
+          merged.phone !== local.phone ||
+          merged.bubbleColor !== local.bubbleColor
+        ) {
+          setProfile(merged);
+        }
+      });
+    };
+
+    document.addEventListener("visibilitychange", onVisible);
+    return () => document.removeEventListener("visibilitychange", onVisible);
   }, []);
 
   useEffect(() => {
@@ -287,9 +368,10 @@ export function useAppData(showToast) {
       let id = profile?.id;
       let bubbleColor = profile?.bubbleColor;
       let recovered = false;
+      let existing = null;
 
       if (!id && normalizedPhone && useSupabaseRef.current) {
-        const existing = await findProfileByPhone(normalizedPhone);
+        existing = await findProfileByPhone(normalizedPhone);
         if (existing) {
           id = existing.id;
           bubbleColor = existing.bubbleColor || colorForId(id);
@@ -305,23 +387,38 @@ export function useAppData(showToast) {
         bubbleColor = colorForId(id);
       }
 
-      let nextProfile = {
-        id,
-        name: trimmedName,
-        bubbleColor,
-        phone: normalizedPhone,
-      };
+      let nextProfile;
 
-      if (useSupabaseRef.current) {
-        nextProfile = await upsertProfile(nextProfile);
-        nextProfile.bubbleColor = nextProfile.bubbleColor || bubbleColor;
+      if (recovered && existing) {
+        nextProfile = {
+          id: existing.id,
+          name: existing.name,
+          bubbleColor: existing.bubbleColor || bubbleColor,
+          phone: existing.phone || normalizedPhone,
+        };
+      } else {
+        nextProfile = {
+          id,
+          name: trimmedName,
+          bubbleColor,
+          phone: normalizedPhone,
+        };
+
+        if (useSupabaseRef.current) {
+          nextProfile = await upsertProfile(nextProfile);
+          nextProfile.bubbleColor = nextProfile.bubbleColor || bubbleColor;
+        }
       }
 
       saveProfile(nextProfile);
       setProfile(nextProfile);
 
       if (recovered) {
-        showToast("Welcome back");
+        showToast(
+          trimmedName !== existing.name
+            ? `Welcome back, ${existing.name}`
+            : "Welcome back",
+        );
       }
 
       if (pendingRsvp) {
@@ -414,6 +511,13 @@ export function useAppData(showToast) {
     setSavingGameId("profile");
 
     try {
+      if (normalizedPhone && useSupabaseRef.current) {
+        const existing = await findProfileByPhone(normalizedPhone);
+        if (existing && existing.id !== profile.id) {
+          throw new Error("phone already linked to another profile");
+        }
+      }
+
       let nextProfile = {
         ...profile,
         name: trimmedName,
@@ -473,6 +577,22 @@ export function useAppData(showToast) {
     setSavingGameId(null);
   };
 
+  const lookupProfileByPhone = useCallback(async (phone) => {
+    if (!useSupabaseRef.current) return null;
+    const normalized = normalizePhone(phone);
+    if (!normalized) return null;
+    return findProfileByPhone(normalized);
+  }, []);
+
+  const validatePhoneForProfile = useCallback(async (phone, profileId) => {
+    if (!useSupabaseRef.current) return true;
+    const normalized = normalizePhone(phone);
+    if (!normalized) return true;
+    const existing = await findProfileByPhone(normalized);
+    if (!existing) return true;
+    return existing.id === profileId;
+  }, []);
+
   return {
     profile,
     gamesMeta,
@@ -493,6 +613,8 @@ export function useAppData(showToast) {
     openEditProfile,
     closeEditProfile,
     handleUpdateProfile,
+    lookupProfileByPhone,
+    validatePhoneForProfile,
     isRsvpd,
     isCheckedIn,
     refresh,

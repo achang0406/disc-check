@@ -118,6 +118,26 @@ export async function findProfileByPhone(phone) {
   return formatProfileFromRpc(data);
 }
 
+export async function fetchProfileById(id) {
+  if (!isSupabaseConfigured() || !id) return null;
+
+  const supabase = getSupabase();
+  const { data, error } = await supabase
+    .from("profiles")
+    .select("id, name, phone, bubble_color")
+    .eq("id", id)
+    .maybeSingle();
+  if (error) throw error;
+  if (!data) return null;
+
+  return {
+    id: data.id,
+    name: data.name,
+    phone: data.phone ?? null,
+    bubbleColor: data.bubble_color ?? null,
+  };
+}
+
 export async function upsertProfile(profile) {
   if (!isSupabaseConfigured()) {
     return {

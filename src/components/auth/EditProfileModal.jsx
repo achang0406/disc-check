@@ -5,16 +5,23 @@ import Field from "../ui/Field.jsx";
 import ModalShell from "../ui/ModalShell.jsx";
 import ColorWheel, { HexColorInput } from "./ColorWheel.jsx";
 import PhoneField from "./PhoneField.jsx";
-import { formatPhoneDisplay, isValidPhone } from "../../utils/phone.js";
+import { formatPhoneDisplay, isValidPhone, normalizePhone } from "../../utils/phone.js";
 
-export default function EditProfileModal({ profile, saving, onSubmit, onClose }) {
+export default function EditProfileModal({
+  profile,
+  saving,
+  onSubmit,
+  onClose,
+  onValidatePhone,
+}) {
   const [name, setName] = useState(profile.name);
   const [phone, setPhone] = useState(formatPhoneDisplay(profile.phone));
   const [bubbleColor, setBubbleColor] = useState(profile.bubbleColor || colorForId(profile.id));
   const [error, setError] = useState("");
   const [phoneError, setPhoneError] = useState("");
+  const [checkingPhone, setCheckingPhone] = useState(false);
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     const trimmedName = name.trim();
     if (!trimmedName) {
       setError("enter your name");
@@ -26,6 +33,25 @@ export default function EditProfileModal({ profile, saving, onSubmit, onClose })
       return;
     }
 
+    const normalizedNew = normalizePhone(phone);
+    const normalizedCurrent = normalizePhone(profile.phone);
+
+    if (normalizedNew && normalizedNew !== normalizedCurrent && onValidatePhone) {
+      setCheckingPhone(true);
+      try {
+        const available = await onValidatePhone(phone, profile.id);
+        if (!available) {
+          setPhoneError("That phone is linked to another profile");
+          return;
+        }
+      } catch {
+        setPhoneError("Couldn't verify phone — try again");
+        return;
+      } finally {
+        setCheckingPhone(false);
+      }
+    }
+
     setError("");
     setPhoneError("");
     onSubmit({
@@ -35,16 +61,18 @@ export default function EditProfileModal({ profile, saving, onSubmit, onClose })
     });
   };
 
+  const busy = saving || checkingPhone;
+
   return (
     <ModalShell
       title="Edit profile"
       onClose={onClose}
       footer={
         <>
-          <Button variant="primary" block disabled={saving} onClick={handleSubmit}>
-            {saving ? "saving..." : "Save"}
+          <Button variant="primary" block disabled={busy} onClick={handleSubmit}>
+            {checkingPhone ? "checking phone…" : saving ? "saving..." : "Save"}
           </Button>
-          <Button variant="secondary" disabled={saving} onClick={onClose}>
+          <Button variant="secondary" disabled={busy} onClick={onClose}>
             Cancel
           </Button>
         </>

@@ -115,6 +115,7 @@ function AppRoutes() {
           saving={!!app.savingGameId}
           onSubmit={app.handleSignUp}
           onClose={app.closeSignUp}
+          onLookupPhone={app.lookupProfileByPhone}
         />
       )}
 
@@ -124,6 +125,7 @@ function AppRoutes() {
           saving={app.savingGameId === "profile"}
           onSubmit={app.handleUpdateProfile}
           onClose={app.closeEditProfile}
+          onValidatePhone={app.validatePhoneForProfile}
         />
       )}
 
