@@ -59,6 +59,19 @@ function groupRsvps(rows) {
   return map;
 }
 
+function groupCheckIns(rows) {
+  const map = {};
+  for (const row of rows) {
+    if (!map[row.game_id]) map[row.game_id] = [];
+    map[row.game_id].push({
+      userId: row.user_id,
+      name: row.name,
+      plusOnes: Number(row.plus_ones) || 0,
+    });
+  }
+  return map;
+}
+
 function toRpcGame(game) {
   return {
     id: game.id,
@@ -127,9 +140,27 @@ export async function fetchAppData() {
 
   if (rsvpsResult.error) throw rsvpsResult.error;
 
+  const checkInsResult = await supabase
+    .from("game_check_ins")
+    .select("game_id, user_id, name, plus_ones, cycle_at")
+    .order("created_at", { ascending: true });
+
+  if (checkInsResult.error) throw checkInsResult.error;
+
+  const games = (gamesResult.data || []).map(formatGame);
+  const currentCycles = Object.fromEntries(
+    games.map((game) => [game.id, normalizeCycleAt(getCurrentRsvpCycleStartUtc(game.startsAt))]),
+  );
+
+  const activeCheckIns = (checkInsResult.data || []).filter((row) => {
+    const expected = currentCycles[row.game_id];
+    return expected && normalizeCycleAt(row.cycle_at) === expected;
+  });
+
   return {
-    games: (gamesResult.data || []).map(formatGame),
+    games,
     rsvps: groupRsvps(rsvpsResult.data || []),
+    checkIns: groupCheckIns(activeCheckIns),
   };
 }
 
@@ -160,6 +191,40 @@ export async function cancelRsvp({ gameId, userId }) {
 export async function renameRsvps({ userId, name }) {
   const supabase = getSupabase();
   const { error } = await supabase.from("rsvps").update({ name }).eq("user_id", userId);
+
+  if (error) throw error;
+
+  const checkInRename = await supabase.from("game_check_ins").update({ name }).eq("user_id", userId);
+  if (checkInRename.error) throw checkInRename.error;
+
+  return fetchAppData();
+}
+
+export async function upsertCheckIn({ gameId, userId, name, plusOnes, cycleAt }) {
+  const supabase = getSupabase();
+  const { error } = await supabase.from("game_check_ins").upsert(
+    {
+      game_id: gameId,
+      user_id: userId,
+      name,
+      plus_ones: Number(plusOnes) || 0,
+      cycle_at: cycleAt,
+    },
+    { onConflict: "game_id,user_id,cycle_at" },
+  );
+
+  if (error) throw error;
+  return fetchAppData();
+}
+
+export async function cancelCheckIn({ gameId, userId, cycleAt }) {
+  const supabase = getSupabase();
+  const { error } = await supabase
+    .from("game_check_ins")
+    .delete()
+    .eq("game_id", gameId)
+    .eq("user_id", userId)
+    .eq("cycle_at", cycleAt);
 
   if (error) throw error;
   return fetchAppData();
@@ -197,6 +262,36 @@ export async function handleRsvpAction(body) {
   throw new Error("Unknown action");
 }
 
+export async function handleCheckInAction(body) {
+  const action = body?.action;
+
+  if (action === "check_in") {
+    if (!body.gameId || !body.userId || !body.name || !body.cycleAt) {
+      throw new Error("Missing check-in fields");
+    }
+    return upsertCheckIn({
+      gameId: body.gameId,
+      userId: body.userId,
+      name: body.name,
+      plusOnes: body.plusOnes,
+      cycleAt: body.cycleAt,
+    });
+  }
+
+  if (action === "check_out") {
+    if (!body.gameId || !body.userId || !body.cycleAt) {
+      throw new Error("Missing check-out fields");
+    }
+    return cancelCheckIn({
+      gameId: body.gameId,
+      userId: body.userId,
+      cycleAt: body.cycleAt,
+    });
+  }
+
+  throw new Error("Unknown check-in action");
+}
+
 export function subscribeToGames(onChange) {
   const supabase = getSupabase();
 
@@ -230,7 +325,30 @@ export function subscribeToRsvps(onChange) {
       { event: "*", schema: "public", table: "rsvps" },
       () => {
         fetchAppData()
-          .then((data) => onChange(data.rsvps))
+          .then((data) => onChange(data))
+          .catch(() => {
+            // Keep last known data if a refresh fails temporarily.
+          });
+      },
+    )
+    .subscribe();
+
+  return () => {
+    supabase.removeChannel(channel);
+  };
+}
+
+export function subscribeToCheckIns(onChange) {
+  const supabase = getSupabase();
+
+  const channel = supabase
+    .channel("disc-check:check-ins")
+    .on(
+      "postgres_changes",
+      { event: "*", schema: "public", table: "game_check_ins" },
+      () => {
+        fetchAppData()
+          .then((data) => onChange(data))
           .catch(() => {
             // Keep last known data if a refresh fails temporarily.
           });

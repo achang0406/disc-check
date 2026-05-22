@@ -1,6 +1,8 @@
 import {
   deriveWeeklyAnchorUtc,
   getCurrentRsvpCycleStartUtc,
+  isGameLive,
+  isRsvpOpen,
   parseClockFromTime,
   parseWeekdayFromTime,
 } from "../src/utils/gameSchedule.js";
@@ -59,4 +61,11 @@ assert(formatGameTime(ANCHOR) === "Wed 6:00 PM", `format game time: got ${format
 assert(getTimeSlot(ANCHOR) === "evening", "Wed 6 PM is evening");
 assert(parseCityFromAddress("11100 NE 68th St, Kirkland, WA 98033") === "Kirkland", "parse city");
 
-console.log(`All ${cases.length + 6} game schedule checks passed.`);
+assert(!isGameLive(ANCHOR, new Date("2026-05-20T19:00:00.000Z")), "before start is not live");
+assert(isGameLive(ANCHOR, new Date("2026-05-21T01:00:00.000Z")), "at start is live");
+assert(isGameLive(ANCHOR, new Date("2026-05-21T09:00:00.000Z")), "during live window");
+assert(!isGameLive(ANCHOR, new Date("2026-05-22T13:00:00.000Z")), "after live window is not live");
+assert(isRsvpOpen(ANCHOR, new Date("2026-05-20T19:00:00.000Z")), "before start RSVP open");
+assert(!isRsvpOpen(ANCHOR, new Date("2026-05-21T01:00:00.000Z")), "at start RSVP closed");
+
+console.log(`All ${cases.length + 12} game schedule checks passed.`);

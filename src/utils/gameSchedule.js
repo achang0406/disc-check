@@ -1,5 +1,5 @@
 const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
-const RESET_AFTER_MS = 24 * 60 * 60 * 1000;
+export const RESET_AFTER_MS = 24 * 60 * 60 * 1000;
 
 const WEEKDAY_MAP = {
   sun: 0,
@@ -46,6 +46,25 @@ export function getCurrentRsvpCycleStartUtc(startsAt, now = new Date()) {
   }
 
   return new Date(occurrence).toISOString();
+}
+
+/** UTC instant when the current pickup occurrence started. */
+export function getOccurrenceStartUtc(startsAt, now = new Date()) {
+  return getCurrentRsvpCycleStartUtc(startsAt, now);
+}
+
+/** True from game start until 24h after start (same window as the live pickup). */
+export function isGameLive(startsAt, now = new Date()) {
+  const occurrenceIso = getCurrentRsvpCycleStartUtc(startsAt, now);
+  if (!occurrenceIso) return false;
+
+  const startMs = Date.parse(occurrenceIso);
+  const nowMs = now.getTime();
+  return nowMs >= startMs && nowMs < startMs + RESET_AFTER_MS;
+}
+
+export function isRsvpOpen(startsAt, now = new Date()) {
+  return !isGameLive(startsAt, now);
 }
 
 export function normalizeCycleAt(value) {

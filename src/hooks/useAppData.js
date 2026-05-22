@@ -2,12 +2,15 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { STORAGE_KEYS } from "../constants/storageKeys.js";
 import {
   fetchAppData,
+  handleCheckInAction,
   handleRsvpAction,
   isSupabaseConfigured,
+  subscribeToCheckIns,
   subscribeToGames,
   subscribeToRsvps,
 } from "../lib/data.js";
-import { deriveMyRsvps } from "../utils/games.js";
+import { deriveMyCheckIns, deriveMyRsvps } from "../utils/games.js";
+import { getOccurrenceStartUtc, isGameLive, isRsvpOpen } from "../utils/gameSchedule.js";
 import { colorForId, getPresenceSessionId } from "../constants/presence.js";
 
 function getStoredJson(key) {
@@ -33,7 +36,7 @@ function saveProfile(profile) {
   localStorage.setItem(STORAGE_KEYS.PROFILE, JSON.stringify(profile));
 }
 
-function applyData({ games, rsvps }, setGamesMeta, setRsvps) {
+function applyData({ games, rsvps, checkIns }, setGamesMeta, setRsvps, setCheckIns) {
   if (games) {
     setGamesMeta(games);
   }
@@ -41,18 +44,25 @@ function applyData({ games, rsvps }, setGamesMeta, setRsvps) {
     setRsvps(rsvps);
     localStorage.setItem(STORAGE_KEYS.RSVPS, JSON.stringify(rsvps));
   }
+  if (checkIns) {
+    setCheckIns(checkIns);
+    localStorage.setItem(STORAGE_KEYS.CHECK_INS, JSON.stringify(checkIns));
+  }
 }
 
 export function useAppData(showToast) {
   const [profile, setProfile] = useState(null);
   const [gamesMeta, setGamesMeta] = useState([]);
   const [rsvps, setRsvps] = useState({});
+  const [checkIns, setCheckIns] = useState({});
   const [myRsvps, setMyRsvps] = useState({});
+  const [myCheckIns, setMyCheckIns] = useState({});
   const [loading, setLoading] = useState(true);
   const [savingGameId, setSavingGameId] = useState(null);
   const [showSignUp, setShowSignUp] = useState(false);
   const [showEditProfile, setShowEditProfile] = useState(false);
   const [pendingRsvp, setPendingRsvp] = useState(null);
+  const [pendingCheckIn, setPendingCheckIn] = useState(null);
 
   const useSupabaseRef = useRef(isSupabaseConfigured());
 
@@ -72,7 +82,7 @@ export function useAppData(showToast) {
 
         const data = await fetchAppData();
         if (cancelled) return;
-        applyData(data, setGamesMeta, setRsvps);
+        applyData(data, setGamesMeta, setRsvps, setCheckIns);
       } catch {
         if (!cancelled) {
           showToast("Couldn't load games — try again", "error");
@@ -91,9 +101,16 @@ export function useAppData(showToast) {
   useEffect(() => {
     if (!useSupabaseRef.current) return undefined;
 
-    return subscribeToRsvps((nextRsvps) => {
-      setRsvps(nextRsvps);
-      localStorage.setItem(STORAGE_KEYS.RSVPS, JSON.stringify(nextRsvps));
+    return subscribeToRsvps((data) => {
+      applyData(data, setGamesMeta, setRsvps, setCheckIns);
+    });
+  }, []);
+
+  useEffect(() => {
+    if (!useSupabaseRef.current) return undefined;
+
+    return subscribeToCheckIns((data) => {
+      applyData(data, setGamesMeta, setRsvps, setCheckIns);
     });
   }, []);
 
@@ -101,14 +118,14 @@ export function useAppData(showToast) {
     if (!useSupabaseRef.current) return undefined;
 
     return subscribeToGames((data) => {
-      applyData(data, setGamesMeta, setRsvps);
+      applyData(data, setGamesMeta, setRsvps, setCheckIns);
     });
   }, []);
 
   const refresh = useCallback(async () => {
     if (!useSupabaseRef.current) return;
     const data = await fetchAppData();
-    applyData(data, setGamesMeta, setRsvps);
+    applyData(data, setGamesMeta, setRsvps, setCheckIns);
     return data;
   }, []);
 
@@ -116,14 +133,35 @@ export function useAppData(showToast) {
     setMyRsvps(deriveMyRsvps(rsvps, profile?.id));
   }, [rsvps, profile?.id]);
 
+  useEffect(() => {
+    setMyCheckIns(deriveMyCheckIns(checkIns, profile?.id));
+  }, [checkIns, profile?.id]);
+
   const isRsvpd = useCallback((gameId) => !!myRsvps[gameId], [myRsvps]);
+  const isCheckedIn = useCallback((gameId) => !!myCheckIns[gameId], [myCheckIns]);
 
   const persistRsvpChange = async (payload, gameIdForSaving) => {
     setSavingGameId(gameIdForSaving);
     try {
       if (useSupabaseRef.current) {
         const data = await handleRsvpAction(payload);
-        applyData(data, setGamesMeta, setRsvps);
+        applyData(data, setGamesMeta, setRsvps, setCheckIns);
+      }
+      return true;
+    } catch {
+      showToast("Couldn't save — try again", "error");
+      return false;
+    } finally {
+      setSavingGameId(null);
+    }
+  };
+
+  const persistCheckInChange = async (payload, gameIdForSaving) => {
+    setSavingGameId(gameIdForSaving);
+    try {
+      if (useSupabaseRef.current) {
+        const data = await handleCheckInAction(payload);
+        applyData(data, setGamesMeta, setRsvps, setCheckIns);
       }
       return true;
     } catch {
@@ -136,6 +174,10 @@ export function useAppData(showToast) {
 
   const handleRsvp = async (game, plusOnes, rsvpProfile = profile) => {
     if (!rsvpProfile) return;
+    if (!isRsvpOpen(game.startsAt)) {
+      showToast("RSVP is locked — game has started", "error");
+      return;
+    }
 
     const current = getStoredJson(STORAGE_KEYS.RSVPS) || {};
     const entries = (current[game.id] || []).filter((entry) => entry.userId !== rsvpProfile.id);
@@ -161,20 +203,79 @@ export function useAppData(showToast) {
       `You're in!${plusOnes > 0 ? ` +${plusOnes} plus one${plusOnes !== 1 ? "s" : ""}` : ""}`,
     );
     setPendingRsvp(null);
+    setPendingCheckIn(null);
     setShowSignUp(false);
   };
 
   const handleRequestRsvp = (game, plusOnes = 0) => {
+    if (!isRsvpOpen(game.startsAt)) {
+      showToast("RSVP is locked — game has started", "error");
+      return;
+    }
     if (profile) {
       handleRsvp(game, plusOnes, profile);
       return;
     }
+    setPendingCheckIn(null);
     setPendingRsvp({ game, plusOnes });
     setShowSignUp(true);
   };
 
+  const handleCheckIn = async (game, plusOnes, checkInProfile = profile) => {
+    if (!checkInProfile) return;
+    if (!isGameLive(game.startsAt)) {
+      showToast("Check-in opens when the game starts", "error");
+      return;
+    }
+
+    const cycleAt = getOccurrenceStartUtc(game.startsAt);
+    if (!cycleAt) return;
+
+    const current = getStoredJson(STORAGE_KEYS.CHECK_INS) || {};
+    const entries = (current[game.id] || []).filter((entry) => entry.userId !== checkInProfile.id);
+    entries.push({ userId: checkInProfile.id, name: checkInProfile.name, plusOnes });
+    current[game.id] = entries;
+    localStorage.setItem(STORAGE_KEYS.CHECK_INS, JSON.stringify(current));
+    setCheckIns({ ...current });
+
+    const ok = await persistCheckInChange(
+      {
+        action: "check_in",
+        gameId: game.id,
+        userId: checkInProfile.id,
+        name: checkInProfile.name,
+        plusOnes,
+        cycleAt,
+      },
+      game.id,
+    );
+
+    if (!ok) return;
+
+    showToast(
+      `You're here!${plusOnes > 0 ? ` +${plusOnes} guest${plusOnes !== 1 ? "s" : ""}` : ""}`,
+    );
+    setPendingCheckIn(null);
+    setPendingRsvp(null);
+    setShowSignUp(false);
+  };
+
+  const handleRequestCheckIn = (game, plusOnes = 0) => {
+    if (!isGameLive(game.startsAt)) {
+      showToast("Check-in opens when the game starts", "error");
+      return;
+    }
+    if (profile) {
+      handleCheckIn(game, plusOnes, profile);
+      return;
+    }
+    setPendingRsvp(null);
+    setPendingCheckIn({ game, plusOnes });
+    setShowSignUp(true);
+  };
+
   const handleSignUp = ({ name }) => {
-    setSavingGameId(pendingRsvp?.game?.id ?? null);
+    setSavingGameId(pendingRsvp?.game?.id ?? pendingCheckIn?.game?.id ?? null);
     try {
       const id = profile?.id || getPresenceSessionId(null);
       const nextProfile = profile
@@ -186,6 +287,8 @@ export function useAppData(showToast) {
 
       if (pendingRsvp) {
         handleRsvp(pendingRsvp.game, pendingRsvp.plusOnes, nextProfile);
+      } else if (pendingCheckIn) {
+        handleCheckIn(pendingCheckIn.game, pendingCheckIn.plusOnes, nextProfile);
       } else {
         setShowSignUp(false);
         setSavingGameId(null);
@@ -198,6 +301,12 @@ export function useAppData(showToast) {
 
   const handleCancel = async (gameId) => {
     if (!profile) return;
+
+    const game = gamesMeta.find((item) => item.id === gameId);
+    if (game && !isRsvpOpen(game.startsAt)) {
+      showToast("RSVP is locked — game has started", "error");
+      return;
+    }
 
     const current = getStoredJson(STORAGE_KEYS.RSVPS) || {};
     current[gameId] = (current[gameId] || []).filter((entry) => entry.userId !== profile.id);
@@ -212,10 +321,36 @@ export function useAppData(showToast) {
     if (ok) showToast("RSVP cancelled");
   };
 
+  const handleCheckOut = async (gameId) => {
+    if (!profile) return;
+
+    const game = gamesMeta.find((item) => item.id === gameId);
+    if (!game || !isGameLive(game.startsAt)) {
+      showToast("Check-in is closed", "error");
+      return;
+    }
+
+    const cycleAt = getOccurrenceStartUtc(game.startsAt);
+    if (!cycleAt) return;
+
+    const current = getStoredJson(STORAGE_KEYS.CHECK_INS) || {};
+    current[gameId] = (current[gameId] || []).filter((entry) => entry.userId !== profile.id);
+    localStorage.setItem(STORAGE_KEYS.CHECK_INS, JSON.stringify(current));
+    setCheckIns({ ...current });
+
+    const ok = await persistCheckInChange(
+      { action: "check_out", gameId, userId: profile.id, cycleAt },
+      gameId,
+    );
+
+    if (ok) showToast("Checked out");
+  };
+
   const closeSignUp = () => {
     if (savingGameId) return;
     setShowSignUp(false);
     setPendingRsvp(null);
+    setPendingCheckIn(null);
   };
 
   const openEditProfile = () => {
@@ -239,9 +374,9 @@ export function useAppData(showToast) {
       saveProfile(nextProfile);
       setProfile(nextProfile);
 
-      const current = getStoredJson(STORAGE_KEYS.RSVPS) || {};
+      const currentRsvps = getStoredJson(STORAGE_KEYS.RSVPS) || {};
       const nextRsvps = Object.fromEntries(
-        Object.entries(current).map(([gameId, entries]) => [
+        Object.entries(currentRsvps).map(([gameId, entries]) => [
           gameId,
           entries.map((entry) =>
             entry.userId === profile.id ? { ...entry, name: trimmedName } : entry,
@@ -251,13 +386,25 @@ export function useAppData(showToast) {
       localStorage.setItem(STORAGE_KEYS.RSVPS, JSON.stringify(nextRsvps));
       setRsvps(nextRsvps);
 
+      const currentCheckIns = getStoredJson(STORAGE_KEYS.CHECK_INS) || {};
+      const nextCheckIns = Object.fromEntries(
+        Object.entries(currentCheckIns).map(([gameId, entries]) => [
+          gameId,
+          entries.map((entry) =>
+            entry.userId === profile.id ? { ...entry, name: trimmedName } : entry,
+          ),
+        ]),
+      );
+      localStorage.setItem(STORAGE_KEYS.CHECK_INS, JSON.stringify(nextCheckIns));
+      setCheckIns(nextCheckIns);
+
       if (useSupabaseRef.current) {
         const data = await handleRsvpAction({
           action: "rename",
           userId: profile.id,
           name: trimmedName,
         });
-        applyData(data, setGamesMeta, setRsvps);
+        applyData(data, setGamesMeta, setRsvps, setCheckIns);
       }
 
       setShowEditProfile(false);
@@ -272,19 +419,24 @@ export function useAppData(showToast) {
     profile,
     gamesMeta,
     rsvps,
+    checkIns,
     myRsvps,
+    myCheckIns,
     loading,
     savingGameId,
     showSignUp,
     showEditProfile,
     handleRequestRsvp,
+    handleRequestCheckIn,
     handleSignUp,
     handleCancel,
+    handleCheckOut,
     closeSignUp,
     openEditProfile,
     closeEditProfile,
     handleUpdateProfile,
     isRsvpd,
+    isCheckedIn,
     refresh,
   };
 }

@@ -1,11 +1,12 @@
-export default function ProgressBar({ count, target }) {
+export default function ProgressBar({ count, target, label }) {
   const pct = Math.min(100, (count / target) * 100);
   const go = count >= target;
 
   return (
-    <div>
-      <div style={{ marginBottom: 2 }}>
-        <span style={{ fontSize: "0.92em", color: "var(--text-subtle)", fontFamily: "'DM Mono',monospace" }}>
+    <div className="progress-bar">
+      <div className="progress-bar__header">
+        {label && <span className="progress-bar__label">{label}</span>}
+        <span className="progress-bar__count">
           {count} / {target}
         </span>
       </div>

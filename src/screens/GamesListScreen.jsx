@@ -1,15 +1,22 @@
 import GameCard from "../components/games/GameCard.jsx";
+import { useGameClock } from "../hooks/useGameClock.js";
+import { isGameLive } from "../utils/gameSchedule.js";
 import { countPlayers, getInitials } from "../utils/format.js";
 
 export default function GamesListScreen({
   profile,
   games,
   rsvps,
+  checkIns,
   myRsvps,
+  myCheckIns,
   savingGameId,
   isRsvpd,
+  isCheckedIn,
   onRequestRsvp,
   onCancel,
+  onRequestCheckIn,
+  onCheckOut,
   onProfileClick,
   theme,
   onToggleTheme,
@@ -20,6 +27,8 @@ export default function GamesListScreen({
   onAddGame,
   onEditGame,
 }) {
+  const now = useGameClock();
+
   return (
     <div
       className="games-screen"
@@ -132,23 +141,33 @@ export default function GamesListScreen({
           </div>
         ) : (
           <div className="game-grid">
-            {games.map((game, index) => (
-              <div key={game.id} style={{ animation: `fadeUp ${0.2 + index * 0.04}s ease`, minWidth: 0 }}>
-                <GameCard
-                  profile={profile}
-                  game={game}
-                  count={countPlayers(rsvps, game.id)}
-                  entries={rsvps[game.id] || []}
-                  rsvpd={isRsvpd(game.id)}
-                  myRsvp={myRsvps[game.id]}
-                  saving={savingGameId === game.id}
-                  onRequestRsvp={onRequestRsvp}
-                  onCancel={onCancel}
-                  isAdmin={isAdmin}
-                  onEditGame={onEditGame}
-                />
-              </div>
-            ))}
+            {games.map((game, index) => {
+              const live = isGameLive(game.startsAt, now);
+              return (
+                <div key={game.id} style={{ animation: `fadeUp ${0.2 + index * 0.04}s ease`, minWidth: 0 }}>
+                  <GameCard
+                    profile={profile}
+                    game={game}
+                    isLive={live}
+                    rsvpCount={countPlayers(rsvps, game.id)}
+                    rsvpEntries={rsvps[game.id] || []}
+                    checkInCount={countPlayers(checkIns, game.id)}
+                    checkInEntries={checkIns[game.id] || []}
+                    rsvpd={isRsvpd(game.id)}
+                    checkedIn={isCheckedIn(game.id)}
+                    myRsvp={myRsvps[game.id]}
+                    myCheckIn={myCheckIns[game.id]}
+                    saving={savingGameId === game.id}
+                    onRequestRsvp={onRequestRsvp}
+                    onCancel={onCancel}
+                    onRequestCheckIn={onRequestCheckIn}
+                    onCheckOut={onCheckOut}
+                    isAdmin={isAdmin}
+                    onEditGame={onEditGame}
+                  />
+                </div>
+              );
+            })}
           </div>
         )}
       </main>

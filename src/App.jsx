@@ -106,11 +106,16 @@ export default function App() {
         profile={app.profile}
         games={app.gamesMeta}
         rsvps={app.rsvps}
+        checkIns={app.checkIns}
         myRsvps={app.myRsvps}
+        myCheckIns={app.myCheckIns}
         savingGameId={app.savingGameId}
         isRsvpd={app.isRsvpd}
+        isCheckedIn={app.isCheckedIn}
         onRequestRsvp={app.handleRequestRsvp}
         onCancel={app.handleCancel}
+        onRequestCheckIn={app.handleRequestCheckIn}
+        onCheckOut={app.handleCheckOut}
         onProfileClick={app.openEditProfile}
         theme={theme}
         onToggleTheme={toggleTheme}
