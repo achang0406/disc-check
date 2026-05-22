@@ -143,6 +143,28 @@ export default function GameDetailScreen({
     onCheckOut,
   };
 
+  const commitStrip = (
+    <GameCommitStrip
+      profile={profile}
+      game={game}
+      isLive={live}
+      rsvpd={rsvpd}
+      checkedIn={checkedIn}
+      count={activeCount}
+      rsvpCount={rsvpCount}
+      rsvpEntries={rsvpEntries}
+      checkInEntries={checkInEntries}
+      walkInEntries={walkInEntries}
+      expanded={stripExpanded}
+      onToggleExpanded={() => setStripExpanded((value) => !value)}
+      onAddressCopy={() => showToast("Address copied")}
+      onSetRsvpBail={onSetRsvpBail}
+      onAddWalkIn={onAddWalkIn}
+      onRemoveWalkIn={onRemoveWalkIn}
+      saving={saving}
+    />
+  );
+
   return (
     <div className="games-screen games-screen--detail">
       <AppHeader
@@ -174,34 +196,17 @@ export default function GameDetailScreen({
                   <GameCard {...cardProps} embedded />
                 </div>
               }
-              compact={
-                <GameCommitStrip
-                  profile={profile}
-                  game={game}
-                  isLive={live}
-                  rsvpd={rsvpd}
-                  checkedIn={checkedIn}
-                  count={activeCount}
-                  rsvpCount={rsvpCount}
-                  rsvpEntries={rsvpEntries}
-                  checkInEntries={checkInEntries}
-                  expanded={stripExpanded}
-                  onToggleExpanded={() => setStripExpanded((value) => !value)}
-                  onAddressCopy={() => showToast("Address copied")}
-                  onSetRsvpBail={onSetRsvpBail}
-                  onAddWalkIn={onAddWalkIn}
-                  onRemoveWalkIn={onRemoveWalkIn}
-                  saving={saving}
-                />
-              }
+              compact={commitStrip}
             />
             <GameDetailActions {...actionProps} />
           </div>
-          <div className={`game-detail-layout__thread-wrap${isWide ? " game-detail-layout__thread-wrap--hidden" : ""}`}>
-            {presence && (
-              <GameChatThread messages={presence.messages} selfId={presence.self.id} />
-            )}
-          </div>
+          {!isWide && (
+            <div className="game-detail-layout__thread-wrap">
+              {presence && (
+                <GameChatThread messages={presence.messages} selfId={presence.self.id} />
+              )}
+            </div>
+          )}
         </div>
       </main>
     </div>

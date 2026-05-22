@@ -34,6 +34,7 @@ export const TOKENS = {
   "--chat-bar-lift": "0px",
   "--chat-bar-offset-left": "max(var(--chat-bar-inset-x), env(safe-area-inset-left, 0px))",
   "--chat-bar-offset-right": "max(var(--chat-bar-inset-x), env(safe-area-inset-right, 0px))",
+  "--chat-underlap": "40px",
 };
 
 export const TOKEN_CSS = Object.entries(TOKENS)

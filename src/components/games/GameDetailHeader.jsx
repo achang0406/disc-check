@@ -1,5 +1,6 @@
 import MetaRow from "../ui/MetaRow.jsx";
 import CommitStatusPill from "./CommitStatusPill.jsx";
+import GameStartCountdown from "./GameStartCountdown.jsx";
 import StatusBadge from "./StatusBadge.jsx";
 
 function HeaderCaret({ expanded }) {
@@ -80,6 +81,9 @@ export default function GameDetailHeader({
         allowAddressCopy
         onAddressCopy={onAddressCopy}
       />
+      {!cancelled && !isLive ? (
+        <GameStartCountdown game={game} className="game-detail-header__countdown" />
+      ) : null}
     </header>
   );
 }

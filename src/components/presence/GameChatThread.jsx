@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { MQ_WIDE } from "../../constants/breakpoints.js";
 
 function ChatBubble({ message, selfId }) {
@@ -21,15 +21,59 @@ function ChatBubble({ message, selfId }) {
   );
 }
 
+function scrollToBottom(node) {
+  if (!node) return;
+  node.scrollTop = node.scrollHeight;
+}
+
 export default function GameChatThread({ messages, selfId }) {
   const scrollRef = useRef(null);
   const stickToBottomRef = useRef(true);
+  const prevMessageCountRef = useRef(0);
+  const [showJumpToBottom, setShowJumpToBottom] = useState(false);
+  const [isCompact, setIsCompact] = useState(() =>
+    typeof window !== "undefined" ? !window.matchMedia(MQ_WIDE).matches : false,
+  );
+
+  const jumpToBottom = useCallback(() => {
+    const node = scrollRef.current;
+    if (!node) return;
+    scrollToBottom(node);
+    stickToBottomRef.current = true;
+    setShowJumpToBottom(false);
+  }, []);
 
   useEffect(() => {
+    const media = window.matchMedia(MQ_WIDE);
+    const update = () => setIsCompact(!media.matches);
+    media.addEventListener("change", update);
+    update();
+    return () => media.removeEventListener("change", update);
+  }, []);
+
+  useLayoutEffect(() => {
     const node = scrollRef.current;
-    if (!node || !stickToBottomRef.current) return;
-    node.scrollTop = node.scrollHeight;
-  }, [messages.length]);
+    if (!node || messages.length === 0) {
+      prevMessageCountRef.current = messages.length;
+      return;
+    }
+
+    const prevCount = prevMessageCountRef.current;
+    const hasNewMessages = messages.length > prevCount;
+    const lastMessage = messages[messages.length - 1];
+    const sentBySelf = hasNewMessages && lastMessage?.senderId === selfId;
+
+    if (sentBySelf || stickToBottomRef.current) {
+      scrollToBottom(node);
+      requestAnimationFrame(() => scrollToBottom(node));
+      stickToBottomRef.current = true;
+      setShowJumpToBottom(false);
+    } else if (hasNewMessages && isCompact) {
+      setShowJumpToBottom(true);
+    }
+
+    prevMessageCountRef.current = messages.length;
+  }, [messages, selfId, isCompact]);
 
   useEffect(() => {
     const thread = scrollRef.current;
@@ -99,25 +143,47 @@ export default function GameChatThread({ messages, selfId }) {
   const handleScroll = () => {
     const node = scrollRef.current;
     if (!node) return;
+
     const distanceFromBottom = node.scrollHeight - node.scrollTop - node.clientHeight;
-    stickToBottomRef.current = distanceFromBottom < 48;
+    const atBottom = distanceFromBottom < 48;
+    stickToBottomRef.current = atBottom;
+
+    if (atBottom) {
+      setShowJumpToBottom(false);
+    }
   };
 
   return (
-    <div
-      ref={scrollRef}
-      className="game-detail-layout__thread"
-      onScroll={handleScroll}
-      role="log"
-      aria-live="polite"
-      aria-relevant="additions"
-    >
-      {messages.length === 0 ? (
-        <p className="game-chat-thread__empty">Say hi — chat helps get a game going.</p>
-      ) : (
-        messages.map((message) => (
-          <ChatBubble key={message.id} message={message} selfId={selfId} />
-        ))
+    <div className="game-chat-thread-shell">
+      <div
+        ref={scrollRef}
+        className="game-detail-layout__thread"
+        onScroll={handleScroll}
+        role="log"
+        aria-live="polite"
+        aria-relevant="additions"
+      >
+        {messages.length === 0 ? (
+          <p className="game-chat-thread__empty">Say hi — chat helps get a game going.</p>
+        ) : (
+          <div className="game-chat-thread__messages">
+            <div className="game-chat-thread__spacer" aria-hidden="true" />
+            {messages.map((message) => (
+              <ChatBubble key={message.id} message={message} selfId={selfId} />
+            ))}
+          </div>
+        )}
+      </div>
+
+      {isCompact && showJumpToBottom && (
+        <button
+          type="button"
+          className="game-chat-thread__jump"
+          onClick={jumpToBottom}
+          aria-label="Jump to latest messages"
+        >
+          New messages ↓
+        </button>
       )}
     </div>
   );

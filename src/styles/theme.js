@@ -693,9 +693,96 @@ export const globalStyles = `
   }
 
   @media (max-width: 767px) {
+    .game-detail-layout--responsive {
+      gap: 0;
+    }
+
+    .game-detail-panel {
+      position: relative;
+      z-index: 2;
+      flex-shrink: 0;
+    }
+
+    .game-detail-panel__actions {
+      position: relative;
+      z-index: 2;
+      background: var(--card-bg);
+    }
+
+    .game-detail-layout__thread-wrap {
+      flex: 1;
+      min-height: 0;
+      position: relative;
+      z-index: 1;
+    }
+
+    .game-detail-layout__thread-wrap::after {
+      content: "";
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: var(--chat-underlap);
+      background: linear-gradient(to bottom, var(--card-bg), transparent);
+      pointer-events: none;
+      z-index: 2;
+    }
+
     .game-detail-layout__thread {
       padding-left: var(--chat-thread-pad-left, var(--chat-bar-inset-x));
       padding-right: var(--chat-thread-pad-right, var(--chat-bar-inset-x));
+      padding-bottom: var(--space-2);
+    }
+
+    .game-chat-thread__messages {
+      display: flex;
+      flex-direction: column;
+      min-height: 100%;
+      gap: var(--space-2);
+    }
+
+    .game-chat-thread__spacer {
+      flex: 1 1 auto;
+      min-height: 0;
+    }
+
+    .game-chat-thread__messages .chat-message {
+      margin-bottom: 0;
+      flex-shrink: 0;
+    }
+
+    .game-chat-thread-shell {
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      flex: 1;
+      min-height: 0;
+    }
+
+    .game-chat-thread__jump {
+      position: absolute;
+      left: 50%;
+      bottom: var(--space-2);
+      transform: translateX(-50%);
+      z-index: 3;
+      padding: 6px 12px;
+      border-radius: var(--radius-pill);
+      border: 1px solid var(--card-ring);
+      background: var(--card-bg);
+      color: var(--text-muted);
+      font-family: var(--font-mono);
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+      cursor: pointer;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    .game-chat-thread__jump:active {
+      color: var(--text);
+      border-color: var(--text-faint);
     }
   }
 
@@ -759,6 +846,26 @@ export const globalStyles = `
   .game-detail-header__meta {
     margin: 4px 0 0;
     font-size: var(--font-body);
+  }
+
+  .game-detail-header__countdown {
+    display: inline-flex;
+    margin-top: var(--space-2);
+  }
+
+  .game-start-countdown {
+    display: inline-flex;
+    align-items: center;
+    padding: 2px 8px;
+    border-radius: var(--radius-pill);
+    background: var(--status-almost-bg);
+    border: 1px solid var(--status-almost-color);
+    color: var(--status-almost-color);
+    font-family: var(--font-mono);
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
   }
 
   .game-detail-header__row-wrap {
@@ -1103,6 +1210,10 @@ export const globalStyles = `
     font-weight: 600;
     text-transform: uppercase;
     letter-spacing: 0.06em;
+  }
+
+  .game-list-item__countdown {
+    flex-shrink: 0;
   }
 
   .game-list-item__cta {

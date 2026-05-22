@@ -1,7 +1,9 @@
 import {
   compareGamesForLanding,
+  getCountdownToStartMs,
   getCurrentRsvpCycleStartUtc,
   isGameLive,
+  isGameStartingSoon,
   isLandingPriorityGame,
   isRsvpOpen,
   parseStartTime,
@@ -82,6 +84,23 @@ assert(
   "at start RSVP closed",
 );
 
+assert(
+  getCountdownToStartMs(WEDNESDAY_EVENING, new Date("2026-05-21T00:59:30.000Z")) === 30_000,
+  "30s before start shows countdown",
+);
+assert(
+  getCountdownToStartMs(WEDNESDAY_EVENING, new Date("2026-05-21T00:58:00.000Z")) == null,
+  "2m before start hides countdown",
+);
+assert(
+  getCountdownToStartMs(WEDNESDAY_EVENING, new Date("2026-05-21T01:00:00.000Z")) == null,
+  "at start hides countdown",
+);
+assert(
+  isGameStartingSoon(WEDNESDAY_EVENING, new Date("2026-05-21T00:59:30.000Z")),
+  "starting soon inside final minute",
+);
+
 const THURSDAY_EVENING = {
   weekday: 4,
   startTime: "18:00:00",
@@ -133,4 +152,4 @@ assert(
   "compareGamesForLanding matches upcoming order",
 );
 
-console.log(`All ${cases.length + 17} game schedule checks passed.`);
+console.log(`All ${cases.length + 21} game schedule checks passed.`);

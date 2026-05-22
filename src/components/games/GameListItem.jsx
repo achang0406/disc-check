@@ -2,6 +2,7 @@ import { Link } from "react-router-dom";
 import Button from "../ui/Button.jsx";
 import MetaRow from "../ui/MetaRow.jsx";
 import CommitStatusPill from "./CommitStatusPill.jsx";
+import GameStartCountdown from "./GameStartCountdown.jsx";
 import StatusBadge from "./StatusBadge.jsx";
 
 export default function GameListItem({
@@ -55,7 +56,11 @@ export default function GameListItem({
         <span className="game-list-item__count">
           {isLive ? "here now" : "signed up"} · {count} / {game.target}
         </span>
-        {isLive && <span className="game-list-item__live">live now</span>}
+        {isLive ? (
+          <span className="game-list-item__live">live now</span>
+        ) : (
+          !cancelled && <GameStartCountdown game={game} className="game-list-item__countdown" />
+        )}
         <span className="game-list-item__cta" aria-hidden="true">
           →
         </span>

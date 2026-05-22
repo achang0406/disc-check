@@ -2,6 +2,7 @@ import { DEFAULT_GAME_TIMEZONE } from "../constants/gameSchedule.js";
 
 export const RESET_AFTER_MS = 24 * 60 * 60 * 1000;
 export const LANDING_PRIORITY_BEFORE_MS = 3 * 60 * 60 * 1000;
+export const GAME_START_COUNTDOWN_MS = 60 * 1000;
 
 export function getGameSchedule(game) {
   if (!game || game.weekday == null || !game.startTime) return null;
@@ -105,6 +106,23 @@ export function isLandingPriorityGame(game, now = new Date()) {
 export function getOccurrenceStartMs(game, now = new Date()) {
   const occurrenceIso = getCurrentRsvpCycleStartUtc(game, now);
   return occurrenceIso ? Date.parse(occurrenceIso) : Number.POSITIVE_INFINITY;
+}
+
+/** Milliseconds until start when inside the final minute before game time; otherwise null. */
+export function getCountdownToStartMs(game, now = new Date()) {
+  if (!game || game.status === "cancelled") return null;
+
+  const startMs = getOccurrenceStartMs(game, now);
+  if (!Number.isFinite(startMs)) return null;
+
+  const remaining = startMs - now.getTime();
+  if (remaining <= 0 || remaining > GAME_START_COUNTDOWN_MS) return null;
+
+  return remaining;
+}
+
+export function isGameStartingSoon(game, now = new Date()) {
+  return getCountdownToStartMs(game, now) != null;
 }
 
 export function compareGamesForLanding(a, b, now = new Date()) {
