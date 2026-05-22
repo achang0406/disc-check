@@ -15,25 +15,38 @@ import { useAdminActions } from "./hooks/useAdmin.js";
 import { useAdminSession } from "./hooks/useAdminSession.js";
 import { usePresence } from "./hooks/usePresence.js";
 import { useBreakpoint } from "./hooks/useBreakpoint.js";
+import { useGameClock } from "./hooks/useGameClock.js";
 import { useTheme } from "./hooks/useTheme.js";
 import { useToast } from "./hooks/useToast.js";
 import GamesLandingScreen from "./screens/GamesLandingScreen.jsx";
 import GameDetailScreen from "./screens/GameDetailScreen.jsx";
 import { globalStyles } from "./styles/theme.js";
+import { isGameLive } from "./utils/gameSchedule.js";
 
 function AppRoutes() {
   const { toast, showToast } = useToast();
   const { theme, toggleTheme, cssVars } = useTheme();
   const app = useAppData(showToast);
   const { isWide } = useBreakpoint();
+  const now = useGameClock();
   const isLanding = useMatch({ path: "/", end: true });
   const detailMatch = useMatch("/games/:gameId");
   const gameId = detailMatch?.params?.gameId ?? null;
   const presence = usePresence(app.profile, gameId, isWide);
-  const rsvpUserIds = useMemo(() => {
+  const glowUserIds = useMemo(() => {
     if (!gameId) return new Set();
-    return new Set((app.rsvps[gameId] || []).map((entry) => entry.userId));
-  }, [gameId, app.rsvps]);
+
+    const ids = new Set((app.rsvps[gameId] || []).map((entry) => entry.userId));
+    const game = app.gamesMeta.find((item) => item.id === gameId);
+
+    if (game && isGameLive(game, now)) {
+      for (const entry of app.checkIns[gameId] || []) {
+        ids.add(entry.userId);
+      }
+    }
+
+    return ids;
+  }, [gameId, app.rsvps, app.checkIns, app.gamesMeta, now]);
   const adminSession = useAdminSession();
   const admin = useAdminActions({ showToast, refresh: app.refresh });
   const [loadingOverlay, setLoadingOverlay] = useState(true);
@@ -109,7 +122,7 @@ function AppRoutes() {
           draft={presence.draft}
           connected={presence.connected}
           isWide={presence.isWide}
-          rsvpUserIds={rsvpUserIds}
+          rsvpUserIds={glowUserIds}
         />
       )}
       <Toast toast={toast} />

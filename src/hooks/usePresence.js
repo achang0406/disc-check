@@ -154,7 +154,13 @@ export function usePresence(profile, gameId, isWide) {
     setLocalChat(null);
     setDraft("");
     draftRef.current = "";
-  }, [gameId, mode]);
+  }, [gameId]);
+
+  useEffect(() => {
+    if (mode === "thread") {
+      setLocalChat(null);
+    }
+  }, [mode]);
 
   useEffect(() => {
     if (!isSupabaseConfigured() || !channelName) return undefined;
@@ -208,18 +214,18 @@ export function usePresence(profile, gameId, isWide) {
       .on("broadcast", { event: "chat" }, ({ payload }) => {
         if (payload.id === identityRef.current.id) return;
 
+        const threadMessage = createThreadMessage({
+          id: payload.messageId,
+          senderId: payload.id,
+          name: payload.name,
+          color: payload.color,
+          text: payload.message,
+          createdAt: payload.createdAt,
+        });
+
+        setMessages((current) => [...current, threadMessage]);
+
         if (modeRef.current === "thread") {
-          setMessages((current) => [
-            ...current,
-            createThreadMessage({
-              id: payload.messageId,
-              senderId: payload.id,
-              name: payload.name,
-              color: payload.color,
-              text: payload.message,
-              createdAt: payload.createdAt,
-            }),
-          ]);
           return;
         }
 
@@ -345,9 +351,22 @@ export function usePresence(profile, gameId, isWide) {
         return;
       }
 
+      const createdAt = Date.now();
+      const messageId = `${sessionId}-${createdAt}`;
+      setMessages((current) => [
+        ...current,
+        createThreadMessage({
+          id: messageId,
+          senderId: sessionId,
+          name: displayName,
+          color,
+          text: trimmed,
+          createdAt,
+        }),
+      ]);
       broadcast("chat_draft", { message: "", x, y });
       setLocalChat(createLocalChat(trimmed, x, y));
-      broadcast("chat", { message: trimmed, x, y });
+      broadcast("chat", { message: trimmed, messageId, createdAt, x, y });
     },
     [broadcast, color, displayName, getPosition, sessionId],
   );
