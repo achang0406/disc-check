@@ -1,4 +1,9 @@
-export const PRESENCE_CHANNEL = "disc-check:presence";
+export const PRESENCE_CHANNEL_PREFIX = "disc-check:presence";
+
+export function getPresenceChannel(gameId) {
+  if (!gameId) return null;
+  return `${PRESENCE_CHANNEL_PREFIX}:${gameId}`;
+}
 
 export const CURSOR_COLORS = [
   "#f87171",
@@ -16,8 +21,8 @@ export const CURSOR_THROTTLE_MS = 50;
 export const DRAFT_THROTTLE_MS = 80;
 export const MAX_CHAT_LENGTH = 120;
 
-export function getPresenceMode(isMobile) {
-  return isMobile ? "mobile" : "cursor";
+export function getPresenceMode(isWide) {
+  return isWide ? "cursor" : "thread";
 }
 
 export function colorForId(id) {

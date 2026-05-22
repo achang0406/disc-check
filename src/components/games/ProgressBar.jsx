@@ -1,6 +1,6 @@
 export default function ProgressBar({ count, target, label }) {
   const pct = Math.min(100, (count / target) * 100);
-  const go = count >= target;
+  const tone = count >= target ? "go" : pct > 60 ? "warn" : "low";
 
   return (
     <div className="progress-bar">
@@ -10,19 +10,10 @@ export default function ProgressBar({ count, target, label }) {
           {count} / {target}
         </span>
       </div>
-      <div style={{ height: 5, background: "var(--btn-bg)", borderRadius: 999, overflow: "hidden" }}>
+      <div className="progress-bar__track">
         <div
-          style={{
-            height: "100%",
-            borderRadius: 999,
-            width: `${pct}%`,
-            background: go
-              ? "linear-gradient(90deg,#22c55e,#4ade80)"
-              : pct > 60
-                ? "linear-gradient(90deg,#f59e0b,#fbbf24)"
-                : "linear-gradient(90deg,#ef4444,#f87171)",
-            transition: "width 0.5s cubic-bezier(.4,0,.2,1)",
-          }}
+          className={`progress-bar__fill progress-bar__fill--${tone}`}
+          style={{ width: `${pct}%` }}
         />
       </div>
     </div>

@@ -2,13 +2,20 @@ import { useState } from "react";
 import Button from "../ui/Button.jsx";
 import Field from "../ui/Field.jsx";
 import ModalShell from "../ui/ModalShell.jsx";
-import { fromDatetimeLocalInput, toDatetimeLocalInput } from "../../utils/time.js";
+import {
+  DEFAULT_GAME_TIMEZONE,
+  GAME_TIMEZONE_OPTIONS,
+  WEEKDAY_OPTIONS,
+} from "../../constants/gameSchedule.js";
+import { formatSchedulePreview, fromTimeInputValue, toTimeInputValue } from "../../utils/time.js";
 
 const EMPTY_FORM = {
   name: "",
   location: "",
   address: "",
-  startsAt: "",
+  weekday: 3,
+  startTime: "18:00:00",
+  timezone: DEFAULT_GAME_TIMEZONE,
   type: "goaltimate",
   target: 8,
   status: "open",
@@ -20,7 +27,9 @@ function buildForm(initial) {
     name: initial.name ?? "",
     location: initial.location ?? "",
     address: initial.address ?? "",
-    startsAt: toDatetimeLocalInput(initial.startsAt),
+    weekday: initial.weekday ?? 3,
+    startTime: initial.startTime ?? "18:00:00",
+    timezone: initial.timezone ?? DEFAULT_GAME_TIMEZONE,
     type: initial.type === "small" ? "goaltimate" : initial.type ?? "goaltimate",
     target: initial.target ?? 8,
     status: initial.status ?? "open",
@@ -34,7 +43,7 @@ export default function GameFormModal({ mode, initial, saving, onSave, onClose, 
   const setField = (key, value) => setForm((current) => ({ ...current, [key]: value }));
 
   const handleSubmit = () => {
-    const startsAt = fromDatetimeLocalInput(form.startsAt);
+    const startTime = fromTimeInputValue(form.startTime);
     if (!form.name.trim()) {
       setError("Game name is required");
       return;
@@ -43,8 +52,12 @@ export default function GameFormModal({ mode, initial, saving, onSave, onClose, 
       setError("Location label is required");
       return;
     }
-    if (!startsAt) {
-      setError("Weekly start time is required");
+    if (form.weekday == null || form.weekday === "") {
+      setError("Day of week is required");
+      return;
+    }
+    if (!startTime) {
+      setError("Start time is required");
       return;
     }
 
@@ -53,12 +66,20 @@ export default function GameFormModal({ mode, initial, saving, onSave, onClose, 
       name: form.name.trim(),
       location: form.location.trim(),
       address: form.address.trim(),
-      startsAt,
+      weekday: Number(form.weekday),
+      startTime,
+      timezone: form.timezone || DEFAULT_GAME_TIMEZONE,
       type: form.type,
       target: Number(form.target) || 8,
       status: form.status,
     });
   };
+
+  const preview = formatSchedulePreview({
+    weekday: Number(form.weekday),
+    startTime: fromTimeInputValue(form.startTime) ?? form.startTime,
+    timezone: form.timezone,
+  });
 
   return (
     <ModalShell
@@ -115,13 +136,42 @@ export default function GameFormModal({ mode, initial, saving, onSave, onClose, 
       </div>
 
       <div className="field-grid">
-        <Field label="Weekly start time">
+        <Field label="Day of week">
+          <select
+            className="field__input"
+            value={form.weekday}
+            onChange={(event) => setField("weekday", Number(event.target.value))}
+          >
+            {WEEKDAY_OPTIONS.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+        </Field>
+        <Field label="Start time">
           <input
             className="field__input"
-            type="datetime-local"
-            value={form.startsAt}
-            onChange={(event) => setField("startsAt", event.target.value)}
+            type="time"
+            value={toTimeInputValue(form.startTime)}
+            onChange={(event) => setField("startTime", event.target.value)}
           />
+        </Field>
+      </div>
+
+      <div className="field-grid">
+        <Field label="Timezone">
+          <select
+            className="field__input"
+            value={form.timezone}
+            onChange={(event) => setField("timezone", event.target.value)}
+          >
+            {GAME_TIMEZONE_OPTIONS.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
         </Field>
         <Field label="Status">
           <select
@@ -134,6 +184,8 @@ export default function GameFormModal({ mode, initial, saving, onSave, onClose, 
           </select>
         </Field>
       </div>
+
+      {preview ? <p className="field__hint">{preview}</p> : null}
 
       <div className="field-grid">
         <Field label="Game size">

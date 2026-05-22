@@ -1,19 +1,17 @@
-export default function LoadingScreen({ cssVars }) {
+export default function LoadingScreen({ cssVars, exiting = false, onTransitionEnd }) {
   return (
     <div
-      className="app-shell"
-      style={{
-        ...cssVars,
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        background: "var(--bg)",
-        color: "var(--text)",
-      }}
+      className={`loading-screen${exiting ? " loading-screen--exiting" : ""}`}
+      style={cssVars}
+      onTransitionEnd={onTransitionEnd}
+      aria-busy={!exiting}
+      aria-live="polite"
     >
-      <div style={{ textAlign: "center" }}>
-        <div style={{ fontSize: 48, marginBottom: 16 }}>🥏</div>
-        <p style={{ color: "var(--text-muted)", fontFamily: "'DM Mono',monospace", fontSize: 13 }}>loading...</p>
+      <div className="loading-screen__content">
+        <div className="loading-screen__icon" aria-hidden="true">
+          🥏
+        </div>
+        <p className="loading-screen__label">loading...</p>
       </div>
     </div>
   );

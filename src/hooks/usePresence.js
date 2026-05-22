@@ -4,7 +4,7 @@ import {
   CURSOR_THROTTLE_MS,
   DRAFT_THROTTLE_MS,
   MAX_CHAT_LENGTH,
-  PRESENCE_CHANNEL,
+  getPresenceChannel,
   getPresenceColor,
   getPresenceMode,
   getPresenceName,
@@ -12,7 +12,6 @@ import {
   isEditableTarget,
 } from "../constants/presence.js";
 import { getSupabase, isSupabaseConfigured } from "../lib/supabase.js";
-import { useIsMobile } from "./useIsMobile.js";
 
 function createLocalChat(message, x, y) {
   return {
@@ -20,6 +19,18 @@ function createLocalChat(message, x, y) {
     x,
     y,
     expiresAt: Date.now() + CHAT_TTL_MS,
+  };
+}
+
+function createThreadMessage({ id, senderId, name, color, text, createdAt }) {
+  return {
+    id: id || `${senderId}-${createdAt || Date.now()}`,
+    senderId,
+    name,
+    color,
+    text,
+    createdAt: createdAt || Date.now(),
+    type: "user",
   };
 }
 
@@ -52,21 +63,21 @@ function presenceStateToUsers(state, selfId) {
 
 function isChatInput(target) {
   if (!(target instanceof HTMLElement)) return false;
-  return Boolean(target.closest(".mobile-chat-bar__input"));
+  return Boolean(target.closest(".chat-bar__input"));
 }
 
 function isTouchIgnoredTarget(target) {
   if (isEditableTarget(target)) return true;
   if (!(target instanceof HTMLElement)) return false;
-  return Boolean(target.closest(".mobile-chat-bar"));
+  return Boolean(target.closest(".chat-bar-anchor"));
 }
 
-export function usePresence(profile) {
-  const isMobile = useIsMobile();
-  const mode = getPresenceMode(isMobile);
+export function usePresence(profile, gameId, isWide) {
+  const mode = getPresenceMode(isWide);
 
   const [others, setOthers] = useState({});
   const [localChat, setLocalChat] = useState(null);
+  const [messages, setMessages] = useState([]);
   const [draft, setDraft] = useState("");
   const [connected, setConnected] = useState(false);
   const [cursor, setCursor] = useState({ x: 0.5, y: 0.5 });
@@ -77,6 +88,7 @@ export function usePresence(profile) {
   const cursorRef = useRef({ x: 0.5, y: 0.5 });
   const lastSentRef = useRef(0);
   const lastDraftSentRef = useRef(0);
+  const modeRef = useRef(mode);
   const identityRef = useRef({
     id: getPresenceSessionId(profile),
     name: getPresenceName(profile),
@@ -86,27 +98,26 @@ export function usePresence(profile) {
   const sessionId = getPresenceSessionId(profile);
   const displayName = getPresenceName(profile);
   const color = getPresenceColor(profile);
+  const channelName = getPresenceChannel(gameId);
 
   identityRef.current = { id: sessionId, name: displayName, color };
+  modeRef.current = mode;
 
   const getPosition = useCallback(() => cursorRef.current, []);
 
-  const broadcast = useCallback(
-    (event, payload) => {
-      channelRef.current?.send({
-        type: "broadcast",
-        event,
-        payload: {
-          ...payload,
-          id: identityRef.current.id,
-          name: identityRef.current.name,
-          color: identityRef.current.color,
-          mode,
-        },
-      });
-    },
-    [mode],
-  );
+  const broadcast = useCallback((event, payload) => {
+    channelRef.current?.send({
+      type: "broadcast",
+      event,
+      payload: {
+        ...payload,
+        id: identityRef.current.id,
+        name: identityRef.current.name,
+        color: identityRef.current.color,
+        mode: modeRef.current,
+      },
+    });
+  }, []);
 
   const updatePosition = useCallback(
     (clientX, clientY) => {
@@ -138,10 +149,18 @@ export function usePresence(profile) {
   }, [cursor]);
 
   useEffect(() => {
-    if (!isSupabaseConfigured()) return undefined;
+    setMessages([]);
+    setOthers({});
+    setLocalChat(null);
+    setDraft("");
+    draftRef.current = "";
+  }, [gameId, mode]);
+
+  useEffect(() => {
+    if (!isSupabaseConfigured() || !channelName) return undefined;
 
     const supabase = getSupabase();
-    const channel = supabase.channel(PRESENCE_CHANNEL, {
+    const channel = supabase.channel(channelName, {
       config: { presence: { key: sessionId } },
     });
 
@@ -177,6 +196,7 @@ export function usePresence(profile) {
       })
       .on("broadcast", { event: "chat_draft" }, ({ payload }) => {
         if (payload.id === identityRef.current.id) return;
+        if (modeRef.current !== "cursor") return;
         setOthers((current) => ({
           ...current,
           [payload.id]: mergeRemoteUser(current[payload.id], {
@@ -187,6 +207,22 @@ export function usePresence(profile) {
       })
       .on("broadcast", { event: "chat" }, ({ payload }) => {
         if (payload.id === identityRef.current.id) return;
+
+        if (modeRef.current === "thread") {
+          setMessages((current) => [
+            ...current,
+            createThreadMessage({
+              id: payload.messageId,
+              senderId: payload.id,
+              name: payload.name,
+              color: payload.color,
+              text: payload.message,
+              createdAt: payload.createdAt,
+            }),
+          ]);
+          return;
+        }
+
         setOthers((current) => ({
           ...current,
           [payload.id]: mergeRemoteUser(current[payload.id], {
@@ -226,7 +262,7 @@ export function usePresence(profile) {
       channelRef.current = null;
       supabase.removeChannel(channel);
     };
-  }, [color, displayName, mode, sessionId]);
+  }, [channelName, color, displayName, mode, sessionId]);
 
   useEffect(() => {
     if (!connected || !channelRef.current) return;
@@ -242,7 +278,7 @@ export function usePresence(profile) {
   }, [color, connected, displayName, mode, sessionId]);
 
   useEffect(() => {
-    if (!connected || isMobile) return undefined;
+    if (!connected || !isWide) return undefined;
 
     const onMove = (event) => {
       updatePosition(event.clientX, event.clientY);
@@ -250,10 +286,10 @@ export function usePresence(profile) {
 
     window.addEventListener("mousemove", onMove);
     return () => window.removeEventListener("mousemove", onMove);
-  }, [connected, isMobile, updatePosition]);
+  }, [connected, isWide, updatePosition]);
 
   useEffect(() => {
-    if (!connected || !isMobile) return undefined;
+    if (!connected || !isWide) return undefined;
 
     const onTouch = (event) => {
       if (isTouchIgnoredTarget(event.target)) return;
@@ -268,7 +304,7 @@ export function usePresence(profile) {
       window.removeEventListener("touchstart", onTouch);
       window.removeEventListener("touchmove", onTouch);
     };
-  }, [connected, isMobile, updatePosition]);
+  }, [connected, isWide, updatePosition]);
 
   const broadcastDraft = useCallback(
     (message) => {
@@ -290,19 +326,40 @@ export function usePresence(profile) {
       const { x, y } = getPosition();
       setDraft("");
       draftRef.current = "";
+
+      if (modeRef.current === "thread") {
+        const createdAt = Date.now();
+        const messageId = `${sessionId}-${createdAt}`;
+        setMessages((current) => [
+          ...current,
+          createThreadMessage({
+            id: messageId,
+            senderId: sessionId,
+            name: displayName,
+            color,
+            text: trimmed,
+            createdAt,
+          }),
+        ]);
+        broadcast("chat", { message: trimmed, messageId, createdAt });
+        return;
+      }
+
       broadcast("chat_draft", { message: "", x, y });
       setLocalChat(createLocalChat(trimmed, x, y));
       broadcast("chat", { message: trimmed, x, y });
     },
-    [broadcast, getPosition],
+    [broadcast, color, displayName, getPosition, sessionId],
   );
 
-  const setMobileDraft = useCallback(
+  const setThreadDraft = useCallback(
     (value) => {
       const next = value.slice(0, MAX_CHAT_LENGTH);
       setDraft(next);
       draftRef.current = next;
-      broadcastDraft(next);
+      if (modeRef.current === "cursor") {
+        broadcastDraft(next);
+      }
     },
     [broadcastDraft],
   );
@@ -320,7 +377,7 @@ export function usePresence(profile) {
       if (event.key === "Enter") {
         if (!isChatInput(event.target)) {
           event.preventDefault();
-          input.focus();
+          input.focus({ preventScroll: true });
           sendChat(draftRef.current);
         }
         return;
@@ -330,43 +387,36 @@ export function usePresence(profile) {
         event.preventDefault();
         setDraft("");
         draftRef.current = "";
-        const { x, y } = getPosition();
-        broadcast("chat_draft", { message: "", x, y });
+        if (modeRef.current === "cursor") {
+          const { x, y } = getPosition();
+          broadcast("chat_draft", { message: "", x, y });
+        }
         return;
       }
 
       if (isChatInput(event.target)) return;
 
+      event.preventDefault();
       input.focus({ preventScroll: true });
 
       if (event.key === "Backspace") {
-        event.preventDefault();
-        setDraft((current) => {
-          const next = current.slice(0, -1);
-          draftRef.current = next;
-          broadcastDraft(next);
-          return next;
-        });
+        setThreadDraft(draftRef.current.slice(0, -1));
         return;
       }
 
       if (event.key.length !== 1) return;
-      event.preventDefault();
 
-      setDraft((current) => {
-        if (current.length >= MAX_CHAT_LENGTH) return current;
-        const next = current + event.key;
-        draftRef.current = next;
-        broadcastDraft(next);
-        return next;
-      });
+      if (draftRef.current.length >= MAX_CHAT_LENGTH) return;
+      setThreadDraft(draftRef.current + event.key);
     };
 
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [broadcast, broadcastDraft, connected, getPosition, sendChat]);
+  }, [broadcast, connected, getPosition, sendChat, setThreadDraft]);
 
   useEffect(() => {
+    if (mode === "thread") return undefined;
+
     const interval = window.setInterval(() => {
       const now = Date.now();
 
@@ -387,17 +437,18 @@ export function usePresence(profile) {
     }, 200);
 
     return () => clearInterval(interval);
-  }, []);
+  }, [mode]);
 
   return {
     others: Object.values(others),
     localChat,
+    messages,
     draft,
     cursor,
     connected,
-    isMobile,
+    isWide,
     chatInputRef,
-    setMobileDraft,
+    setThreadDraft,
     sendChat,
     self: { id: sessionId, name: displayName, color, mode },
   };

@@ -1,61 +1,84 @@
-const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
+import { DEFAULT_GAME_TIMEZONE } from "../constants/gameSchedule.js";
+
 export const RESET_AFTER_MS = 24 * 60 * 60 * 1000;
 
-const WEEKDAY_MAP = {
-  sun: 0,
-  mon: 1,
-  tue: 2,
-  wed: 3,
-  thu: 4,
-  fri: 5,
-  sat: 6,
-};
+export function getGameSchedule(game) {
+  if (!game || game.weekday == null || !game.startTime) return null;
 
-export function parseWeekdayFromTime(timeStr) {
-  const match = timeStr?.match(/^(Mon|Tue|Wed|Thu|Fri|Sat|Sun)\b/i);
-  if (!match) return null;
-
-  const key = match[1].slice(0, 3).toLowerCase();
-  return WEEKDAY_MAP[key] ?? null;
+  return {
+    weekday: Number(game.weekday),
+    startTime: game.startTime,
+    timezone: game.timezone || DEFAULT_GAME_TIMEZONE,
+  };
 }
 
-export function parseClockFromTime(timeStr) {
-  const match = timeStr?.match(/(\d+):(\d+)\s*(AM|PM)/i);
+export function parseStartTime(value) {
+  if (value == null || value === "") return null;
+
+  const match = String(value).match(/^(\d{1,2}):(\d{2})/);
   if (!match) return null;
 
-  let hour = parseInt(match[1], 10);
-  const minute = parseInt(match[2], 10);
-  const ampm = match[3].toUpperCase();
-
-  if (ampm === "PM" && hour !== 12) hour += 12;
-  if (ampm === "AM" && hour === 12) hour = 0;
+  const hour = Number(match[1]);
+  const minute = Number(match[2]);
+  if (hour > 23 || minute > 59) return null;
 
   return { hour, minute };
 }
 
 /** UTC instant of the pickup instance RSVPs currently count toward. */
-export function getCurrentRsvpCycleStartUtc(startsAt, now = new Date()) {
-  const anchor = Date.parse(startsAt);
-  if (Number.isNaN(anchor)) return null;
+export function getCurrentRsvpCycleStartUtc(game, now = new Date()) {
+  const schedule = getGameSchedule(game);
+  if (!schedule) return null;
 
-  const nowMs = now.getTime();
-  let occurrence = anchor;
+  const clock = parseStartTime(schedule.startTime);
+  if (!clock) return null;
 
-  while (occurrence + RESET_AFTER_MS <= nowMs) {
-    occurrence += WEEK_MS;
+  const todayYmd = formatYmdInTimeZone(now, schedule.timezone);
+  const todayDow = weekdayFromYmd(todayYmd);
+  const daysBack = (todayDow - schedule.weekday + 7) % 7;
+  let candidateYmd = addDaysYmd(todayYmd, -daysBack);
+  let occurrenceIso = zonedTimeToUtcIso(
+    candidateYmd,
+    clock.hour,
+    clock.minute,
+    schedule.timezone,
+  );
+  let occurrenceMs = Date.parse(occurrenceIso);
+
+  if (occurrenceMs > now.getTime()) {
+    candidateYmd = addDaysYmd(candidateYmd, -7);
+    occurrenceIso = zonedTimeToUtcIso(
+      candidateYmd,
+      clock.hour,
+      clock.minute,
+      schedule.timezone,
+    );
+    occurrenceMs = Date.parse(occurrenceIso);
   }
 
-  return new Date(occurrence).toISOString();
+  const nowMs = now.getTime();
+  while (occurrenceMs + RESET_AFTER_MS <= nowMs) {
+    candidateYmd = addDaysYmd(candidateYmd, 7);
+    occurrenceIso = zonedTimeToUtcIso(
+      candidateYmd,
+      clock.hour,
+      clock.minute,
+      schedule.timezone,
+    );
+    occurrenceMs = Date.parse(occurrenceIso);
+  }
+
+  return new Date(occurrenceMs).toISOString();
 }
 
 /** UTC instant when the current pickup occurrence started. */
-export function getOccurrenceStartUtc(startsAt, now = new Date()) {
-  return getCurrentRsvpCycleStartUtc(startsAt, now);
+export function getOccurrenceStartUtc(game, now = new Date()) {
+  return getCurrentRsvpCycleStartUtc(game, now);
 }
 
 /** True from game start until 24h after start (same window as the live pickup). */
-export function isGameLive(startsAt, now = new Date()) {
-  const occurrenceIso = getCurrentRsvpCycleStartUtc(startsAt, now);
+export function isGameLive(game, now = new Date()) {
+  const occurrenceIso = getCurrentRsvpCycleStartUtc(game, now);
   if (!occurrenceIso) return false;
 
   const startMs = Date.parse(occurrenceIso);
@@ -63,8 +86,8 @@ export function isGameLive(startsAt, now = new Date()) {
   return nowMs >= startMs && nowMs < startMs + RESET_AFTER_MS;
 }
 
-export function isRsvpOpen(startsAt, now = new Date()) {
-  return !isGameLive(startsAt, now);
+export function isRsvpOpen(game, now = new Date()) {
+  return !isGameLive(game, now);
 }
 
 export function normalizeCycleAt(value) {
@@ -72,46 +95,13 @@ export function normalizeCycleAt(value) {
   return new Date(value).toISOString();
 }
 
-/**
- * Derive a weekly UTC anchor from a display string like "Wed 6:00 PM".
- * Uses the given IANA timezone for wall-clock interpretation (default Pacific).
- */
-export function deriveWeeklyAnchorUtc(
-  timeStr,
-  { timeZone = "America/Los_Angeles", now = new Date() } = {},
-) {
-  const weekday = parseWeekdayFromTime(timeStr);
-  const clock = parseClockFromTime(timeStr);
-  if (weekday == null || !clock) return null;
-
-  const todayYmd = new Intl.DateTimeFormat("en-CA", {
+function formatYmdInTimeZone(instant, timeZone) {
+  return new Intl.DateTimeFormat("en-CA", {
     timeZone,
     year: "numeric",
     month: "2-digit",
     day: "2-digit",
-  }).format(now);
-
-  const todayDow = weekdayFromYmd(todayYmd);
-  let daysUntil = (weekday - todayDow + 7) % 7;
-
-  const timeParts = new Intl.DateTimeFormat("en-US", {
-    timeZone,
-    hour: "numeric",
-    minute: "numeric",
-    hour12: false,
-  }).formatToParts(now);
-
-  const nowHour = Number(timeParts.find((p) => p.type === "hour")?.value ?? 0);
-  const nowMinute = Number(timeParts.find((p) => p.type === "minute")?.value ?? 0);
-  const nowMinutes = nowHour * 60 + nowMinute;
-  const targetMinutes = clock.hour * 60 + clock.minute;
-
-  if (daysUntil === 0 && nowMinutes >= targetMinutes) {
-    daysUntil = 7;
-  }
-
-  const targetYmd = addDaysYmd(todayYmd, daysUntil);
-  return zonedTimeToUtcIso(targetYmd, clock.hour, clock.minute, timeZone);
+  }).format(instant);
 }
 
 function weekdayFromYmd(ymd) {
@@ -127,7 +117,9 @@ function addDaysYmd(ymd, days) {
 }
 
 function zonedTimeToUtcIso(ymd, hour, minute, timeZone) {
-  const guess = new Date(`${ymd}T${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}:00.000Z`);
+  const guess = new Date(
+    `${ymd}T${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}:00.000Z`,
+  );
   const offsetMinutes = getTimeZoneOffsetMinutes(guess, timeZone);
   return new Date(guess.getTime() - offsetMinutes * 60 * 1000).toISOString();
 }
@@ -141,7 +133,7 @@ function getTimeZoneOffsetMinutes(instant, timeZone) {
     hour12: false,
   }).formatToParts(instant);
 
-  const offsetPart = parts.find((p) => p.type === "timeZoneName")?.value ?? "GMT";
+  const offsetPart = parts.find((part) => part.type === "timeZoneName")?.value ?? "GMT";
   const match = offsetPart.match(/GMT([+-])(\d{1,2})(?::(\d{2}))?/);
   if (!match) return 0;
 

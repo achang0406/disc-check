@@ -174,7 +174,7 @@ export function useAppData(showToast) {
 
   const handleRsvp = async (game, plusOnes, rsvpProfile = profile) => {
     if (!rsvpProfile) return;
-    if (!isRsvpOpen(game.startsAt)) {
+    if (!isRsvpOpen(game)) {
       showToast("RSVP is locked — game has started", "error");
       return;
     }
@@ -208,7 +208,7 @@ export function useAppData(showToast) {
   };
 
   const handleRequestRsvp = (game, plusOnes = 0) => {
-    if (!isRsvpOpen(game.startsAt)) {
+    if (!isRsvpOpen(game)) {
       showToast("RSVP is locked — game has started", "error");
       return;
     }
@@ -223,12 +223,12 @@ export function useAppData(showToast) {
 
   const handleCheckIn = async (game, plusOnes, checkInProfile = profile) => {
     if (!checkInProfile) return;
-    if (!isGameLive(game.startsAt)) {
+    if (!isGameLive(game)) {
       showToast("Check-in opens when the game starts", "error");
       return;
     }
 
-    const cycleAt = getOccurrenceStartUtc(game.startsAt);
+    const cycleAt = getOccurrenceStartUtc(game);
     if (!cycleAt) return;
 
     const current = getStoredJson(STORAGE_KEYS.CHECK_INS) || {};
@@ -261,7 +261,7 @@ export function useAppData(showToast) {
   };
 
   const handleRequestCheckIn = (game, plusOnes = 0) => {
-    if (!isGameLive(game.startsAt)) {
+    if (!isGameLive(game)) {
       showToast("Check-in opens when the game starts", "error");
       return;
     }
@@ -303,7 +303,7 @@ export function useAppData(showToast) {
     if (!profile) return;
 
     const game = gamesMeta.find((item) => item.id === gameId);
-    if (game && !isRsvpOpen(game.startsAt)) {
+    if (game && !isRsvpOpen(game)) {
       showToast("RSVP is locked — game has started", "error");
       return;
     }
@@ -318,19 +318,19 @@ export function useAppData(showToast) {
       gameId,
     );
 
-    if (ok) showToast("RSVP cancelled");
+    if (ok) showToast("Bailed");
   };
 
   const handleCheckOut = async (gameId) => {
     if (!profile) return;
 
     const game = gamesMeta.find((item) => item.id === gameId);
-    if (!game || !isGameLive(game.startsAt)) {
+    if (!game || !isGameLive(game)) {
       showToast("Check-in is closed", "error");
       return;
     }
 
-    const cycleAt = getOccurrenceStartUtc(game.startsAt);
+    const cycleAt = getOccurrenceStartUtc(game);
     if (!cycleAt) return;
 
     const current = getStoredJson(STORAGE_KEYS.CHECK_INS) || {};

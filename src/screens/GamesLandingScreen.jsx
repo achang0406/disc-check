@@ -62,7 +62,7 @@ export default function GamesLandingScreen({
         ) : (
           <div className="game-list">
             {games.map((game, index) => {
-              const live = isGameLive(game.startsAt, now);
+              const live = isGameLive(game, now);
               const count = live ? countPlayers(checkIns, game.id) : countPlayers(rsvps, game.id);
 
               return (

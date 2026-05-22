@@ -1,10 +1,8 @@
 import {
-  deriveWeeklyAnchorUtc,
   getCurrentRsvpCycleStartUtc,
   isGameLive,
   isRsvpOpen,
-  parseClockFromTime,
-  parseWeekdayFromTime,
+  parseStartTime,
 } from "../src/utils/gameSchedule.js";
 import { formatGameTime, getTimeSlot } from "../src/utils/time.js";
 import { parseCityFromAddress } from "../src/utils/location.js";
@@ -14,6 +12,12 @@ function assert(condition, message) {
     throw new Error(message);
   }
 }
+
+const WEDNESDAY_EVENING = {
+  weekday: 3,
+  startTime: "18:00:00",
+  timezone: "America/Los_Angeles",
+};
 
 // Wed May 20 2026 6:00 PM Pacific (PDT) = Thu May 21 01:00 UTC
 const ANCHOR = "2026-05-21T01:00:00.000Z";
@@ -42,30 +46,37 @@ const cases = [
 ];
 
 for (const testCase of cases) {
-  const cycle = getCurrentRsvpCycleStartUtc(ANCHOR, new Date(testCase.now));
+  const cycle = getCurrentRsvpCycleStartUtc(WEDNESDAY_EVENING, new Date(testCase.now));
   assert(
     cycle === testCase.expected,
     `${testCase.label}: expected ${testCase.expected}, got ${cycle}`,
   );
 }
 
-assert(parseWeekdayFromTime("Wed 6:00 PM") === 3, "parse Wed");
-assert(parseClockFromTime("Wed 6:00 PM")?.hour === 18, "parse 6 PM");
+assert(parseStartTime("18:00:00")?.hour === 18, "parse 6 PM");
+assert(parseStartTime("18:00")?.minute === 0, "parse minutes");
 
-const derived = deriveWeeklyAnchorUtc("Wed 6:00 PM", {
-  now: new Date("2026-05-18T19:00:00.000Z"),
-});
-assert(derived === ANCHOR, `derive anchor: expected ${ANCHOR}, got ${derived}`);
-
-assert(formatGameTime(ANCHOR) === "Wed 6:00 PM", `format game time: got ${formatGameTime(ANCHOR)}`);
-assert(getTimeSlot(ANCHOR) === "evening", "Wed 6 PM is evening");
+assert(
+  formatGameTime(WEDNESDAY_EVENING) === "Wed 6:00 PM",
+  `format game time: got ${formatGameTime(WEDNESDAY_EVENING)}`,
+);
+assert(getTimeSlot(WEDNESDAY_EVENING) === "evening", "Wed 6 PM is evening");
 assert(parseCityFromAddress("11100 NE 68th St, Kirkland, WA 98033") === "Kirkland", "parse city");
 
-assert(!isGameLive(ANCHOR, new Date("2026-05-20T19:00:00.000Z")), "before start is not live");
-assert(isGameLive(ANCHOR, new Date("2026-05-21T01:00:00.000Z")), "at start is live");
-assert(isGameLive(ANCHOR, new Date("2026-05-21T09:00:00.000Z")), "during live window");
-assert(!isGameLive(ANCHOR, new Date("2026-05-22T13:00:00.000Z")), "after live window is not live");
-assert(isRsvpOpen(ANCHOR, new Date("2026-05-20T19:00:00.000Z")), "before start RSVP open");
-assert(!isRsvpOpen(ANCHOR, new Date("2026-05-21T01:00:00.000Z")), "at start RSVP closed");
+assert(
+  !isGameLive(WEDNESDAY_EVENING, new Date("2026-05-20T19:00:00.000Z")),
+  "before start is not live",
+);
+assert(isGameLive(WEDNESDAY_EVENING, new Date("2026-05-21T01:00:00.000Z")), "at start is live");
+assert(isGameLive(WEDNESDAY_EVENING, new Date("2026-05-21T09:00:00.000Z")), "during live window");
+assert(
+  !isGameLive(WEDNESDAY_EVENING, new Date("2026-05-22T13:00:00.000Z")),
+  "after live window is not live",
+);
+assert(isRsvpOpen(WEDNESDAY_EVENING, new Date("2026-05-20T19:00:00.000Z")), "before start RSVP open");
+assert(
+  !isRsvpOpen(WEDNESDAY_EVENING, new Date("2026-05-21T01:00:00.000Z")),
+  "at start RSVP closed",
+);
 
-console.log(`All ${cases.length + 12} game schedule checks passed.`);
+console.log(`All ${cases.length + 10} game schedule checks passed.`);

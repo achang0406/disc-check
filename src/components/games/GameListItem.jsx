@@ -1,9 +1,7 @@
 import { Link } from "react-router-dom";
 import Button from "../ui/Button.jsx";
 import MetaRow from "../ui/MetaRow.jsx";
-import LocationDisplay from "./LocationDisplay.jsx";
 import StatusBadge from "./StatusBadge.jsx";
-import { formatGameLocation } from "../../utils/location.js";
 
 export default function GameListItem({
   game,
@@ -15,7 +13,6 @@ export default function GameListItem({
   onEditGame,
 }) {
   const cancelled = game.status === "cancelled";
-  const { display: locationDisplay, tooltip: locationTooltip, city } = formatGameLocation(game);
 
   return (
     <Link
@@ -41,19 +38,11 @@ export default function GameListItem({
           )}
         </div>
         <div className="game-list-item__badges">
-          {!cancelled && (checkedIn || rsvpd) && (
-            <span className="game-card__status-pill">{isLive && checkedIn ? "HERE" : "IN"}</span>
-          )}
           <StatusBadge count={count} target={game.target} cancelled={cancelled} />
         </div>
       </div>
 
-      <p className="meta-row meta-row--location game-list-item__meta">
-        <LocationDisplay display={locationDisplay} tooltip={locationTooltip} />
-        {city ? <span className="meta-row__city game-card__meta-city"> · {city}</span> : null}
-      </p>
-
-      <MetaRow game={game} scheduleClassName="game-list-item__detail" />
+      <MetaRow game={game} className="game-list-item__meta" />
 
       <div className="game-list-item__footer">
         <span className="game-list-item__count">

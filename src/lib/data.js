@@ -10,7 +10,9 @@ function formatGame(row) {
     name: row.name,
     location: row.location,
     address: row.address ?? null,
-    startsAt: row.starts_at ?? null,
+    weekday: row.weekday ?? null,
+    startTime: row.start_time ?? null,
+    timezone: row.timezone ?? null,
     type: row.type,
     target: Number(row.target),
     status: row.status,
@@ -23,9 +25,13 @@ async function ensureGameCycles(supabase, games) {
 
   for (const game of games) {
     if (game.status === "cancelled") continue;
-    if (!game.starts_at) continue;
+    if (game.weekday == null || !game.start_time) continue;
 
-    const currentCycle = getCurrentRsvpCycleStartUtc(game.starts_at);
+    const currentCycle = getCurrentRsvpCycleStartUtc({
+      weekday: game.weekday,
+      startTime: game.start_time,
+      timezone: game.timezone,
+    });
     if (!currentCycle) continue;
 
     const storedCycle = normalizeCycleAt(game.rsvp_cycle_at);
@@ -78,7 +84,9 @@ function toRpcGame(game) {
     name: game.name?.trim(),
     location: game.location?.trim(),
     address: game.address?.trim() || null,
-    starts_at: game.startsAt,
+    weekday: game.weekday,
+    start_time: game.startTime,
+    timezone: game.timezone,
     type: game.type || "goaltimate",
     target: Number(game.target) || 8,
     status: game.status || "open",
@@ -149,7 +157,7 @@ export async function fetchAppData() {
 
   const games = (gamesResult.data || []).map(formatGame);
   const currentCycles = Object.fromEntries(
-    games.map((game) => [game.id, normalizeCycleAt(getCurrentRsvpCycleStartUtc(game.startsAt))]),
+    games.map((game) => [game.id, normalizeCycleAt(getCurrentRsvpCycleStartUtc(game))]),
   );
 
   const activeCheckIns = (checkInsResult.data || []).filter((row) => {

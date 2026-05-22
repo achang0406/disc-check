@@ -6,7 +6,6 @@ export default function ChipList({
   entries,
   profileId,
   emptyLabel,
-  youLabel = "you",
   className = "",
 }) {
   if (entries.length === 0) {
@@ -29,7 +28,6 @@ export default function ChipList({
           >
             {entry.name}
             {entry.plusOnes > 0 && <span className="chip__muted"> +{entry.plusOnes}</span>}
-            {isYou && <span className="chip__you-tag"> · {youLabel}</span>}
           </span>
         );
       })}

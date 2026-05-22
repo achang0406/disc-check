@@ -1,13 +1,20 @@
 import { useEffect, useRef } from "react";
 import { MAX_CHAT_LENGTH } from "../../constants/presence.js";
 
-export default function MobileChatBar({ inputRef, value, onChange, onSend, connected }) {
+export default function ChatBar({ inputRef, value, onChange, onSend, connected, isWide = false }) {
   const anchorRef = useRef(null);
 
   useEffect(() => {
-    const viewport = window.visualViewport;
     const anchor = anchorRef.current;
-    if (!viewport || !anchor) return undefined;
+    if (!anchor) return undefined;
+
+    if (isWide) {
+      anchor.style.transform = "";
+      return undefined;
+    }
+
+    const viewport = window.visualViewport;
+    if (!viewport) return undefined;
 
     const update = () => {
       const keyboardOffset = Math.max(0, window.innerHeight - viewport.height - viewport.offsetTop);
@@ -23,7 +30,7 @@ export default function MobileChatBar({ inputRef, value, onChange, onSend, conne
       viewport.removeEventListener("scroll", update);
       anchor.style.transform = "";
     };
-  }, []);
+  }, [isWide]);
 
   const handleSubmit = (event) => {
     event.preventDefault();
@@ -32,15 +39,21 @@ export default function MobileChatBar({ inputRef, value, onChange, onSend, conne
   };
 
   return (
-    <div ref={anchorRef} className="chat-bar-anchor">
-      <form className="mobile-chat-bar" onSubmit={handleSubmit}>
+    <div ref={anchorRef} className="chat-bar-anchor chat-bar-anchor--detail">
+      <form className="chat-bar" onSubmit={handleSubmit}>
         <input
           ref={inputRef}
-          className="mobile-chat-bar__input"
+          className="chat-bar__input"
           type="text"
           value={value}
           onChange={(event) => onChange(event.target.value)}
-          placeholder={connected ? "Say something…" : "Connecting…"}
+          placeholder={
+            connected
+              ? isWide
+                ? "Type anywhere, or here…"
+                : "Say something…"
+              : "Connecting…"
+          }
           disabled={!connected}
           maxLength={MAX_CHAT_LENGTH}
           enterKeyHint="send"
@@ -48,7 +61,7 @@ export default function MobileChatBar({ inputRef, value, onChange, onSend, conne
         />
         <button
           type="submit"
-          className="mobile-chat-bar__send"
+          className="chat-bar__send"
           disabled={!connected || !value.trim()}
           aria-label="Send message"
         >

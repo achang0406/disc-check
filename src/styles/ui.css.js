@@ -168,10 +168,71 @@ export const uiStyles = `
     font-family: var(--font-mono);
   }
 
+  .field__hint {
+    margin: 0;
+    font-size: var(--font-label);
+    color: var(--text-muted);
+    font-family: var(--font-mono);
+  }
+
   .field-grid {
     display: grid;
     grid-template-columns: 1fr 1fr;
     gap: var(--space-3);
+  }
+
+  .plus-ones {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-3);
+    padding: var(--space-1) 0;
+  }
+
+  .plus-ones--disabled {
+    opacity: 0.45;
+    pointer-events: none;
+  }
+
+  .plus-ones__btn {
+    width: 28px;
+    height: 28px;
+    padding: 0;
+    border: 1px solid var(--card-ring);
+    border-radius: var(--radius-pill);
+    background: transparent;
+    color: var(--text-muted);
+    font-size: 15px;
+    line-height: 1;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: color 0.15s ease, background 0.15s ease, border-color 0.15s ease;
+  }
+
+  .plus-ones__btn:not(:disabled):hover {
+    color: var(--text);
+    background: var(--btn-bg);
+    border-color: var(--btn-border);
+  }
+
+  .plus-ones__btn:disabled {
+    opacity: 0.35;
+    cursor: not-allowed;
+  }
+
+  .plus-ones__readout {
+    min-width: 72px;
+    text-align: center;
+    font-family: var(--font-mono);
+    font-size: var(--font-label);
+    color: var(--text-muted);
+    user-select: none;
+  }
+
+  .plus-ones__label {
+    color: var(--text-subtle);
   }
 
   .meta-row {
@@ -179,6 +240,18 @@ export const uiStyles = `
     font-family: var(--font-mono);
     font-size: var(--font-body);
     line-height: 1.4;
+    display: flex;
+    align-items: center;
+    gap: var(--space-1);
+    min-width: 0;
+  }
+
+  .meta-row__text {
+    min-width: 0;
+    flex: 1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 
   .meta-row--location {
@@ -200,11 +273,11 @@ export const uiStyles = `
     margin: 0;
     color: var(--text-faint);
     font-family: var(--font-mono);
-    font-size: inherit;
+    font-size: var(--font-body);
   }
 
   .chip {
-    font-size: inherit;
+    font-size: var(--font-body);
     line-height: 1.3;
     padding: var(--space-1) 10px;
     border-radius: var(--radius-pill);
@@ -225,15 +298,10 @@ export const uiStyles = `
     color: var(--text-subtle);
   }
 
-  .chip__you-tag {
-    color: var(--chip-you-text);
-  }
-
   .toast {
     position: fixed;
-    top: var(--space-5);
-    left: 50%;
-    transform: translateX(-50%);
+    bottom: var(--space-5);
+    left: var(--space-5);
     z-index: var(--z-toast);
     padding: 10px var(--space-5);
     border-radius: var(--radius-sm);
@@ -269,5 +337,55 @@ export const uiStyles = `
     color: var(--text-muted);
     font-family: var(--font-mono);
     font-size: var(--font-body);
+  }
+
+  .chat-message {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 2px;
+    margin-bottom: var(--space-2);
+    max-width: 85%;
+  }
+
+  .chat-message--self {
+    align-self: flex-end;
+    align-items: flex-end;
+  }
+
+  .chat-message--system {
+    align-self: center;
+    align-items: center;
+    max-width: 100%;
+    margin: var(--space-2) 0;
+  }
+
+  .chat-message--system span {
+    font-size: var(--font-label);
+    color: var(--text-subtle);
+    font-family: var(--font-mono);
+    text-align: center;
+  }
+
+  .chat-message__name {
+    font-size: 10px;
+    color: var(--text-faint);
+    font-family: var(--font-mono);
+    padding: 0 var(--space-1);
+  }
+
+  .chat-message__bubble {
+    padding: var(--space-2) var(--space-3);
+    border-radius: var(--radius-md);
+    background: var(--chip-bg);
+    border: 1px solid var(--chip-border);
+    color: var(--text);
+    font-size: var(--font-body);
+    line-height: 1.4;
+    word-break: break-word;
+  }
+
+  .chat-message--self .chat-message__bubble {
+    color: #0a0a0a;
   }
 `;

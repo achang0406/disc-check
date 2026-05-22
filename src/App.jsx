@@ -1,3 +1,4 @@
+import { useEffect, useMemo, useState } from "react";
 import { BrowserRouter, Route, Routes, useMatch } from "react-router-dom";
 import FieldBackground from "./components/layout/FieldBackground.jsx";
 import LoadingScreen from "./components/layout/LoadingScreen.jsx";
@@ -5,14 +6,15 @@ import Toast from "./components/layout/Toast.jsx";
 import SignUpModal from "./components/auth/SignUpModal.jsx";
 import EditProfileModal from "./components/auth/EditProfileModal.jsx";
 import AdminLoginModal from "./components/auth/AdminLoginModal.jsx";
-import MobileChatBar from "./components/presence/MobileChatBar.jsx";
 import PresenceLayer from "./components/presence/PresenceLayer.jsx";
+import ChatBar from "./components/presence/ChatBar.jsx";
 import GameFormModal from "./components/games/GameFormModal.jsx";
 import DeleteGameModal from "./components/games/DeleteGameModal.jsx";
 import { useAppData } from "./hooks/useAppData.js";
 import { useAdminActions } from "./hooks/useAdmin.js";
 import { useAdminSession } from "./hooks/useAdminSession.js";
 import { usePresence } from "./hooks/usePresence.js";
+import { useBreakpoint } from "./hooks/useBreakpoint.js";
 import { useTheme } from "./hooks/useTheme.js";
 import { useToast } from "./hooks/useToast.js";
 import GamesLandingScreen from "./screens/GamesLandingScreen.jsx";
@@ -23,15 +25,39 @@ function AppRoutes() {
   const { toast, showToast } = useToast();
   const { theme, toggleTheme, cssVars } = useTheme();
   const app = useAppData(showToast);
-  const presence = usePresence(app.profile);
+  const { isWide } = useBreakpoint();
+  const isLanding = useMatch({ path: "/", end: true });
+  const detailMatch = useMatch("/games/:gameId");
+  const gameId = detailMatch?.params?.gameId ?? null;
+  const presence = usePresence(app.profile, gameId, isWide);
+  const rsvpUserIds = useMemo(() => {
+    if (!gameId) return new Set();
+    return new Set((app.rsvps[gameId] || []).map((entry) => entry.userId));
+  }, [gameId, app.rsvps]);
   const adminSession = useAdminSession();
   const admin = useAdminActions({ showToast, refresh: app.refresh });
-  const isLanding = useMatch({ path: "/", end: true });
-  const isDetail = useMatch("/games/:gameId");
+  const [loadingOverlay, setLoadingOverlay] = useState(true);
+  const [loadingExiting, setLoadingExiting] = useState(false);
 
-  if (app.loading) {
-    return <LoadingScreen cssVars={cssVars} />;
-  }
+  useEffect(() => {
+    if (app.loading) {
+      setLoadingOverlay(true);
+      setLoadingExiting(false);
+      return;
+    }
+    if (typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      setLoadingOverlay(false);
+      setLoadingExiting(false);
+      return;
+    }
+    setLoadingExiting(true);
+  }, [app.loading]);
+
+  const handleLoadingTransitionEnd = (event) => {
+    if (event.propertyName !== "opacity" || !loadingExiting) return;
+    setLoadingOverlay(false);
+    setLoadingExiting(false);
+  };
 
   const detailProps = {
     profile: app.profile,
@@ -50,9 +76,13 @@ function AppRoutes() {
     onProfileClick: app.openEditProfile,
     theme,
     onToggleTheme: toggleTheme,
+    presence,
   };
 
   return (
+    <>
+      <style>{globalStyles}</style>
+      {!app.loading && (
     <div
       className="app-shell"
       style={{
@@ -65,18 +95,19 @@ function AppRoutes() {
       }}
     >
       <FieldBackground />
-      {isDetail && (
+      {detailMatch && (
         <PresenceLayer
           others={presence.others}
           self={presence.self}
           cursor={presence.cursor}
           localChat={presence.localChat}
+          draft={presence.draft}
           connected={presence.connected}
-          isMobile={presence.isMobile}
+          isWide={presence.isWide}
+          rsvpUserIds={rsvpUserIds}
         />
       )}
       <Toast toast={toast} />
-      <style>{globalStyles}</style>
 
       {app.showSignUp && (
         <SignUpModal
@@ -153,16 +184,26 @@ function AppRoutes() {
         <Route path="/games/:gameId" element={<GameDetailScreen {...detailProps} />} />
       </Routes>
 
-      {isDetail && (
-        <MobileChatBar
+      {detailMatch && (
+        <ChatBar
+          isWide={presence.isWide}
           inputRef={presence.chatInputRef}
           value={presence.draft}
-          onChange={presence.setMobileDraft}
+          onChange={presence.setThreadDraft}
           onSend={presence.sendChat}
           connected={presence.connected}
         />
       )}
     </div>
+      )}
+      {loadingOverlay && (
+        <LoadingScreen
+          cssVars={cssVars}
+          exiting={loadingExiting}
+          onTransitionEnd={handleLoadingTransitionEnd}
+        />
+      )}
+    </>
   );
 }
 
