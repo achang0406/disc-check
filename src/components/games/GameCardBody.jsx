@@ -13,8 +13,6 @@ export default function GameCardBody({
   checkInCount,
   checkInEntries,
   walkInEntries = [],
-  checkedIn: viewerCheckedIn = false,
-  onSetRsvpBail,
   onAddWalkIn,
   onRemoveWalkIn,
   saving = false,
@@ -47,10 +45,7 @@ export default function GameCardBody({
               entries={rsvpEntries}
               profileId={profile?.id}
               checkedInUserIds={checkedInUserIds}
-              viewerCheckedIn={viewerCheckedIn}
               emptyLabel="no one signed up"
-              disabled={!profile || saving || isEnded}
-              onSetBailed={(entry, bailed) => onSetRsvpBail?.(game.id, entry, bailed)}
             />
           </div>
 

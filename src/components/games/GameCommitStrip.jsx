@@ -19,7 +19,6 @@ export default function GameCommitStrip({
   expanded,
   onToggleExpanded,
   onAddressCopy,
-  onSetRsvpBail,
   onAddWalkIn,
   onRemoveWalkIn,
   saving = false,
@@ -76,10 +75,7 @@ export default function GameCommitStrip({
                     entries={rsvpEntries}
                     profileId={profile?.id}
                     checkedInUserIds={checkedInUserIds}
-                    viewerCheckedIn={checkedIn}
                     emptyLabel="no one signed up"
-                    disabled={!profile || saving || isEnded}
-                    onSetBailed={(entry, bailed) => onSetRsvpBail?.(game.id, entry, bailed)}
                   />
                 </div>
 

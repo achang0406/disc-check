@@ -235,6 +235,7 @@ export const globalStyles = `
     border-top: 1px solid var(--card-ring);
     opacity: 0.88;
     overflow: visible;
+    pointer-events: auto;
   }
 
   .game-card--live .game-detail-players--locked {
@@ -1235,6 +1236,21 @@ export const globalStyles = `
     background: var(--btn-bg);
     border: 1px solid var(--card-ring);
     color: var(--text-subtle);
+    font-family: 'DM Mono', monospace;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+
+  .game-detail-header__live {
+    display: inline-flex;
+    margin-top: 6px;
+    font-size: 10px;
+    padding: 2px 8px;
+    border-radius: 999px;
+    background: var(--status-almost-bg);
+    border: 1px solid var(--status-almost-color);
+    color: var(--status-almost-color);
     font-family: 'DM Mono', monospace;
     font-weight: 600;
     text-transform: uppercase;

@@ -32,7 +32,6 @@ export default function GameDetailScreen({
   onCancel,
   onRequestCheckIn,
   onCheckOut,
-  onSetRsvpBail,
   onAddWalkIn,
   onRemoveWalkIn,
   onProfileClick,
@@ -86,7 +85,6 @@ export default function GameDetailScreen({
     rsvpd,
     checkedIn,
     onAddressCopy: () => showToast?.("Address copied"),
-    onSetRsvpBail,
     onAddWalkIn,
     onRemoveWalkIn,
     saving,
@@ -173,7 +171,6 @@ export default function GameDetailScreen({
       expanded={stripExpanded}
       onToggleExpanded={() => setStripExpanded((value) => !value)}
       onAddressCopy={() => showToast("Address copied")}
-      onSetRsvpBail={onSetRsvpBail}
       onAddWalkIn={onAddWalkIn}
       onRemoveWalkIn={onRemoveWalkIn}
       saving={saving}

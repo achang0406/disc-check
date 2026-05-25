@@ -318,47 +318,6 @@ export const uiStyles = `
     opacity: 0.9;
   }
 
-  .chip-list--locked-rsvp .chip--bailed {
-    text-decoration: line-through;
-    color: var(--text-faint);
-    opacity: 1;
-  }
-
-  .locked-rsvp-chip {
-    display: inline;
-    margin: 0;
-    padding: 0;
-    border: none;
-    background: none;
-    cursor: pointer;
-    font-family: var(--font-mono);
-    font-size: var(--font-body);
-    line-height: 1.3;
-    color: var(--text-subtle);
-    -webkit-tap-highlight-color: transparent;
-  }
-
-  .locked-rsvp-chip__label {
-    white-space: nowrap;
-    transition: color 0.12s ease, text-decoration-color 0.12s ease;
-  }
-
-  .locked-rsvp-chip:not(.locked-rsvp-chip--bailed):hover .locked-rsvp-chip__label {
-    text-decoration: line-through;
-    color: var(--text-faint);
-  }
-
-  .locked-rsvp-chip--bailed .locked-rsvp-chip__label {
-    text-decoration: line-through;
-    color: var(--text-faint);
-  }
-
-  .locked-rsvp-chip:focus-visible {
-    outline: 2px solid var(--chip-you-border);
-    outline-offset: 2px;
-    border-radius: var(--radius-sm);
-  }
-
   .game-walk-ins {
     display: flex;
     flex-direction: column;

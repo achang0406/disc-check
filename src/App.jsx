@@ -87,7 +87,6 @@ function AppRoutes() {
     onCancel: app.handleCancel,
     onRequestCheckIn: app.handleRequestCheckIn,
     onCheckOut: app.handleCheckOut,
-    onSetRsvpBail: app.handleSetRsvpBail,
     onAddWalkIn: app.handleAddWalkIn,
     onRemoveWalkIn: app.handleRemoveWalkIn,
     onProfileClick: app.openEditProfile,

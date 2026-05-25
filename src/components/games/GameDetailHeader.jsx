@@ -82,6 +82,9 @@ export default function GameDetailHeader({
         allowAddressCopy
         onAddressCopy={onAddressCopy}
       />
+      {!cancelled && isLive ? (
+        <span className="game-detail-header__live">Live now</span>
+      ) : null}
       {!cancelled && !isLive && !isEnded ? (
         <GameStartStatus
           game={game}
