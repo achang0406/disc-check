@@ -17,9 +17,49 @@ export const CURSOR_COLORS = [
 ];
 
 export const CHAT_TTL_MS = 3000;
-export const CURSOR_THROTTLE_MS = 50;
+export const CURSOR_THROTTLE_MS = 32;
 export const DRAFT_THROTTLE_MS = 80;
 export const MAX_CHAT_LENGTH = 120;
+export const SPEECH_BUBBLE_WRAP_CH = 22;
+export const SPEECH_BUBBLE_EDGE_PADDING = 16;
+
+const STACK_OFFSET_X = 10;
+const CURSOR_TIP_TO_STACK_Y = 16;
+
+/** Flip speech bubble alignment only when the measured bubble would overflow. */
+export function getBubblePlacement(
+  x,
+  y,
+  { bubbleWidth = 0, bubbleHeight = 0, hasBubble = false, nameWidth = 0 } = {},
+) {
+  if (typeof window === "undefined") {
+    return { flipX: false, flipY: false };
+  }
+
+  const vw = window.innerWidth;
+  const vh = window.innerHeight;
+  const px = x * vw;
+  const py = y * vh;
+
+  const contentWidth = hasBubble
+    ? Math.max(bubbleWidth, nameWidth)
+    : nameWidth;
+
+  const flipX =
+    contentWidth > 0 &&
+    px + STACK_OFFSET_X + contentWidth + SPEECH_BUBBLE_EDGE_PADDING > vw;
+
+  const stackHeight =
+    hasBubble && bubbleHeight > 0
+      ? CURSOR_TIP_TO_STACK_Y + 16 + bubbleHeight + 6
+      : hasBubble
+        ? 120
+        : 24;
+
+  const flipY = py + stackHeight + SPEECH_BUBBLE_EDGE_PADDING > vh;
+
+  return { flipX, flipY };
+}
 
 export function getPresenceMode(isWide) {
   return isWide ? "cursor" : "thread";
