@@ -29,7 +29,7 @@ export default function GameWalkInsSection({
 
   return (
     <div className="game-walk-ins">
-      <p className="game-detail-players__label">Walk-ins (no app)</p>
+      <p className="game-detail-players__label">Walk-ins</p>
 
       {entries.length > 0 && (
         <div className="chip-list game-walk-ins__list">
@@ -61,9 +61,9 @@ export default function GameWalkInsSection({
                 setName(event.target.value);
                 setError("");
               }}
-              placeholder="e.g. Jamie"
+              placeholder="Add a name to include them in the count"
               disabled={disabled}
-              aria-label="Walk-in guest name"
+              aria-label="Walk-in name"
               onKeyDown={(event) => event.key === "Enter" && handleAdd()}
             />
             <Button variant="secondary" disabled={disabled} onClick={handleAdd}>

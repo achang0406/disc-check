@@ -253,13 +253,6 @@ export default function PresenceLayer({
     return () => clearInterval(interval);
   }, []);
 
-  const showHint =
-    isWide &&
-    connected &&
-    !draft.trim() &&
-    isSupabaseConfigured() &&
-    sessionStorage.getItem("disc_wide_chat_hint_dismissed") !== "1";
-
   return (
     <div className="presence-layer presence-layer--wide-only">
       <style>{`
@@ -326,17 +319,6 @@ export default function PresenceLayer({
 
       {!connected && isSupabaseConfigured() && isWide && (
         <div className="presence-connecting">connecting to presence…</div>
-      )}
-
-      {showHint && (
-        <div
-          className="wide-chat-hint"
-          onClick={() => sessionStorage.setItem("disc_wide_chat_hint_dismissed", "1")}
-          style={{ pointerEvents: "auto", cursor: "pointer" }}
-          title="Click to dismiss"
-        >
-          Tap or type anywhere to chat
-        </div>
       )}
 
       {others.map((user) => (

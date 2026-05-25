@@ -1,5 +1,6 @@
 import { getInitials } from "../../utils/format.js";
 import Button from "../ui/Button.jsx";
+import WatchingCluster from "../presence/WatchingCluster.jsx";
 
 export default function AppHeader({
   profile,
@@ -13,6 +14,7 @@ export default function AppHeader({
   onAddGame,
   showAdmin = false,
   leading,
+  watching,
 }) {
   return (
     <header className="app-header">
@@ -33,6 +35,12 @@ export default function AppHeader({
           )}
         </div>
       </div>
+
+      {watching?.length > 0 ? (
+        <div className="app-header__center">
+          <WatchingCluster watchers={watching} />
+        </div>
+      ) : null}
 
       <div className="app-header__actions">
         {showAdmin && adminAvailable && !isAdmin && (

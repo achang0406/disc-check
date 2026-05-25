@@ -1,7 +1,16 @@
 import { useEffect, useRef } from "react";
 import { MAX_CHAT_LENGTH } from "../../constants/presence.js";
+import ChatAlertsLink from "./ChatAlertsLink.jsx";
 
-export default function ChatBar({ inputRef, value, onChange, onSend, connected, isWide = false }) {
+export default function ChatBar({
+  inputRef,
+  value,
+  onChange,
+  onSend,
+  connected,
+  isWide = false,
+  showAlertsToggle = false,
+}) {
   const anchorRef = useRef(null);
 
   useEffect(() => {
@@ -86,7 +95,9 @@ export default function ChatBar({ inputRef, value, onChange, onSend, connected, 
 
   return (
     <div ref={anchorRef} className="chat-bar-anchor chat-bar-anchor--detail">
-      <form className="chat-bar" onSubmit={handleSubmit}>
+      <div className="chat-bar-stack">
+        {showAlertsToggle ? <ChatAlertsLink /> : null}
+        <form className="chat-bar" onSubmit={handleSubmit}>
         <input
           ref={inputRef}
           className="chat-bar__input"
@@ -105,7 +116,8 @@ export default function ChatBar({ inputRef, value, onChange, onSend, connected, 
           enterKeyHint="send"
           autoComplete="off"
         />
-      </form>
+        </form>
+      </div>
     </div>
   );
 }

@@ -986,24 +986,6 @@ export const globalStyles = `
     border-style: dashed !important;
   }
 
-  .wide-chat-hint {
-    position: fixed;
-    bottom: calc(72px + env(safe-area-inset-bottom, 0px));
-    left: 50%;
-    transform: translateX(-50%);
-    z-index: calc(var(--z-presence) + 1);
-    pointer-events: none;
-    font-size: 11px;
-    color: var(--text-muted);
-    font-family: var(--font-mono);
-    background: var(--card-bg);
-    border: 1px solid var(--card-ring);
-    border-radius: var(--radius-pill);
-    padding: 6px 12px;
-    opacity: 0.85;
-    white-space: nowrap;
-  }
-
   .games-screen__main {
     flex: 1;
     min-height: 0;
@@ -1046,10 +1028,19 @@ export const globalStyles = `
   .app-header {
     display: flex;
     align-items: center;
-    justify-content: space-between;
     padding: 16px 16px 0;
     flex-shrink: 0;
-    gap: 12px;
+    gap: 8px;
+    position: relative;
+    z-index: calc(var(--z-presence) + 2);
+  }
+
+  .app-header__center {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    justify-content: center;
+    pointer-events: none;
   }
 
   .app-header__leading {
@@ -1097,6 +1088,74 @@ export const globalStyles = `
     align-items: center;
     gap: 10px;
     flex-shrink: 0;
+    margin-left: auto;
+  }
+
+  .watching-cluster {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    max-width: 100%;
+    padding: 4px 10px;
+    border-radius: var(--radius-pill);
+    background: var(--card-bg);
+    border: 1px solid var(--card-ring);
+    opacity: 0.92;
+    pointer-events: auto;
+    cursor: default;
+  }
+
+  .watching-cluster__dots {
+    display: inline-flex;
+    align-items: center;
+    flex-shrink: 0;
+  }
+
+  .watching-cluster__dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    border: 1.5px solid var(--bg);
+    box-shadow: 0 0 0 1px color-mix(in srgb, var(--text) 12%, transparent);
+    flex-shrink: 0;
+  }
+
+  .watching-cluster__dot + .watching-cluster__dot,
+  .watching-cluster__dot + .watching-cluster__overflow {
+    margin-left: -3px;
+  }
+
+  .watching-cluster__overflow {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 18px;
+    height: 18px;
+    padding: 0 4px;
+    margin-left: -2px;
+    border-radius: 999px;
+    background: var(--toggle-bg);
+    border: 1.5px solid var(--bg);
+    font-size: 9px;
+    font-weight: 600;
+    font-family: var(--font-mono);
+    color: var(--text-subtle);
+    line-height: 1;
+  }
+
+  .watching-cluster__label {
+    font-size: 10px;
+    font-family: var(--font-mono);
+    color: var(--text-subtle);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  @media (max-width: 420px) {
+    .watching-cluster {
+      padding: 4px 8px;
+    }
   }
 
   .app-header__profile {
@@ -1327,6 +1386,10 @@ export const globalStyles = `
   }
 
   @media (max-width: 480px) {
+    .app-header__title {
+      display: none;
+    }
+
     .app-header__profile-name {
       display: none;
     }
@@ -1351,10 +1414,51 @@ export const globalStyles = `
     padding-right: max(var(--chat-bar-inset-x), env(safe-area-inset-right, 0px));
   }
 
+  .chat-bar-stack {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    width: min(100%, var(--max-list));
+    pointer-events: auto;
+  }
+
+  .chat-alerts-link {
+    margin: 0;
+    padding: 0;
+    border: none;
+    background: none;
+    color: var(--text-faint);
+    font-size: 11px;
+    font-family: var(--font-mono);
+    line-height: 1.3;
+    cursor: pointer;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+    text-decoration-color: color-mix(in srgb, var(--text-faint) 55%, transparent);
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .chat-alerts-link:hover:not(:disabled) {
+    color: var(--text-subtle);
+    text-decoration-color: currentColor;
+  }
+
+  .chat-alerts-link:disabled {
+    opacity: 0.7;
+    cursor: wait;
+  }
+
+  .chat-alerts-link--muted {
+    text-decoration: none;
+    cursor: default;
+    pointer-events: none;
+  }
+
   .chat-bar {
     display: flex;
     align-items: center;
-    width: min(100%, var(--max-list));
+    width: 100%;
     pointer-events: auto;
   }
 
@@ -1398,8 +1502,13 @@ export const globalStyles = `
       padding-right: max(var(--space-5), env(safe-area-inset-right, 0px));
     }
 
-    .chat-bar {
+    .chat-bar-stack {
       width: min(var(--chat-bar-width-wide), calc(100vw - 2 * var(--space-5)));
+      align-items: flex-end;
+    }
+
+    .chat-bar {
+      width: 100%;
     }
   }
 

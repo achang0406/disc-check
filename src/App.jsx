@@ -212,6 +212,7 @@ function AppRoutes() {
           onChange={presence.setThreadDraft}
           onSend={presence.sendChat}
           connected={presence.connected}
+          showAlertsToggle
         />
       )}
     </div>

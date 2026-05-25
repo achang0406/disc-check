@@ -1,5 +1,5 @@
 import { Navigate, useNavigate, useParams } from "react-router-dom";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import AppHeader from "../components/layout/AppHeader.jsx";
 import GameCard from "../components/games/GameCard.jsx";
 import GameCommitStrip from "../components/games/GameCommitStrip.jsx";
@@ -8,6 +8,7 @@ import GameDetailHeightShell from "../components/games/GameDetailHeightShell.jsx
 import GameChatThread from "../components/presence/GameChatThread.jsx";
 import Button from "../components/ui/Button.jsx";
 import { useBreakpoint } from "../hooks/useBreakpoint.js";
+import { useChatAlerts } from "../hooks/useChatAlerts.js";
 import { useGameClock } from "../hooks/useGameClock.js";
 import {
   getMsUntilStart,
@@ -16,6 +17,7 @@ import {
   STARTING_SOON_MS,
 } from "../utils/gameSchedule.js";
 import { countHeadcount, countPlayers } from "../utils/format.js";
+import { getPresenceUsers } from "../utils/presenceUsers.js";
 
 export default function GameDetailScreen({
   profile,
@@ -49,28 +51,43 @@ export default function GameDetailScreen({
   const [stripExpanded, setStripExpanded] = useState(false);
   const prevRsvpIdsRef = useRef(null);
 
-  const game = games.find((item) => item.id === gameId);
-  if (!game) {
-    return <Navigate to="/" replace />;
-  }
-
-  const live = isGameLive(game, now);
-  const ended = isGameEnded(game, now);
-  const approachingStart = (() => {
-    const remaining = getMsUntilStart(game, now);
-    return remaining != null && remaining <= STARTING_SOON_MS;
-  })();
+  const game = games.find((item) => item.id === gameId) ?? null;
+  const live = game ? isGameLive(game, now) : false;
+  const ended = game ? isGameEnded(game, now) : false;
+  const approachingStart = game
+    ? (() => {
+        const remaining = getMsUntilStart(game, now);
+        return remaining != null && remaining <= STARTING_SOON_MS;
+      })()
+    : false;
   const showPickupResults = live || ended;
   const showBack = games.length > 1;
-  const rsvpCount = countPlayers(rsvps, game.id);
-  const checkInCount = countHeadcount(checkIns, guests, game.id);
-  const rsvpEntries = rsvps[game.id] || [];
-  const checkInEntries = checkIns[game.id] || [];
-  const walkInEntries = guests[game.id] || [];
-  const rsvpd = isRsvpd(game.id);
-  const checkedIn = isCheckedIn(game.id);
-  const saving = savingGameId === game.id;
+  const rsvpCount = game ? countPlayers(rsvps, game.id) : 0;
+  const checkInCount = game ? countHeadcount(checkIns, guests, game.id) : 0;
+  const rsvpEntries = game ? rsvps[game.id] || [] : [];
+  const checkInEntries = game ? checkIns[game.id] || [] : [];
+  const walkInEntries = game ? guests[game.id] || [] : [];
+  const rsvpd = game ? isRsvpd(game.id) : false;
+  const checkedIn = game ? isCheckedIn(game.id) : false;
+  const saving = game ? savingGameId === game.id : false;
   const activeCount = showPickupResults ? checkInCount : rsvpCount;
+  const watching = useMemo(
+    () =>
+      getPresenceUsers({
+        self: presence?.self,
+        watchingPeers: presence?.watchingPeers,
+        connected: presence?.connected,
+      }),
+    [presence],
+  );
+
+  useChatAlerts({
+    gameId: gameId ?? "",
+    gameName: game?.name ?? "",
+    messages: presence?.messages ?? [],
+    selfId: presence?.self?.id,
+    enabled: Boolean(game && presence?.connected),
+  });
 
   const cardProps = {
     profile,
@@ -91,16 +108,16 @@ export default function GameDetailScreen({
   };
 
   useEffect(() => {
-    if (!live) {
-      setPlusOnes(myRsvps[game.id]?.plusOnes ?? 0);
-    }
-  }, [game.id, live, myRsvps]);
+    if (!game || live) return;
+    setPlusOnes(myRsvps[game.id]?.plusOnes ?? 0);
+  }, [game, game?.id, live, myRsvps]);
 
   useEffect(() => {
-    if (live) {
-      setHerePlusOnes(myCheckIns[game.id]?.plusOnes ?? 0);
+    if (!game || !live) {
+      return;
     }
-  }, [game.id, live, myCheckIns]);
+    setHerePlusOnes(myCheckIns[game.id]?.plusOnes ?? 0);
+  }, [game, game?.id, live, myCheckIns]);
 
   useEffect(() => {
     if (live || !showToast) return;
@@ -124,6 +141,10 @@ export default function GameDetailScreen({
 
     prevRsvpIdsRef.current = currentIds;
   }, [live, profile?.id, rsvpEntries, showToast]);
+
+  if (!game) {
+    return <Navigate to="/" replace />;
+  }
 
   const cancelled = game.status === "cancelled";
   const panelClass = [
@@ -184,6 +205,7 @@ export default function GameDetailScreen({
         theme={theme}
         onToggleTheme={onToggleTheme}
         onProfileClick={onProfileClick}
+        watching={watching}
         leading={
           showBack ? (
             <Button

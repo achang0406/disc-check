@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   CHAT_TTL_MS,
   CURSOR_THROTTLE_MS,
@@ -76,6 +76,7 @@ export function usePresence(profile, gameId, isWide) {
   const mode = getPresenceMode(isWide);
 
   const [others, setOthers] = useState({});
+  const [watchingPeers, setWatchingPeers] = useState({});
   const [localChat, setLocalChat] = useState(null);
   const [messages, setMessages] = useState([]);
   const [draft, setDraft] = useState("");
@@ -89,6 +90,7 @@ export function usePresence(profile, gameId, isWide) {
   const lastSentRef = useRef(0);
   const lastDraftSentRef = useRef(0);
   const modeRef = useRef(mode);
+  const watchingPeersRef = useRef({});
   const identityRef = useRef({
     id: getPresenceSessionId(profile),
     name: getPresenceName(profile),
@@ -151,6 +153,8 @@ export function usePresence(profile, gameId, isWide) {
   useEffect(() => {
     setMessages([]);
     setOthers({});
+    setWatchingPeers({});
+    watchingPeersRef.current = {};
     setLocalChat(null);
     setDraft("");
     draftRef.current = "";
@@ -174,6 +178,9 @@ export function usePresence(profile, gameId, isWide) {
       const selfId = identityRef.current.id;
       const fromPresence = presenceStateToUsers(channel.presenceState(), selfId);
 
+      watchingPeersRef.current = fromPresence;
+      setWatchingPeers(fromPresence);
+
       setOthers((current) => {
         const next = { ...current };
 
@@ -195,6 +202,7 @@ export function usePresence(profile, gameId, isWide) {
       .on("presence", { event: "leave" }, applyPresence)
       .on("broadcast", { event: "cursor" }, ({ payload }) => {
         if (payload.id === identityRef.current.id) return;
+        if (!watchingPeersRef.current[payload.id]) return;
         setOthers((current) => ({
           ...current,
           [payload.id]: mergeRemoteUser(current[payload.id], payload),
@@ -202,6 +210,7 @@ export function usePresence(profile, gameId, isWide) {
       })
       .on("broadcast", { event: "chat_draft" }, ({ payload }) => {
         if (payload.id === identityRef.current.id) return;
+        if (!watchingPeersRef.current[payload.id]) return;
         if (modeRef.current !== "cursor") return;
         setOthers((current) => ({
           ...current,
@@ -213,6 +222,7 @@ export function usePresence(profile, gameId, isWide) {
       })
       .on("broadcast", { event: "chat" }, ({ payload }) => {
         if (payload.id === identityRef.current.id) return;
+        if (!watchingPeersRef.current[payload.id] && modeRef.current === "cursor") return;
 
         const threadMessage = createThreadMessage({
           id: payload.messageId,
@@ -263,9 +273,19 @@ export function usePresence(profile, gameId, isWide) {
 
     channelRef.current = channel;
 
+    const leavePresence = () => {
+      void channel.untrack();
+    };
+
+    window.addEventListener("pagehide", leavePresence);
+
     return () => {
+      window.removeEventListener("pagehide", leavePresence);
       setConnected(false);
+      watchingPeersRef.current = {};
+      setWatchingPeers({});
       channelRef.current = null;
+      leavePresence();
       supabase.removeChannel(channel);
     };
   }, [channelName, color, displayName, mode, sessionId]);
@@ -458,17 +478,36 @@ export function usePresence(profile, gameId, isWide) {
     return () => clearInterval(interval);
   }, [mode]);
 
-  return {
-    others: Object.values(others),
-    localChat,
-    messages,
-    draft,
-    cursor,
-    connected,
-    isWide,
-    chatInputRef,
-    setThreadDraft,
-    sendChat,
-    self: { id: sessionId, name: displayName, color, mode },
-  };
+  return useMemo(
+    () => ({
+      others: Object.values(others),
+      watchingPeers: Object.values(watchingPeers),
+      localChat,
+      messages,
+      draft,
+      cursor,
+      connected,
+      isWide,
+      chatInputRef,
+      setThreadDraft,
+      sendChat,
+      self: { id: sessionId, name: displayName, color, mode },
+    }),
+    [
+      others,
+      watchingPeers,
+      localChat,
+      messages,
+      draft,
+      cursor,
+      connected,
+      isWide,
+      setThreadDraft,
+      sendChat,
+      sessionId,
+      displayName,
+      color,
+      mode,
+    ],
+  );
 }

@@ -118,7 +118,7 @@ export default function EditProfileModal({
             fontFamily: "var(--font-sans)",
           }}
         >
-          preview bubble
+          Who&apos;s got disc?
         </div>
       </Field>
     </ModalShell>
