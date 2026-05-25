@@ -1,14 +1,16 @@
+import EditIcon from "../ui/EditIcon.jsx";
 import { Link } from "react-router-dom";
 import Button from "../ui/Button.jsx";
 import MetaRow from "../ui/MetaRow.jsx";
 import CommitStatusPill from "./CommitStatusPill.jsx";
-import GameStartCountdown from "./GameStartCountdown.jsx";
+import GameStartStatus from "./GameStartStatus.jsx";
 import StatusBadge from "./StatusBadge.jsx";
 
 export default function GameListItem({
   game,
   count,
   isLive,
+  isEnded = false,
   rsvpd,
   checkedIn,
   isAdmin,
@@ -26,7 +28,7 @@ export default function GameListItem({
           <h2 className="game-list-item__title">{game.name}</h2>
           {isAdmin && (
             <Button
-              variant="ghost"
+              variant="icon"
               className="game-card__edit-btn"
               onClick={(event) => {
                 event.preventDefault();
@@ -35,7 +37,7 @@ export default function GameListItem({
               }}
               aria-label={`Edit ${game.name}`}
             >
-              Edit
+              <EditIcon />
             </Button>
           )}
         </div>
@@ -54,13 +56,19 @@ export default function GameListItem({
 
       <div className="game-list-item__footer">
         <span className="game-list-item__count">
-          {isLive ? "here now" : "signed up"} · {count} / {game.target}
+          {isLive ? "here now" : isEnded ? "attended" : "signed up"} · {count} / {game.target}
         </span>
         {isLive ? (
           <span className="game-list-item__live">live now</span>
-        ) : (
-          !cancelled && <GameStartCountdown game={game} className="game-list-item__countdown" />
-        )}
+        ) : isEnded ? (
+          <span className="game-list-item__ended">ended</span>
+        ) : !cancelled ? (
+          <GameStartStatus
+            game={game}
+            className="game-list-item__countdown"
+            pillClassName="game-list-item__starting-soon"
+          />
+        ) : null}
         <span className="game-list-item__cta" aria-hidden="true">
           →
         </span>

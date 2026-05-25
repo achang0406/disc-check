@@ -8,6 +8,7 @@ export default function GameCommitStrip({
   profile,
   game,
   isLive,
+  isEnded = false,
   rsvpd = false,
   checkedIn = false,
   count,
@@ -26,6 +27,8 @@ export default function GameCommitStrip({
   const cancelled = game.status === "cancelled";
   const checkedInUserIds = new Set(checkInEntries.map((entry) => entry.userId));
 
+  const inPickupWindow = isLive || isEnded;
+
   return (
     <section
       className={`game-commit-strip${expanded ? " game-commit-strip--expanded" : ""}`}
@@ -36,6 +39,7 @@ export default function GameCommitStrip({
         count={count}
         cancelled={cancelled}
         isLive={isLive}
+        isEnded={isEnded}
         rsvpd={rsvpd}
         checkedIn={checkedIn}
         collapsible
@@ -48,12 +52,12 @@ export default function GameCommitStrip({
         <ProgressBar
           count={count}
           target={game.target}
-          label={isLive ? "Here now" : "RSVP"}
+          label={isLive ? "Here now" : isEnded ? "Attended" : "RSVP"}
         />
 
         <div className="game-commit-strip__expandable" aria-hidden={!expanded}>
           <div className="game-commit-strip__expandable-inner">
-            {!cancelled && !isLive && (
+            {!cancelled && !inPickupWindow && (
               <GameDetailPlayersSection
                 label="Signed up"
                 entries={rsvpEntries}
@@ -62,7 +66,7 @@ export default function GameCommitStrip({
               />
             )}
 
-            {!cancelled && isLive && (
+            {!cancelled && inPickupWindow && (
               <>
                 <div className="game-detail-players game-detail-players--locked">
                   <p className="game-detail-players__label">
@@ -74,7 +78,7 @@ export default function GameCommitStrip({
                     checkedInUserIds={checkedInUserIds}
                     viewerCheckedIn={checkedIn}
                     emptyLabel="no one signed up"
-                    disabled={!profile || saving}
+                    disabled={!profile || saving || isEnded}
                     onSetBailed={(entry, bailed) => onSetRsvpBail?.(game.id, entry, bailed)}
                   />
                 </div>
@@ -86,13 +90,15 @@ export default function GameCommitStrip({
                   emptyLabel="no one checked in yet"
                 />
 
-                <GameWalkInsSection
-                  entries={walkInEntries}
-                  disabled={!profile || saving}
-                  showInput={expanded}
-                  onAdd={(name) => onAddWalkIn?.(game.id, name)}
-                  onRemove={(guestId) => onRemoveWalkIn?.(game.id, guestId)}
-                />
+                {!isEnded && (
+                  <GameWalkInsSection
+                    entries={walkInEntries}
+                    disabled={!profile || saving}
+                    showInput={expanded}
+                    onAdd={(name) => onAddWalkIn?.(game.id, name)}
+                    onRemove={(guestId) => onRemoveWalkIn?.(game.id, guestId)}
+                  />
+                )}
               </>
             )}
           </div>

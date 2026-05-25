@@ -1,6 +1,6 @@
 import MetaRow from "../ui/MetaRow.jsx";
 import CommitStatusPill from "./CommitStatusPill.jsx";
-import GameStartCountdown from "./GameStartCountdown.jsx";
+import GameStartStatus from "./GameStartStatus.jsx";
 import StatusBadge from "./StatusBadge.jsx";
 
 function HeaderCaret({ expanded }) {
@@ -27,6 +27,7 @@ export default function GameDetailHeader({
   count,
   cancelled,
   isLive = false,
+  isEnded = false,
   rsvpd = false,
   checkedIn = false,
   collapsible = false,
@@ -81,8 +82,15 @@ export default function GameDetailHeader({
         allowAddressCopy
         onAddressCopy={onAddressCopy}
       />
-      {!cancelled && !isLive ? (
-        <GameStartCountdown game={game} className="game-detail-header__countdown" />
+      {!cancelled && !isLive && !isEnded ? (
+        <GameStartStatus
+          game={game}
+          className="game-detail-header__countdown"
+          pillClassName="game-detail-header__starting-soon"
+        />
+      ) : null}
+      {!cancelled && isEnded ? (
+        <span className="game-detail-header__ended">Ended</span>
       ) : null}
     </header>
   );

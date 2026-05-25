@@ -311,15 +311,15 @@ export const globalStyles = `
 
   .game-card__edit-btn {
     flex-shrink: 0;
-    padding: 2px 8px;
-    border-radius: 999px;
+    width: 28px;
+    height: 28px;
+    padding: 0;
+    border-radius: var(--radius-sm);
     background: var(--btn-bg);
     border: 1px solid var(--card-ring);
     color: var(--text-subtle);
-    font-size: 10px;
-    font-family: 'DM Mono', monospace;
     cursor: pointer;
-    line-height: 1.4;
+    line-height: 0;
   }
 
   .game-card__edit-btn:hover {
@@ -654,6 +654,15 @@ export const globalStyles = `
     box-shadow: 0 0 0 1px var(--card-ring-live);
   }
 
+  .game-detail-panel--starting-soon {
+    box-shadow: 0 0 0 1px var(--card-ring-active);
+  }
+
+  .game-detail-panel--ended {
+    box-shadow: 0 0 0 1px var(--card-ring);
+    opacity: 0.92;
+  }
+
   .game-detail-panel--cancelled {
     opacity: 0.45;
   }
@@ -853,19 +862,26 @@ export const globalStyles = `
     margin-top: var(--space-2);
   }
 
+  .game-list-item__starting-soon,
   .game-start-countdown {
     display: inline-flex;
     align-items: center;
     padding: 2px 8px;
     border-radius: var(--radius-pill);
-    background: var(--status-almost-bg);
-    border: 1px solid var(--status-almost-color);
-    color: var(--status-almost-color);
-    font-family: var(--font-mono);
+    background: var(--status-go-bg);
+    border: 1px solid var(--status-go-color);
+    color: var(--status-go-color);
+    font-family: 'DM Mono', monospace;
     font-size: 10px;
     font-weight: 600;
     letter-spacing: 0.06em;
     text-transform: uppercase;
+  }
+
+  .game-start-countdown {
+    background: var(--status-almost-bg);
+    border-color: var(--status-almost-color);
+    color: var(--status-almost-color);
   }
 
   .game-detail-header__row-wrap {
@@ -1206,6 +1222,49 @@ export const globalStyles = `
     background: var(--status-almost-bg);
     border: 1px solid var(--status-almost-color);
     color: var(--status-almost-color);
+    font-family: 'DM Mono', monospace;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+
+  .game-list-item__ended {
+    font-size: 10px;
+    padding: 2px 8px;
+    border-radius: 999px;
+    background: var(--btn-bg);
+    border: 1px solid var(--card-ring);
+    color: var(--text-subtle);
+    font-family: 'DM Mono', monospace;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+
+  .game-detail-header__starting-soon {
+    display: inline-flex;
+    margin-top: 6px;
+    font-size: 10px;
+    padding: 2px 8px;
+    border-radius: 999px;
+    background: var(--status-go-bg);
+    border: 1px solid var(--status-go-color);
+    color: var(--status-go-color);
+    font-family: 'DM Mono', monospace;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+
+  .game-detail-header__ended {
+    display: inline-flex;
+    margin-top: 6px;
+    font-size: 10px;
+    padding: 2px 8px;
+    border-radius: 999px;
+    background: var(--btn-bg);
+    border: 1px solid var(--card-ring);
+    color: var(--text-subtle);
     font-family: 'DM Mono', monospace;
     font-weight: 600;
     text-transform: uppercase;

@@ -487,7 +487,7 @@ export function useAppData(showToast) {
       gameId,
     );
 
-    if (ok) showToast("Bailed");
+    if (ok) showToast("Cancelled");
   };
 
   const handleSetRsvpBail = async (gameId, entry, bailed) => {

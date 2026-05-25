@@ -2,7 +2,9 @@ import {
   compareGamesForLanding,
   getCountdownToStartMs,
   getCurrentRsvpCycleStartUtc,
+  isGameEnded,
   isGameLive,
+  showsStartingSoonLabel,
   isGameStartingSoon,
   isLandingPriorityGame,
   isRsvpOpen,
@@ -72,8 +74,32 @@ assert(
   !isGameLive(WEDNESDAY_EVENING, new Date("2026-05-20T19:00:00.000Z")),
   "before start is not live",
 );
+assert(
+  showsStartingSoonLabel(WEDNESDAY_EVENING, new Date("2026-05-21T00:40:00.000Z")),
+  "20m before start shows starting soon",
+);
+assert(
+  !showsStartingSoonLabel(WEDNESDAY_EVENING, new Date("2026-05-21T00:58:00.000Z")),
+  "2m before start hides starting soon for countdown",
+);
+assert(
+  !showsStartingSoonLabel(WEDNESDAY_EVENING, new Date("2026-05-21T00:15:00.000Z")),
+  "45m before start is not starting soon",
+);
 assert(isGameLive(WEDNESDAY_EVENING, new Date("2026-05-21T01:00:00.000Z")), "at start is live");
-assert(isGameLive(WEDNESDAY_EVENING, new Date("2026-05-21T09:00:00.000Z")), "during live window");
+assert(isGameLive(WEDNESDAY_EVENING, new Date("2026-05-21T03:00:00.000Z")), "2h after start is live");
+assert(
+  !isGameLive(WEDNESDAY_EVENING, new Date("2026-05-21T09:00:00.000Z")),
+  "8h after start is not live",
+);
+assert(
+  isGameEnded(WEDNESDAY_EVENING, new Date("2026-05-21T09:00:00.000Z")),
+  "8h after start is ended",
+);
+assert(
+  !isGameEnded(WEDNESDAY_EVENING, new Date("2026-05-21T03:00:00.000Z")),
+  "during live is not ended",
+);
 assert(
   !isGameLive(WEDNESDAY_EVENING, new Date("2026-05-22T13:00:00.000Z")),
   "after live window is not live",
@@ -83,14 +109,22 @@ assert(
   !isRsvpOpen(WEDNESDAY_EVENING, new Date("2026-05-21T01:00:00.000Z")),
   "at start RSVP closed",
 );
+assert(
+  !isRsvpOpen(WEDNESDAY_EVENING, new Date("2026-05-21T09:00:00.000Z")),
+  "during ended RSVP closed",
+);
 
 assert(
   getCountdownToStartMs(WEDNESDAY_EVENING, new Date("2026-05-21T00:59:30.000Z")) === 30_000,
   "30s before start shows countdown",
 );
 assert(
-  getCountdownToStartMs(WEDNESDAY_EVENING, new Date("2026-05-21T00:58:00.000Z")) == null,
-  "2m before start hides countdown",
+  getCountdownToStartMs(WEDNESDAY_EVENING, new Date("2026-05-21T00:57:00.000Z")) === 180_000,
+  "3m before start shows countdown",
+);
+assert(
+  getCountdownToStartMs(WEDNESDAY_EVENING, new Date("2026-05-21T00:56:00.000Z")) == null,
+  "4m before start hides countdown",
 );
 assert(
   getCountdownToStartMs(WEDNESDAY_EVENING, new Date("2026-05-21T01:00:00.000Z")) == null,
@@ -135,7 +169,7 @@ const sortedLive = sortGamesForLanding(
     { id: "late-live", weekday: 3, startTime: "18:00:00", timezone: "America/Los_Angeles" },
     { id: "early-live", weekday: 3, startTime: "16:00:00", timezone: "America/Los_Angeles" },
   ],
-  new Date("2026-05-21T02:00:00.000Z"),
+  new Date("2026-05-21T01:30:00.000Z"),
 );
 assert(sortedLive[0].id === "early-live", "earlier live start wins when both are live");
 
@@ -152,4 +186,4 @@ assert(
   "compareGamesForLanding matches upcoming order",
 );
 
-console.log(`All ${cases.length + 21} game schedule checks passed.`);
+console.log(`All ${cases.length + 29} game schedule checks passed.`);

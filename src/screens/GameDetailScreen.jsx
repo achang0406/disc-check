@@ -9,7 +9,12 @@ import GameChatThread from "../components/presence/GameChatThread.jsx";
 import Button from "../components/ui/Button.jsx";
 import { useBreakpoint } from "../hooks/useBreakpoint.js";
 import { useGameClock } from "../hooks/useGameClock.js";
-import { isGameLive } from "../utils/gameSchedule.js";
+import {
+  getMsUntilStart,
+  isGameEnded,
+  isGameLive,
+  STARTING_SOON_MS,
+} from "../utils/gameSchedule.js";
 import { countHeadcount, countPlayers } from "../utils/format.js";
 
 export default function GameDetailScreen({
@@ -51,6 +56,12 @@ export default function GameDetailScreen({
   }
 
   const live = isGameLive(game, now);
+  const ended = isGameEnded(game, now);
+  const approachingStart = (() => {
+    const remaining = getMsUntilStart(game, now);
+    return remaining != null && remaining <= STARTING_SOON_MS;
+  })();
+  const showPickupResults = live || ended;
   const showBack = games.length > 1;
   const rsvpCount = countPlayers(rsvps, game.id);
   const checkInCount = countHeadcount(checkIns, guests, game.id);
@@ -60,12 +71,13 @@ export default function GameDetailScreen({
   const rsvpd = isRsvpd(game.id);
   const checkedIn = isCheckedIn(game.id);
   const saving = savingGameId === game.id;
-  const activeCount = live ? checkInCount : rsvpCount;
+  const activeCount = showPickupResults ? checkInCount : rsvpCount;
 
   const cardProps = {
     profile,
     game,
     isLive: live,
+    isEnded: ended,
     rsvpCount,
     rsvpEntries,
     checkInCount,
@@ -120,6 +132,8 @@ export default function GameDetailScreen({
     "game-detail-panel",
     "surface",
     live ? "game-detail-panel--live" : "",
+    approachingStart ? "game-detail-panel--starting-soon" : "",
+    ended ? "game-detail-panel--ended" : "",
     !live && rsvpd && !cancelled ? "game-detail-panel--rsvpd" : "",
     live && checkedIn && !cancelled ? "game-detail-panel--here" : "",
     cancelled ? "game-detail-panel--cancelled" : "",
@@ -148,6 +162,7 @@ export default function GameDetailScreen({
       profile={profile}
       game={game}
       isLive={live}
+      isEnded={ended}
       rsvpd={rsvpd}
       checkedIn={checkedIn}
       count={activeCount}
@@ -198,7 +213,7 @@ export default function GameDetailScreen({
               }
               compact={commitStrip}
             />
-            <GameDetailActions {...actionProps} />
+            <GameDetailActions {...actionProps} isEnded={ended} />
           </div>
           {!isWide && (
             <div className="game-detail-layout__thread-wrap">

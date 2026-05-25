@@ -1,8 +1,10 @@
 import { DEFAULT_GAME_TIMEZONE } from "../constants/gameSchedule.js";
 
 export const RESET_AFTER_MS = 24 * 60 * 60 * 1000;
+export const GAME_LIVE_MS = 3 * 60 * 60 * 1000;
 export const LANDING_PRIORITY_BEFORE_MS = 3 * 60 * 60 * 1000;
-export const GAME_START_COUNTDOWN_MS = 60 * 1000;
+export const STARTING_SOON_MS = 30 * 60 * 1000;
+export const GAME_START_COUNTDOWN_MS = 3 * 60 * 1000;
 
 export function getGameSchedule(game) {
   if (!game || game.weekday == null || !game.startTime) return null;
@@ -78,18 +80,36 @@ export function getOccurrenceStartUtc(game, now = new Date()) {
   return getCurrentRsvpCycleStartUtc(game, now);
 }
 
-/** True from game start until 24h after start (same window as the live pickup). */
-export function isGameLive(game, now = new Date()) {
-  const occurrenceIso = getCurrentRsvpCycleStartUtc(game, now);
-  if (!occurrenceIso) return false;
+/** True from 30m before start until the final countdown window (3m). */
+export function showsStartingSoonLabel(game, now = new Date()) {
+  if (!game || game.status === "cancelled") return false;
 
-  const startMs = Date.parse(occurrenceIso);
+  const remaining = getMsUntilStart(game, now);
+  if (remaining == null) return false;
+
+  return remaining > GAME_START_COUNTDOWN_MS && remaining <= STARTING_SOON_MS;
+}
+
+/** True from game start until 3h after start (active pickup window). */
+export function isGameLive(game, now = new Date()) {
+  const startMs = getOccurrenceStartMs(game, now);
+  if (!Number.isFinite(startMs)) return false;
+
   const nowMs = now.getTime();
-  return nowMs >= startMs && nowMs < startMs + RESET_AFTER_MS;
+  return nowMs >= startMs && nowMs < startMs + GAME_LIVE_MS;
+}
+
+/** True from 3h after start until the 24h cycle reset (pickup over, same week). */
+export function isGameEnded(game, now = new Date()) {
+  const startMs = getOccurrenceStartMs(game, now);
+  if (!Number.isFinite(startMs)) return false;
+
+  const nowMs = now.getTime();
+  return nowMs >= startMs + GAME_LIVE_MS && nowMs < startMs + RESET_AFTER_MS;
 }
 
 export function isRsvpOpen(game, now = new Date()) {
-  return !isGameLive(game, now);
+  return !isGameLive(game, now) && !isGameEnded(game, now);
 }
 
 /** True when live or within 3 hours of the current occurrence start. */
@@ -98,7 +118,7 @@ export function isLandingPriorityGame(game, now = new Date()) {
   if (!Number.isFinite(startMs)) return false;
 
   const nowMs = now.getTime();
-  if (nowMs >= startMs && nowMs < startMs + RESET_AFTER_MS) return true;
+  if (nowMs >= startMs && nowMs < startMs + GAME_LIVE_MS) return true;
 
   return nowMs < startMs && startMs - nowMs <= LANDING_PRIORITY_BEFORE_MS;
 }
@@ -108,15 +128,20 @@ export function getOccurrenceStartMs(game, now = new Date()) {
   return occurrenceIso ? Date.parse(occurrenceIso) : Number.POSITIVE_INFINITY;
 }
 
-/** Milliseconds until start when inside the final minute before game time; otherwise null. */
-export function getCountdownToStartMs(game, now = new Date()) {
-  if (!game || game.status === "cancelled") return null;
-
+export function getMsUntilStart(game, now = new Date()) {
   const startMs = getOccurrenceStartMs(game, now);
   if (!Number.isFinite(startMs)) return null;
 
   const remaining = startMs - now.getTime();
-  if (remaining <= 0 || remaining > GAME_START_COUNTDOWN_MS) return null;
+  return remaining > 0 ? remaining : null;
+}
+
+/** Milliseconds until start when inside the final 3 minutes; otherwise null. */
+export function getCountdownToStartMs(game, now = new Date()) {
+  if (!game || game.status === "cancelled") return null;
+
+  const remaining = getMsUntilStart(game, now);
+  if (remaining == null || remaining > GAME_START_COUNTDOWN_MS) return null;
 
   return remaining;
 }

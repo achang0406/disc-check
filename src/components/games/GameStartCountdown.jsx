@@ -1,12 +1,15 @@
 import { useGameClock } from "../../hooks/useGameClock.js";
 import { getCountdownToStartMs } from "../../utils/gameSchedule.js";
 
-function formatCountdown(seconds) {
-  return `0:${String(seconds).padStart(2, "0")}`;
+function formatCountdown(totalSeconds) {
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  return `${minutes}:${String(seconds).padStart(2, "0")}`;
 }
 
-export default function GameStartCountdown({ game, className = "" }) {
-  const now = useGameClock(250);
+export default function GameStartCountdown({ game, className = "", now: nowProp }) {
+  const tickNow = useGameClock(250);
+  const now = nowProp ?? tickNow;
   const remainingMs = getCountdownToStartMs(game, now);
 
   if (remainingMs == null) return null;

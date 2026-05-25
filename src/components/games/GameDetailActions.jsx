@@ -15,9 +15,12 @@ export default function GameDetailActions({
   onCancel,
   onRequestCheckIn,
   onCheckOut,
+  isEnded = false,
 }) {
   const cancelled = game.status === "cancelled";
   const committed = isLive ? checkedIn : rsvpd;
+
+  if (isEnded) return null;
 
   const ctaLabel = cancelled
     ? "Cancelled"
@@ -30,7 +33,7 @@ export default function GameDetailActions({
       : saving
         ? "..."
         : rsvpd
-          ? "Bail"
+          ? "Cancel"
           : "Count me in";
 
   const ctaVariant = committed && !cancelled ? "secondary" : "primary";

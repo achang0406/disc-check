@@ -160,6 +160,28 @@ BEGIN
     RETURN FALSE;
   END IF;
 
+  RETURN p_now >= occurrence AND p_now < occurrence + INTERVAL '3 hours';
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION is_rsvp_locked(
+  p_weekday SMALLINT,
+  p_start_time TIME,
+  p_timezone TEXT,
+  p_now TIMESTAMPTZ DEFAULT NOW()
+)
+RETURNS BOOLEAN
+LANGUAGE plpgsql
+STABLE
+AS $$
+DECLARE
+  occurrence TIMESTAMPTZ;
+BEGIN
+  occurrence := get_current_occurrence_start(p_weekday, p_start_time, p_timezone, p_now);
+  IF occurrence IS NULL THEN
+    RETURN FALSE;
+  END IF;
+
   RETURN p_now >= occurrence AND p_now < occurrence + INTERVAL '24 hours';
 END;
 $$;
@@ -208,8 +230,9 @@ BEGIN
   FROM games
   WHERE id = v_game_id;
 
-  IF is_game_live(v_weekday, v_start_time, v_timezone) THEN
-    IF TG_OP = 'UPDATE'
+  IF is_rsvp_locked(v_weekday, v_start_time, v_timezone) THEN
+    IF is_game_live(v_weekday, v_start_time, v_timezone)
+       AND TG_OP = 'UPDATE'
        AND NEW.game_id IS NOT DISTINCT FROM OLD.game_id
        AND NEW.user_id IS NOT DISTINCT FROM OLD.user_id
        AND NEW.name IS NOT DISTINCT FROM OLD.name

@@ -4,7 +4,7 @@ import AppHeader from "../components/layout/AppHeader.jsx";
 import GameListItem from "../components/games/GameListItem.jsx";
 import EmptyState from "../components/ui/EmptyState.jsx";
 import { useGameClock } from "../hooks/useGameClock.js";
-import { isGameLive, sortGamesForLanding } from "../utils/gameSchedule.js";
+import { isGameEnded, isGameLive, sortGamesForLanding } from "../utils/gameSchedule.js";
 import { countHeadcount, countPlayers } from "../utils/format.js";
 
 export default function GamesLandingScreen({
@@ -65,7 +65,8 @@ export default function GamesLandingScreen({
           <div className="game-list">
             {sortedGames.map((game, index) => {
               const live = isGameLive(game, now);
-              const count = live
+              const ended = isGameEnded(game, now);
+              const count = live || ended
                 ? countHeadcount(checkIns, guests, game.id)
                 : countPlayers(rsvps, game.id);
 
@@ -75,6 +76,7 @@ export default function GamesLandingScreen({
                     game={game}
                     count={count}
                     isLive={live}
+                    isEnded={ended}
                     rsvpd={isRsvpd(game.id)}
                     checkedIn={isCheckedIn(game.id)}
                     isAdmin={isAdmin}

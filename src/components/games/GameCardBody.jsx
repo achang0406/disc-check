@@ -7,6 +7,7 @@ export default function GameCardBody({
   profile,
   game,
   isLive,
+  isEnded = false,
   rsvpCount,
   rsvpEntries,
   checkInCount,
@@ -20,9 +21,11 @@ export default function GameCardBody({
 }) {
   const checkedInUserIds = new Set(checkInEntries.map((entry) => entry.userId));
 
+  const inPickupWindow = isLive || isEnded;
+
   return (
     <div className="game-card__phase-stack">
-      <section className={`game-card__phase game-card__phase--rsvp${isLive ? " game-card__phase--exit" : ""}`}>
+      <section className={`game-card__phase game-card__phase--rsvp${inPickupWindow ? " game-card__phase--exit" : ""}`}>
         <div className="game-detail-body">
           <ProgressBar count={rsvpCount} target={game.target} label="RSVP" />
           <GameDetailPlayersSection
@@ -34,7 +37,7 @@ export default function GameCardBody({
         </div>
       </section>
 
-      <section className={`game-card__phase game-card__phase--live${isLive ? " game-card__phase--active" : ""}`}>
+      <section className={`game-card__phase game-card__phase--live${inPickupWindow ? " game-card__phase--active" : ""}`}>
         <div className="game-detail-body">
           <div className="game-detail-players game-detail-players--locked">
             <p className="game-detail-players__label">
@@ -46,12 +49,12 @@ export default function GameCardBody({
               checkedInUserIds={checkedInUserIds}
               viewerCheckedIn={viewerCheckedIn}
               emptyLabel="no one signed up"
-              disabled={!profile || saving}
+              disabled={!profile || saving || isEnded}
               onSetBailed={(entry, bailed) => onSetRsvpBail?.(game.id, entry, bailed)}
             />
           </div>
 
-          <ProgressBar count={checkInCount} target={game.target} label="Here now" />
+          <ProgressBar count={checkInCount} target={game.target} label={isEnded ? "Attended" : "Here now"} />
           <GameDetailPlayersSection
             label="Who's here"
             entries={checkInEntries}
@@ -59,12 +62,14 @@ export default function GameCardBody({
             emptyLabel="no one checked in yet"
           />
 
-          <GameWalkInsSection
-            entries={walkInEntries}
-            disabled={!profile || saving}
-            onAdd={(name) => onAddWalkIn?.(game.id, name)}
-            onRemove={(guestId) => onRemoveWalkIn?.(game.id, guestId)}
-          />
+          {!isEnded && (
+            <GameWalkInsSection
+              entries={walkInEntries}
+              disabled={!profile || saving}
+              onAdd={(name) => onAddWalkIn?.(game.id, name)}
+              onRemove={(guestId) => onRemoveWalkIn?.(game.id, guestId)}
+            />
+          )}
         </div>
       </section>
     </div>
