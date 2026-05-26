@@ -44,13 +44,13 @@ export default function GameDetailScreen({
 }) {
   const { gameId } = useParams();
   const navigate = useNavigate();
-  const { isWide } = useBreakpoint();
+  const { isWide, isCompact } = useBreakpoint();
   const now = useGameClock();
   const [plusOnes, setPlusOnes] = useState(0);
   const [bringingKit, setBringingKit] = useState(false);
   const [herePlusOnes, setHerePlusOnes] = useState(0);
   const [hereBringingKit, setHereBringingKit] = useState(false);
-  const [stripExpanded, setStripExpanded] = useState(false);
+  const [stripExpanded, setStripExpanded] = useState(true);
   const prevRsvpIdsRef = useRef(null);
 
   const game = games.find((item) => item.id === gameId) ?? null;
@@ -108,6 +108,16 @@ export default function GameDetailScreen({
     onRemoveWalkIn,
     saving,
   };
+
+  useEffect(() => {
+    setStripExpanded(true);
+  }, [gameId]);
+
+  useEffect(() => {
+    if (isCompact) {
+      setStripExpanded(true);
+    }
+  }, [isCompact]);
 
   useEffect(() => {
     if (!game || live) return;
