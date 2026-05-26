@@ -23,15 +23,21 @@ export default function LockedRsvpChipList({
         const isYou = entry.userId === profileId;
         const isHere = checkedIn.has(entry.userId);
         const label = displayPlayerName(entry, profileId);
+        const kitSuffix = entry.bringingKit ? " · kit" : "";
 
         return (
           <span
             key={entry.userId}
             className={cx("chip", isYou && "chip--you")}
-            title={isHere ? `${label} is checked in` : undefined}
+            title={isHere ? `${label} is checked in${kitSuffix}` : undefined}
           >
             {label}
             {entry.plusOnes > 0 && <span className="chip__muted"> +{entry.plusOnes}</span>}
+            {entry.bringingKit && (
+              <span className="chip__muted chip__kit" title="Bringing game kit">
+                · kit
+              </span>
+            )}
           </span>
         );
       })}

@@ -35,6 +35,7 @@ function groupRsvps(rows) {
       userId: row.user_id,
       name: row.name,
       plusOnes: Number(row.plus_ones) || 0,
+      bringingKit: row.bringing_kit === true,
     });
   }
   return map;
@@ -48,6 +49,7 @@ function groupCheckIns(rows) {
       userId: row.user_id,
       name: row.name,
       plusOnes: Number(row.plus_ones) || 0,
+      bringingKit: row.bringing_kit === true,
     });
   }
   return map;
@@ -227,7 +229,10 @@ export async function deleteGame(secret, id) {
   return fetchAppData();
 }
 
+let appDataFetchSeq = 0;
+
 export async function fetchAppData() {
+  const fetchSeq = ++appDataFetchSeq;
   const supabase = getSupabase();
 
   const gamesResult = await supabase
@@ -240,14 +245,14 @@ export async function fetchAppData() {
 
   const rsvpsResult = await supabase
     .from("rsvps")
-    .select("game_id, user_id, name, plus_ones")
+    .select("game_id, user_id, name, plus_ones, bringing_kit")
     .order("created_at", { ascending: true });
 
   if (rsvpsResult.error) throw rsvpsResult.error;
 
   const checkInsResult = await supabase
     .from("game_check_ins")
-    .select("game_id, user_id, name, plus_ones, cycle_at")
+    .select("game_id, user_id, name, plus_ones, bringing_kit, cycle_at")
     .order("created_at", { ascending: true });
 
   if (checkInsResult.error) throw checkInsResult.error;
@@ -285,10 +290,11 @@ export async function fetchAppData() {
     rsvps: groupRsvps(activeRsvpRows),
     checkIns: groupCheckIns(activeCheckIns),
     guests: groupGuests(activeGuests),
+    fetchSeq,
   };
 }
 
-export async function upsertRsvp({ gameId, userId, name, plusOnes }) {
+export async function upsertRsvp({ gameId, userId, name, plusOnes, bringingKit = false }) {
   const supabase = getSupabase();
   const { error } = await supabase.from("rsvps").upsert(
     {
@@ -296,6 +302,7 @@ export async function upsertRsvp({ gameId, userId, name, plusOnes }) {
       user_id: userId,
       name,
       plus_ones: Number(plusOnes) || 0,
+      bringing_kit: Boolean(bringingKit),
     },
     { onConflict: "game_id,user_id" },
   );
@@ -324,7 +331,14 @@ export async function renameRsvps({ userId, name }) {
   return fetchAppData();
 }
 
-export async function upsertCheckIn({ gameId, userId, name, plusOnes, cycleAt }) {
+export async function upsertCheckIn({
+  gameId,
+  userId,
+  name,
+  plusOnes,
+  cycleAt,
+  bringingKit = false,
+}) {
   const supabase = getSupabase();
   const { error } = await supabase.from("game_check_ins").upsert(
     {
@@ -332,6 +346,7 @@ export async function upsertCheckIn({ gameId, userId, name, plusOnes, cycleAt })
       user_id: userId,
       name,
       plus_ones: Number(plusOnes) || 0,
+      bringing_kit: Boolean(bringingKit),
       cycle_at: cycleAt,
     },
     { onConflict: "game_id,user_id,cycle_at" },
@@ -366,6 +381,7 @@ export async function handleRsvpAction(body) {
       userId: body.userId,
       name: body.name,
       plusOnes: body.plusOnes,
+      bringingKit: body.bringingKit,
     });
   }
 
@@ -399,6 +415,7 @@ export async function handleCheckInAction(body) {
       name: body.name,
       plusOnes: body.plusOnes,
       cycleAt: body.cycleAt,
+      bringingKit: body.bringingKit,
     });
   }
 
@@ -460,21 +477,31 @@ export async function handleGuestAction(body) {
   throw new Error("Unknown guest action");
 }
 
+function createDebouncedAppDataRefresh(onChange, delayMs = 250) {
+  let timer = null;
+
+  return () => {
+    clearTimeout(timer);
+    timer = setTimeout(() => {
+      fetchAppData()
+        .then((data) => onChange(data))
+        .catch(() => {
+          // Keep last known data if a refresh fails temporarily.
+        });
+    }, delayMs);
+  };
+}
+
 export function subscribeToGames(onChange) {
   const supabase = getSupabase();
+  const refresh = createDebouncedAppDataRefresh(onChange);
 
   const channel = supabase
     .channel("disc-check:games")
     .on(
       "postgres_changes",
       { event: "*", schema: "public", table: "games" },
-      () => {
-        fetchAppData()
-          .then((data) => onChange(data))
-          .catch(() => {
-            // Keep last known data if a refresh fails temporarily.
-          });
-      },
+      refresh,
     )
     .subscribe();
 
@@ -485,19 +512,14 @@ export function subscribeToGames(onChange) {
 
 export function subscribeToRsvps(onChange) {
   const supabase = getSupabase();
+  const refresh = createDebouncedAppDataRefresh(onChange);
 
   const channel = supabase
     .channel("disc-check:rsvps")
     .on(
       "postgres_changes",
       { event: "*", schema: "public", table: "rsvps" },
-      () => {
-        fetchAppData()
-          .then((data) => onChange(data))
-          .catch(() => {
-            // Keep last known data if a refresh fails temporarily.
-          });
-      },
+      refresh,
     )
     .subscribe();
 
@@ -508,19 +530,14 @@ export function subscribeToRsvps(onChange) {
 
 export function subscribeToCheckIns(onChange) {
   const supabase = getSupabase();
+  const refresh = createDebouncedAppDataRefresh(onChange);
 
   const channel = supabase
     .channel("disc-check:check-ins")
     .on(
       "postgres_changes",
       { event: "*", schema: "public", table: "game_check_ins" },
-      () => {
-        fetchAppData()
-          .then((data) => onChange(data))
-          .catch(() => {
-            // Keep last known data if a refresh fails temporarily.
-          });
-      },
+      refresh,
     )
     .subscribe();
 
@@ -531,19 +548,14 @@ export function subscribeToCheckIns(onChange) {
 
 export function subscribeToGuests(onChange) {
   const supabase = getSupabase();
+  const refresh = createDebouncedAppDataRefresh(onChange);
 
   const channel = supabase
     .channel("disc-check:guests")
     .on(
       "postgres_changes",
       { event: "*", schema: "public", table: "game_guests" },
-      () => {
-        fetchAppData()
-          .then((data) => onChange(data))
-          .catch(() => {
-            // Keep last known data if a refresh fails temporarily.
-          });
-      },
+      refresh,
     )
     .subscribe();
 

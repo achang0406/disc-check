@@ -3,6 +3,10 @@ export function displayPlayerName(entry, profileId) {
   return entry.name;
 }
 
+export function formatKitSuffix(entry) {
+  return entry.bringingKit ? " · kit" : "";
+}
+
 export function getInitials(name) {
   return name
     .split(" ")

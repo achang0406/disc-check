@@ -94,6 +94,13 @@ function applyData(
   }
 }
 
+function shouldApplyServerData(data, latestFetchSeqRef) {
+  if (!data?.fetchSeq) return true;
+  if (data.fetchSeq < latestFetchSeqRef.current) return false;
+  latestFetchSeqRef.current = data.fetchSeq;
+  return true;
+}
+
 export function useAppData(showToast) {
   const [profile, setProfile] = useState(null);
   const [gamesMeta, setGamesMeta] = useState([]);
@@ -111,6 +118,12 @@ export function useAppData(showToast) {
 
   const useSupabaseRef = useRef(isSupabaseConfigured());
   const profileRef = useRef(null);
+  const latestFetchSeqRef = useRef(0);
+
+  const applyServerData = useCallback((data) => {
+    if (!shouldApplyServerData(data, latestFetchSeqRef)) return;
+    applyData(data, setGamesMeta, setRsvps, setCheckIns, setGuests);
+  }, []);
 
   useEffect(() => {
     profileRef.current = profile;
@@ -135,7 +148,7 @@ export function useAppData(showToast) {
 
         const data = await fetchAppData();
         if (cancelled) return;
-        applyData(data, setGamesMeta, setRsvps, setCheckIns, setGuests);
+        applyServerData(data);
       } catch {
         if (!cancelled) {
           showToast("Couldn't load games — try again", "error");
@@ -155,7 +168,7 @@ export function useAppData(showToast) {
     if (!useSupabaseRef.current) return undefined;
 
     return subscribeToRsvps((data) => {
-      applyData(data, setGamesMeta, setRsvps, setCheckIns, setGuests);
+      applyServerData(data);
       const local = profileRef.current;
       if (!local?.id) return;
       syncProfileFromServer(local).then((merged) => {
@@ -174,7 +187,7 @@ export function useAppData(showToast) {
     if (!useSupabaseRef.current) return undefined;
 
     return subscribeToCheckIns((data) => {
-      applyData(data, setGamesMeta, setRsvps, setCheckIns, setGuests);
+      applyServerData(data);
       const local = profileRef.current;
       if (!local?.id) return;
       syncProfileFromServer(local).then((merged) => {
@@ -193,7 +206,7 @@ export function useAppData(showToast) {
     if (!useSupabaseRef.current) return undefined;
 
     return subscribeToGuests((data) => {
-      applyData(data, setGamesMeta, setRsvps, setCheckIns, setGuests);
+      applyServerData(data);
     });
   }, []);
 
@@ -223,16 +236,16 @@ export function useAppData(showToast) {
     if (!useSupabaseRef.current) return undefined;
 
     return subscribeToGames((data) => {
-      applyData(data, setGamesMeta, setRsvps, setCheckIns, setGuests);
+      applyServerData(data);
     });
   }, []);
 
   const refresh = useCallback(async () => {
     if (!useSupabaseRef.current) return;
     const data = await fetchAppData();
-    applyData(data, setGamesMeta, setRsvps, setCheckIns, setGuests);
+    applyServerData(data);
     return data;
-  }, []);
+  }, [applyServerData]);
 
   useEffect(() => {
     setMyRsvps(deriveMyRsvps(rsvps, profile?.id));
@@ -250,7 +263,7 @@ export function useAppData(showToast) {
     try {
       if (useSupabaseRef.current) {
         const data = await handleRsvpAction(payload);
-        applyData(data, setGamesMeta, setRsvps, setCheckIns, setGuests);
+        applyServerData(data);
       }
       return true;
     } catch {
@@ -266,7 +279,7 @@ export function useAppData(showToast) {
     try {
       if (useSupabaseRef.current) {
         const data = await handleCheckInAction(payload);
-        applyData(data, setGamesMeta, setRsvps, setCheckIns, setGuests);
+        applyServerData(data);
       }
       return true;
     } catch {
@@ -277,16 +290,22 @@ export function useAppData(showToast) {
     }
   };
 
-  const handleRsvp = async (game, plusOnes, rsvpProfile = profile) => {
+  const handleRsvp = async (game, plusOnes, rsvpProfile = profile, bringingKit = false) => {
     if (!rsvpProfile) return;
     if (!isRsvpOpen(game)) {
       showToast("RSVP is locked — game has started", "error");
       return;
     }
 
-    const current = getStoredJson(STORAGE_KEYS.RSVPS) || {};
+    const previous = getStoredJson(STORAGE_KEYS.RSVPS) || {};
+    const current = { ...previous };
     const entries = (current[game.id] || []).filter((entry) => entry.userId !== rsvpProfile.id);
-    entries.push({ userId: rsvpProfile.id, name: rsvpProfile.name, plusOnes });
+    entries.push({
+      userId: rsvpProfile.id,
+      name: rsvpProfile.name,
+      plusOnes,
+      bringingKit,
+    });
     current[game.id] = entries;
     localStorage.setItem(STORAGE_KEYS.RSVPS, JSON.stringify(current));
     setRsvps({ ...current });
@@ -298,35 +317,41 @@ export function useAppData(showToast) {
         userId: rsvpProfile.id,
         name: rsvpProfile.name,
         plusOnes,
+        bringingKit,
       },
       game.id,
     );
 
-    if (!ok) return;
+    if (!ok) {
+      setRsvps(previous);
+      localStorage.setItem(STORAGE_KEYS.RSVPS, JSON.stringify(previous));
+      return;
+    }
 
+    const kitText = bringingKit ? " · bringing kit" : "";
     showToast(
-      `You're in!${plusOnes > 0 ? ` +${plusOnes} plus one${plusOnes !== 1 ? "s" : ""}` : ""}`,
+      `You're in!${plusOnes > 0 ? ` +${plusOnes} plus one${plusOnes !== 1 ? "s" : ""}` : ""}${kitText}`,
     );
     setPendingRsvp(null);
     setPendingCheckIn(null);
     setShowSignUp(false);
   };
 
-  const handleRequestRsvp = (game, plusOnes = 0) => {
+  const handleRequestRsvp = (game, plusOnes = 0, bringingKit = false) => {
     if (!isRsvpOpen(game)) {
       showToast("RSVP is locked — game has started", "error");
       return;
     }
     if (profile) {
-      handleRsvp(game, plusOnes, profile);
+      handleRsvp(game, plusOnes, profile, bringingKit);
       return;
     }
     setPendingCheckIn(null);
-    setPendingRsvp({ game, plusOnes });
+    setPendingRsvp({ game, plusOnes, bringingKit });
     setShowSignUp(true);
   };
 
-  const handleCheckIn = async (game, plusOnes, checkInProfile = profile) => {
+  const handleCheckIn = async (game, plusOnes, checkInProfile = profile, bringingKit = false) => {
     if (!checkInProfile) return;
     if (!isGameLive(game)) {
       showToast("Check-in opens when the game starts", "error");
@@ -336,9 +361,15 @@ export function useAppData(showToast) {
     const cycleAt = getOccurrenceStartUtc(game);
     if (!cycleAt) return;
 
-    const current = getStoredJson(STORAGE_KEYS.CHECK_INS) || {};
+    const previous = getStoredJson(STORAGE_KEYS.CHECK_INS) || {};
+    const current = { ...previous };
     const entries = (current[game.id] || []).filter((entry) => entry.userId !== checkInProfile.id);
-    entries.push({ userId: checkInProfile.id, name: checkInProfile.name, plusOnes });
+    entries.push({
+      userId: checkInProfile.id,
+      name: checkInProfile.name,
+      plusOnes,
+      bringingKit,
+    });
     current[game.id] = entries;
     localStorage.setItem(STORAGE_KEYS.CHECK_INS, JSON.stringify(current));
     setCheckIns({ ...current });
@@ -350,32 +381,38 @@ export function useAppData(showToast) {
         userId: checkInProfile.id,
         name: checkInProfile.name,
         plusOnes,
+        bringingKit,
         cycleAt,
       },
       game.id,
     );
 
-    if (!ok) return;
+    if (!ok) {
+      setCheckIns(previous);
+      localStorage.setItem(STORAGE_KEYS.CHECK_INS, JSON.stringify(previous));
+      return;
+    }
 
+    const kitText = bringingKit ? " · has kit" : "";
     showToast(
-      `You're here!${plusOnes > 0 ? ` +${plusOnes} guest${plusOnes !== 1 ? "s" : ""}` : ""}`,
+      `You're here!${plusOnes > 0 ? ` +${plusOnes} guest${plusOnes !== 1 ? "s" : ""}` : ""}${kitText}`,
     );
     setPendingCheckIn(null);
     setPendingRsvp(null);
     setShowSignUp(false);
   };
 
-  const handleRequestCheckIn = (game, plusOnes = 0) => {
+  const handleRequestCheckIn = (game, plusOnes = 0, bringingKit = false) => {
     if (!isGameLive(game)) {
       showToast("Check-in opens when the game starts", "error");
       return;
     }
     if (profile) {
-      handleCheckIn(game, plusOnes, profile);
+      handleCheckIn(game, plusOnes, profile, bringingKit);
       return;
     }
     setPendingRsvp(null);
-    setPendingCheckIn({ game, plusOnes });
+    setPendingCheckIn({ game, plusOnes, bringingKit });
     setShowSignUp(true);
   };
 
@@ -443,9 +480,14 @@ export function useAppData(showToast) {
       }
 
       if (pendingRsvp) {
-        await handleRsvp(pendingRsvp.game, pendingRsvp.plusOnes, nextProfile);
+        await handleRsvp(pendingRsvp.game, pendingRsvp.plusOnes, nextProfile, pendingRsvp.bringingKit);
       } else if (pendingCheckIn) {
-        await handleCheckIn(pendingCheckIn.game, pendingCheckIn.plusOnes, nextProfile);
+        await handleCheckIn(
+          pendingCheckIn.game,
+          pendingCheckIn.plusOnes,
+          nextProfile,
+          pendingCheckIn.bringingKit,
+        );
       } else {
         setShowSignUp(false);
         setSavingGameId(null);
@@ -486,7 +528,7 @@ export function useAppData(showToast) {
     try {
       if (useSupabaseRef.current) {
         const data = await handleGuestAction(payload);
-        applyData(data, setGamesMeta, setRsvps, setCheckIns, setGuests);
+        applyServerData(data);
       }
       return true;
     } catch {
@@ -648,7 +690,7 @@ export function useAppData(showToast) {
           userId: profile.id,
           name: trimmedName,
         });
-        applyData(data, setGamesMeta, setRsvps, setCheckIns, setGuests);
+        applyServerData(data);
       }
 
       setShowEditProfile(false);

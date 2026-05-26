@@ -22,6 +22,7 @@ CREATE TABLE IF NOT EXISTS rsvps (
   user_id TEXT NOT NULL,
   name TEXT NOT NULL,
   plus_ones INTEGER NOT NULL DEFAULT 0,
+  bringing_kit BOOLEAN NOT NULL DEFAULT false,
   bailed BOOLEAN NOT NULL DEFAULT false,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   UNIQUE (game_id, user_id)
@@ -35,6 +36,7 @@ CREATE TABLE IF NOT EXISTS game_check_ins (
   user_id TEXT NOT NULL,
   name TEXT NOT NULL,
   plus_ones INTEGER NOT NULL DEFAULT 0,
+  bringing_kit BOOLEAN NOT NULL DEFAULT false,
   cycle_at TIMESTAMPTZ NOT NULL,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   UNIQUE (game_id, user_id, cycle_at)
@@ -552,6 +554,8 @@ DECLARE
   v_type TEXT;
   v_target INTEGER;
   v_status TEXT;
+  v_cycle TIMESTAMPTZ;
+  v_is_update BOOLEAN;
 BEGIN
   PERFORM verify_admin_secret(p_secret);
 
@@ -589,8 +593,10 @@ BEGIN
   v_target := COALESCE((p_game->>'target')::integer, 8);
   v_status := COALESCE(NULLIF(trim(p_game->>'status'), ''), 'open');
   v_address := NULLIF(trim(COALESCE(p_game->>'address', '')), '');
+  v_cycle := get_current_occurrence_start(v_weekday, v_start_time, v_timezone);
+  v_is_update := EXISTS (SELECT 1 FROM games WHERE id = v_id);
 
-  IF EXISTS (SELECT 1 FROM games WHERE id = v_id) THEN
+  IF v_is_update THEN
     UPDATE games
     SET
       name = v_name,
@@ -603,6 +609,8 @@ BEGIN
       target = v_target,
       status = v_status
     WHERE id = v_id;
+
+    PERFORM reset_game_rsvp_cycle(v_id, v_cycle);
   ELSE
     INSERT INTO games (
       id, name, location, address, weekday, start_time, timezone, type, target, status, rsvp_cycle_at
@@ -617,7 +625,7 @@ BEGIN
       v_type,
       v_target,
       v_status,
-      get_current_occurrence_start(v_weekday, v_start_time, v_timezone)
+      v_cycle
     );
   END IF;
 END;

@@ -1,5 +1,5 @@
 import Button from "../ui/Button.jsx";
-import PlusOnesInput from "./PlusOnesInput.jsx";
+import CommitExtras from "./CommitExtras.jsx";
 
 export default function GameDetailActions({
   game,
@@ -9,8 +9,12 @@ export default function GameDetailActions({
   saving,
   plusOnes,
   onPlusOnesChange,
+  bringingKit,
+  onBringingKitChange,
   herePlusOnes,
   onHerePlusOnesChange,
+  hereBringingKit,
+  onHereBringingKitChange,
   onRequestRsvp,
   onCancel,
   onRequestCheckIn,
@@ -48,14 +52,14 @@ export default function GameDetailActions({
         onCheckOut(game.id);
         return;
       }
-      onRequestCheckIn(game, herePlusOnes);
+      onRequestCheckIn(game, herePlusOnes, hereBringingKit);
       return;
     }
     if (rsvpd) {
       onCancel(game.id);
       return;
     }
-    onRequestRsvp(game, plusOnes);
+    onRequestRsvp(game, plusOnes, bringingKit);
   };
 
   if (cancelled) return null;
@@ -63,10 +67,13 @@ export default function GameDetailActions({
   return (
     <div className="game-detail-panel__actions">
       {!committed && (
-        <PlusOnesInput
-          value={isLive ? herePlusOnes : plusOnes}
-          onChange={isLive ? onHerePlusOnesChange : onPlusOnesChange}
-          label={isLive ? "with you" : "guests"}
+        <CommitExtras
+          plusOnes={isLive ? herePlusOnes : plusOnes}
+          onPlusOnesChange={isLive ? onHerePlusOnesChange : onPlusOnesChange}
+          bringingKit={isLive ? hereBringingKit : bringingKit}
+          onBringingKitChange={isLive ? onHereBringingKitChange : onBringingKitChange}
+          guestsLabel={isLive ? "with you" : "guests"}
+          kitLabel={isLive ? "Has kit" : "Bringing kit"}
           disabled={saving}
         />
       )}

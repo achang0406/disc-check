@@ -47,7 +47,9 @@ export default function GameDetailScreen({
   const { isWide } = useBreakpoint();
   const now = useGameClock();
   const [plusOnes, setPlusOnes] = useState(0);
+  const [bringingKit, setBringingKit] = useState(false);
   const [herePlusOnes, setHerePlusOnes] = useState(0);
+  const [hereBringingKit, setHereBringingKit] = useState(false);
   const [stripExpanded, setStripExpanded] = useState(false);
   const prevRsvpIdsRef = useRef(null);
 
@@ -110,6 +112,7 @@ export default function GameDetailScreen({
   useEffect(() => {
     if (!game || live) return;
     setPlusOnes(myRsvps[game.id]?.plusOnes ?? 0);
+    setBringingKit(myRsvps[game.id]?.bringingKit ?? false);
   }, [game, game?.id, live, myRsvps]);
 
   useEffect(() => {
@@ -117,6 +120,7 @@ export default function GameDetailScreen({
       return;
     }
     setHerePlusOnes(myCheckIns[game.id]?.plusOnes ?? 0);
+    setHereBringingKit(myCheckIns[game.id]?.bringingKit ?? false);
   }, [game, game?.id, live, myCheckIns]);
 
   useEffect(() => {
@@ -168,8 +172,12 @@ export default function GameDetailScreen({
     saving,
     plusOnes,
     onPlusOnesChange: setPlusOnes,
+    bringingKit,
+    onBringingKitChange: setBringingKit,
     herePlusOnes,
     onHerePlusOnesChange: setHerePlusOnes,
+    hereBringingKit,
+    onHereBringingKitChange: setHereBringingKit,
     onRequestRsvp,
     onCancel,
     onRequestCheckIn,

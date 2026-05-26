@@ -5,7 +5,10 @@ export function deriveMyRsvps(rsvps, profileId) {
   for (const [gameId, entries] of Object.entries(rsvps)) {
     const entry = entries.find((item) => item.userId === profileId);
     if (entry) {
-      mine[gameId] = { plusOnes: entry.plusOnes || 0 };
+      mine[gameId] = {
+        plusOnes: entry.plusOnes || 0,
+        bringingKit: Boolean(entry.bringingKit),
+      };
     }
   }
   return mine;
@@ -18,7 +21,10 @@ export function deriveMyCheckIns(checkIns, profileId) {
   for (const [gameId, entries] of Object.entries(checkIns)) {
     const entry = entries.find((item) => item.userId === profileId);
     if (entry) {
-      mine[gameId] = { plusOnes: entry.plusOnes || 0 };
+      mine[gameId] = {
+        plusOnes: entry.plusOnes || 0,
+        bringingKit: Boolean(entry.bringingKit),
+      };
     }
   }
   return mine;
