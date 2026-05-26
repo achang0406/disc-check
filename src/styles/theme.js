@@ -573,7 +573,33 @@ export const globalStyles = `
   }
 
   .games-screen--detail {
-    height: 100%;
+    min-height: max(var(--min-viewport-height), 100dvh);
+    height: auto;
+    overflow: visible;
+  }
+
+  html:has(.games-screen--detail) {
+    min-height: max(var(--min-viewport-height), 100dvh);
+    overflow-y: auto;
+    overflow-x: hidden;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  html:has(.games-screen--detail) body,
+  html:has(.games-screen--detail) #root,
+  html:has(.games-screen--detail) .app-shell {
+    min-height: max(var(--min-viewport-height), 100dvh);
+    height: auto;
+    overflow: visible;
+  }
+
+  .games-screen--detail .games-screen__main--detail {
+    overflow: visible;
+    flex: 1 0 auto;
+  }
+
+  .games-screen--detail .game-detail-layout--responsive {
+    flex: 0 1 auto;
   }
 
   .game-detail-layout {
@@ -1376,6 +1402,16 @@ export const globalStyles = `
     width: 100%;
     flex: 1;
     min-height: 0;
+  }
+
+  @media (min-width: 768px) {
+    .game-detail {
+      min-height: var(--min-game-card-height-wide);
+    }
+
+    .game-detail .game-card {
+      min-height: var(--min-game-card-height-wide);
+    }
   }
 
   @container game-detail (max-width: 380px) {

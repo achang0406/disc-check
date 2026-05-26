@@ -1,4 +1,5 @@
 import { getSupabase, isSupabaseConfigured } from "./supabase.js";
+import { normalizePhone } from "../utils/phone.js";
 import {
   getCurrentRsvpCycleStartUtc,
   normalizeCycleAt,
@@ -172,6 +173,44 @@ export async function upsertProfile(profile) {
   if (error) throw error;
 
   return formatProfileFromRpc(data);
+}
+
+export async function deleteProfile(id) {
+  if (!isSupabaseConfigured() || !id) return;
+
+  const supabase = getSupabase();
+  const { error } = await supabase.from("profiles").delete().eq("id", id);
+  if (error) throw error;
+}
+
+/** Persist profile to Supabase only when a phone is linked; remove row when phone is cleared. */
+export async function syncProfileToServer(profile, { previousPhone } = {}) {
+  const phone = profile.phone ?? null;
+
+  if (!isSupabaseConfigured()) {
+    return {
+      id: profile.id,
+      name: profile.name,
+      phone,
+      bubbleColor: profile.bubbleColor ?? null,
+    };
+  }
+
+  if (phone) {
+    return upsertProfile({ ...profile, phone });
+  }
+
+  const hadPhone = normalizePhone(previousPhone);
+  if (hadPhone && profile.id) {
+    await deleteProfile(profile.id);
+  }
+
+  return {
+    id: profile.id,
+    name: profile.name,
+    phone: null,
+    bubbleColor: profile.bubbleColor ?? null,
+  };
 }
 
 export async function createGame(secret, payload) {

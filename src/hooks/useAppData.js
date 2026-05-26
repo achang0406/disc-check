@@ -12,11 +12,11 @@ import {
   subscribeToGames,
   subscribeToGuests,
   subscribeToRsvps,
-  upsertProfile,
+  syncProfileToServer,
 } from "../lib/data.js";
 import { deriveMyCheckIns, deriveMyRsvps } from "../utils/games.js";
-import { getOccurrenceStartUtc, isGameLive, isRsvpOpen } from "../utils/gameSchedule.js";
 import { normalizePhone } from "../utils/phone.js";
+import { getOccurrenceStartUtc, isGameLive, isRsvpOpen } from "../utils/gameSchedule.js";
 import { colorForId, getPresenceSessionId } from "../constants/presence.js";
 
 function getStoredJson(key) {
@@ -425,8 +425,8 @@ export function useAppData(showToast) {
           phone: normalizedPhone,
         };
 
-        if (useSupabaseRef.current) {
-          nextProfile = await upsertProfile(nextProfile);
+        if (useSupabaseRef.current && normalizedPhone) {
+          nextProfile = await syncProfileToServer(nextProfile);
           nextProfile.bubbleColor = nextProfile.bubbleColor || bubbleColor;
         }
       }
@@ -609,7 +609,9 @@ export function useAppData(showToast) {
       };
 
       if (useSupabaseRef.current) {
-        nextProfile = await upsertProfile(nextProfile);
+        nextProfile = await syncProfileToServer(nextProfile, {
+          previousPhone: profile.phone,
+        });
         nextProfile.bubbleColor = nextProfile.bubbleColor || bubbleColor;
       }
 

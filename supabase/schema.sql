@@ -87,6 +87,7 @@ CREATE POLICY "guests_public_delete" ON game_guests FOR DELETE USING (true);
 CREATE POLICY "profiles_public_read" ON profiles FOR SELECT USING (true);
 CREATE POLICY "profiles_public_insert" ON profiles FOR INSERT WITH CHECK (true);
 CREATE POLICY "profiles_public_update" ON profiles FOR UPDATE USING (true);
+CREATE POLICY "profiles_public_delete" ON profiles FOR DELETE USING (true);
 
 ALTER TABLE rsvps REPLICA IDENTITY FULL;
 ALTER TABLE games REPLICA IDENTITY FULL;
@@ -441,11 +442,13 @@ BEGIN
     RAISE EXCEPTION 'profile name is required';
   END IF;
 
-  IF v_phone IS NOT NULL THEN
-    SELECT id INTO existing_id FROM profiles WHERE phone = v_phone AND id <> v_id;
-    IF existing_id IS NOT NULL THEN
-      RAISE EXCEPTION 'phone already linked to another profile';
-    END IF;
+  IF v_phone IS NULL THEN
+    RAISE EXCEPTION 'phone is required to save profile';
+  END IF;
+
+  SELECT id INTO existing_id FROM profiles WHERE phone = v_phone AND id <> v_id;
+  IF existing_id IS NOT NULL THEN
+    RAISE EXCEPTION 'phone already linked to another profile';
   END IF;
 
   INSERT INTO profiles (id, name, phone, bubble_color, updated_at)
