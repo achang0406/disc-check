@@ -148,8 +148,8 @@ function AppRoutes() {
       {isLanding && admin.showLogin && (
         <AdminLoginModal
           saving={false}
-          onSubmit={(passcode) => {
-            const ok = adminSession.login(passcode);
+          onSubmit={async (passcode) => {
+            const ok = await adminSession.login(passcode);
             if (ok) admin.setShowLogin(false);
             return ok;
           }}

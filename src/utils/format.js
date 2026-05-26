@@ -1,3 +1,8 @@
+export function displayPlayerName(entry, profileId) {
+  if (profileId && entry.userId === profileId) return "You";
+  return entry.name;
+}
+
 export function getInitials(name) {
   return name
     .split(" ")

@@ -7,13 +7,13 @@ export default function AdminLoginModal({ saving, onSubmit, onClose }) {
   const [passcode, setPasscode] = useState("");
   const [error, setError] = useState("");
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!passcode.trim()) {
       setError("Enter the admin passcode");
       return;
     }
     setError("");
-    const ok = onSubmit(passcode.trim());
+    const ok = await onSubmit(passcode.trim());
     if (!ok) {
       setError("Incorrect passcode");
     }

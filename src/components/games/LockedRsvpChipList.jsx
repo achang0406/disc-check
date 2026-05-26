@@ -1,3 +1,5 @@
+import { displayPlayerName } from "../../utils/format.js";
+
 function cx(...parts) {
   return parts.filter(Boolean).join(" ");
 }
@@ -20,14 +22,15 @@ export default function LockedRsvpChipList({
       {entries.map((entry) => {
         const isYou = entry.userId === profileId;
         const isHere = checkedIn.has(entry.userId);
+        const label = displayPlayerName(entry, profileId);
 
         return (
           <span
             key={entry.userId}
             className={cx("chip", isYou && "chip--you")}
-            title={isHere ? `${entry.name} is checked in` : undefined}
+            title={isHere ? `${label} is checked in` : undefined}
           >
-            {entry.name}
+            {label}
             {entry.plusOnes > 0 && <span className="chip__muted"> +{entry.plusOnes}</span>}
           </span>
         );

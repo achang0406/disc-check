@@ -4,6 +4,7 @@ import {
   getDisplayCycleStartUtc,
   isGameCycleStale,
   normalizeCycleAt,
+  parseStartTime,
 } from "../utils/gameSchedule.js";
 
 function formatGame(row) {
@@ -64,14 +65,23 @@ function groupGuests(rows) {
   return map;
 }
 
+function formatStartTimeForRpc(value) {
+  const clock = parseStartTime(value);
+  if (!clock) return null;
+
+  return `${String(clock.hour).padStart(2, "0")}:${String(clock.minute).padStart(2, "0")}:00`;
+}
+
 function toRpcGame(game) {
+  const startTime = game.startTime ?? game.start_time;
+
   return {
     id: game.id,
     name: game.name?.trim(),
     location: game.location?.trim(),
     address: game.address?.trim() || null,
-    weekday: game.weekday,
-    start_time: game.startTime,
+    weekday: game.weekday == null ? null : Number(game.weekday),
+    start_time: formatStartTimeForRpc(startTime),
     timezone: game.timezone,
     type: game.type || "goaltimate",
     target: Number(game.target) || 8,

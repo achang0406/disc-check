@@ -47,8 +47,12 @@ export function useAdminActions({ showToast, refresh }) {
         }
         await refresh();
         setModal(null);
-      } catch {
-        showToast("Couldn't save game — try again", "error");
+      } catch (error) {
+        const message =
+          error?.message === "invalid admin passcode"
+            ? "Admin passcode out of sync — sign in again"
+            : "Couldn't save game — try again";
+        showToast(message, "error");
       } finally {
         setSaving(false);
       }
