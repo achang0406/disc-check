@@ -1,0 +1,62 @@
+---
+description: Texture, depth, and surface principles from "The Principles of Beautiful Web Design" (Beaird, 2010)
+alwaysApply: true
+---
+
+# Texture
+
+Not every site has to be beautiful, but every site *can* be. Texture is what separates a generic two-column layout from one with character. Build it from five primitives: **point, line, shape, depth, and pattern.**
+
+## Line
+
+- Diagonal lines = energy and movement. Horizontal lines = calm. 90-degree lines = sharp/mechanical. Hand-drawn curves = friendly.
+- Vary line **thickness and quality** to add personality — don't make every border a flat 1px gray.
+- Use lines as continuance: align elements so their left edges form invisible vertical lines guiding the eye down the page.
+
+## Shape
+
+- The web is fundamentally rectangular. Soften that fact intentionally:
+  - **Rounded corners** (`border-radius`) make blocks feel organic. Keep the radius consistent across a design (e.g., 4px / 8px / 16px tokens).
+  - Subtle **rotation** (`transform: rotate(...)`) breaks horizontal/vertical monotony — use sparingly.
+  - Organic/freeform shapes (SVG, clip-path) convey informality and spontaneity.
+- Test the **economy of line**: trace just the major blocks of your layout. If the wireframe still guides the eye, the underlying composition is solid.
+
+## Depth and Volume
+
+Two-dimensional pixels gain depth through three cues: **perspective, proportion, light/shadow**. Without shadow, a layout looks flat no matter how good the perspective is.
+
+- Pick a single, consistent light source for the whole UI (usually top, slightly left). Apply it everywhere.
+- Use `box-shadow` and `text-shadow` rather than image assets for shadows — they scale and theme cleanly.
+- Use gradients to imply curvature (linear = flat-tilted surface; radial = sphere/spotlight).
+- Indicate inset/active states with an inner shadow at the top of the element rather than just a color change.
+
+```css
+/* Default elevation tokens — pick one light source and stay consistent */
+--shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.08);
+--shadow-md: 0 4px 12px rgba(0, 0, 0, 0.10);
+--shadow-lg: 0 12px 32px rgba(0, 0, 0, 0.14);
+```
+
+## Pattern
+
+- Tiling background images and SVG patterns are no longer a 90s sin — they break up flat color and add richness for almost no bytes (`background-repeat`, `background-position`, repeating gradients).
+- A **subtle grain/noise** overlay on large flat surfaces makes "digital" feel "analog." Keep opacity low (3–8%).
+
+## Pick a Textural Style and Commit
+
+Choose a register and apply it consistently:
+
+- **Aged/weathered** — paper textures, sepia, perforated edges, worn corners. Good for nostalgic or artisanal brands.
+- **Clean and grainy** — flat color + subtle noise + soft gradients. Modern, professional, sophisticated.
+- **Handcrafted/scrapbook** — hand-drawn elements, rotated photos, jagged edges. Casual, playful brands.
+- **Whimsical/cartoon** — bright colors, exaggerated shapes, illustrated characters. Kids, games, fun products.
+- **Minimal** — heavy whitespace, restrained palette, no texture. Strong content focus.
+
+Don't mix registers in one design — it reads as inconsistent or careless.
+
+## Quick Checks
+
+1. Are there at least 3 textural cues (gradient, shadow, pattern, line variation, etc.) tying the design together?
+2. Is there a single, consistent light source?
+3. Could a viewer name the textural style ("modern grainy", "weathered worn", "minimal") in one phrase?
+4. Are radii, shadows, and gradients defined as design tokens rather than ad-hoc values?
