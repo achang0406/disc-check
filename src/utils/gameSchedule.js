@@ -1,6 +1,6 @@
 import { DEFAULT_GAME_TIMEZONE } from "../constants/gameSchedule.js";
 
-export const RESET_AFTER_MS = 24 * 60 * 60 * 1000;
+export const RESET_AFTER_MS = 12 * 60 * 60 * 1000;
 export const GAME_LIVE_MS = 3 * 60 * 60 * 1000;
 export const LANDING_PRIORITY_BEFORE_MS = 3 * 60 * 60 * 1000;
 export const STARTING_SOON_MS = 30 * 60 * 1000;
@@ -80,9 +80,39 @@ export function getOccurrenceStartUtc(game, now = new Date()) {
   return getCurrentRsvpCycleStartUtc(game, now);
 }
 
+export function normalizeCycleAt(value) {
+  if (!value) return null;
+  return new Date(value).toISOString();
+}
+
+/** True when DB rsvp_cycle_at has not caught up to the computed current cycle. */
+export function isGameCycleStale(game, now = new Date()) {
+  const storedCycle = normalizeCycleAt(game?.rsvpCycleAt);
+  if (!storedCycle) return false;
+
+  const currentCycle = normalizeCycleAt(getCurrentRsvpCycleStartUtc(game, now));
+  return Boolean(currentCycle && storedCycle !== currentCycle);
+}
+
+/** Cycle used for pickup results and phase timing (stored cycle while stale). */
+export function getDisplayCycleStartUtc(game, now = new Date()) {
+  const storedCycle = normalizeCycleAt(game?.rsvpCycleAt);
+  if (storedCycle && isGameCycleStale(game, now)) {
+    return storedCycle;
+  }
+
+  return getCurrentRsvpCycleStartUtc(game, now);
+}
+
+function getPhaseOccurrenceStartMs(game, now = new Date()) {
+  const cycleIso = getDisplayCycleStartUtc(game, now);
+  return cycleIso ? Date.parse(cycleIso) : Number.POSITIVE_INFINITY;
+}
+
 /** True from 30m before start until the final countdown window (3m). */
 export function showsStartingSoonLabel(game, now = new Date()) {
   if (!game || game.status === "cancelled") return false;
+  if (isGameCycleStale(game, now)) return false;
 
   const remaining = getMsUntilStart(game, now);
   if (remaining == null) return false;
@@ -92,16 +122,24 @@ export function showsStartingSoonLabel(game, now = new Date()) {
 
 /** True from game start until 3h after start (active pickup window). */
 export function isGameLive(game, now = new Date()) {
-  const startMs = getOccurrenceStartMs(game, now);
+  if (isGameCycleStale(game, now)) return false;
+
+  const startMs = getPhaseOccurrenceStartMs(game, now);
   if (!Number.isFinite(startMs)) return false;
 
   const nowMs = now.getTime();
   return nowMs >= startMs && nowMs < startMs + GAME_LIVE_MS;
 }
 
-/** True from 3h after start until the 24h cycle reset (pickup over, same week). */
+/** True from 3h after start until reset clears the cycle (same week, or stale until reset). */
 export function isGameEnded(game, now = new Date()) {
-  const startMs = getOccurrenceStartMs(game, now);
+  if (isGameCycleStale(game, now)) {
+    const storedMs = Date.parse(normalizeCycleAt(game.rsvpCycleAt));
+    if (!Number.isFinite(storedMs)) return false;
+    return now.getTime() >= storedMs + GAME_LIVE_MS;
+  }
+
+  const startMs = getPhaseOccurrenceStartMs(game, now);
   if (!Number.isFinite(startMs)) return false;
 
   const nowMs = now.getTime();
@@ -109,11 +147,14 @@ export function isGameEnded(game, now = new Date()) {
 }
 
 export function isRsvpOpen(game, now = new Date()) {
+  if (isGameCycleStale(game, now)) return false;
   return !isGameLive(game, now) && !isGameEnded(game, now);
 }
 
 /** True when live or within 3 hours of the current occurrence start. */
 export function isLandingPriorityGame(game, now = new Date()) {
+  if (isGameCycleStale(game, now)) return false;
+
   const startMs = getOccurrenceStartMs(game, now);
   if (!Number.isFinite(startMs)) return false;
 
@@ -139,6 +180,7 @@ export function getMsUntilStart(game, now = new Date()) {
 /** Milliseconds until start when inside the final 3 minutes; otherwise null. */
 export function getCountdownToStartMs(game, now = new Date()) {
   if (!game || game.status === "cancelled") return null;
+  if (isGameCycleStale(game, now)) return null;
 
   const remaining = getMsUntilStart(game, now);
   if (remaining == null || remaining > GAME_START_COUNTDOWN_MS) return null;
@@ -163,11 +205,6 @@ export function compareGamesForLanding(a, b, now = new Date()) {
 
 export function sortGamesForLanding(games, now = new Date()) {
   return [...games].sort((a, b) => compareGamesForLanding(a, b, now));
-}
-
-export function normalizeCycleAt(value) {
-  if (!value) return null;
-  return new Date(value).toISOString();
 }
 
 function formatYmdInTimeZone(instant, timeZone) {

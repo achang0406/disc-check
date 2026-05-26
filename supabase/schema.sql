@@ -134,7 +134,7 @@ BEGIN
     occurrence := (candidate_date + p_start_time) AT TIME ZONE p_timezone;
   END IF;
 
-  WHILE occurrence + INTERVAL '24 hours' <= p_now LOOP
+  WHILE occurrence + INTERVAL '12 hours' <= p_now LOOP
     candidate_date := candidate_date + 7;
     occurrence := (candidate_date + p_start_time) AT TIME ZONE p_timezone;
   END LOOP;
@@ -183,11 +183,11 @@ BEGIN
     RETURN FALSE;
   END IF;
 
-  RETURN p_now >= occurrence AND p_now < occurrence + INTERVAL '24 hours';
+  RETURN p_now >= occurrence AND p_now < occurrence + INTERVAL '12 hours';
 END;
 $$;
 
--- Weekly RSVP reset: clears signups when the pickup week rolls over (24h after game start, UTC).
+-- Weekly RSVP reset: clears signups when the pickup week rolls over (~12h after game start).
 CREATE OR REPLACE FUNCTION is_cycle_reset_in_progress()
 RETURNS BOOLEAN
 LANGUAGE sql
@@ -220,22 +220,57 @@ DECLARE
   v_start_time TIME;
   v_timezone TEXT;
   v_game_id TEXT;
+  v_stored_cycle TIMESTAMPTZ;
+  v_expected_cycle TIMESTAMPTZ;
 BEGIN
   IF is_cycle_reset_in_progress() THEN
     RETURN COALESCE(NEW, OLD);
   END IF;
 
   v_game_id := COALESCE(NEW.game_id, OLD.game_id);
-  SELECT weekday, start_time, timezone
-  INTO v_weekday, v_start_time, v_timezone
+  SELECT weekday, start_time, timezone, rsvp_cycle_at
+  INTO v_weekday, v_start_time, v_timezone, v_stored_cycle
   FROM games
   WHERE id = v_game_id;
+
+  v_expected_cycle := get_current_occurrence_start(v_weekday, v_start_time, v_timezone);
+
+  IF v_stored_cycle IS NOT NULL AND v_stored_cycle IS DISTINCT FROM v_expected_cycle THEN
+    RAISE EXCEPTION 'RSVP is locked until the weekly reset';
+  END IF;
 
   IF is_rsvp_locked(v_weekday, v_start_time, v_timezone) THEN
     RAISE EXCEPTION 'RSVP is locked while the game is live';
   END IF;
 
   RETURN COALESCE(NEW, OLD);
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION reset_stale_game_cycles()
+RETURNS void
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  g RECORD;
+  v_cycle TIMESTAMPTZ;
+BEGIN
+  FOR g IN
+    SELECT id, weekday, start_time, timezone, rsvp_cycle_at, status
+    FROM games
+    WHERE status <> 'cancelled'
+  LOOP
+    v_cycle := get_current_occurrence_start(g.weekday, g.start_time, g.timezone);
+    IF v_cycle IS NULL THEN
+      CONTINUE;
+    END IF;
+
+    IF g.rsvp_cycle_at IS DISTINCT FROM v_cycle THEN
+      PERFORM reset_game_rsvp_cycle(g.id, v_cycle);
+    END IF;
+  END LOOP;
 END;
 $$;
 
@@ -360,7 +395,8 @@ CREATE TABLE IF NOT EXISTS app_config (
 
 ALTER TABLE app_config ENABLE ROW LEVEL SECURITY;
 
-GRANT EXECUTE ON FUNCTION reset_game_rsvp_cycle(TEXT, TIMESTAMPTZ) TO anon, authenticated, service_role;
+GRANT EXECUTE ON FUNCTION reset_game_rsvp_cycle(TEXT, TIMESTAMPTZ) TO service_role;
+GRANT EXECUTE ON FUNCTION reset_stale_game_cycles() TO service_role;
 
 CREATE OR REPLACE FUNCTION normalize_phone(p_phone TEXT)
 RETURNS TEXT
@@ -525,7 +561,7 @@ BEGIN
   END IF;
 
   INSERT INTO games (
-    id, name, location, address, weekday, start_time, timezone, type, target, status
+    id, name, location, address, weekday, start_time, timezone, type, target, status, rsvp_cycle_at
   ) VALUES (
     v_id,
     trim(p_game->>'name'),
@@ -536,7 +572,12 @@ BEGIN
     COALESCE(NULLIF(trim(p_game->>'timezone'), ''), 'America/Los_Angeles'),
     COALESCE(NULLIF(trim(p_game->>'type'), ''), 'goaltimate'),
     COALESCE((p_game->>'target')::integer, 8),
-    COALESCE(NULLIF(trim(p_game->>'status'), ''), 'open')
+    COALESCE(NULLIF(trim(p_game->>'status'), ''), 'open'),
+    get_current_occurrence_start(
+      v_weekday,
+      (p_game->>'start_time')::TIME,
+      COALESCE(NULLIF(trim(p_game->>'timezone'), ''), 'America/Los_Angeles')
+    )
   )
   ON CONFLICT (id) DO UPDATE SET
     name = EXCLUDED.name,

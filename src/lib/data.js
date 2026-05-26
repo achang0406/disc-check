@@ -1,7 +1,8 @@
 import { getSupabase, isSupabaseConfigured } from "./supabase.js";
 import { normalizePhone } from "../utils/phone.js";
 import {
-  getCurrentRsvpCycleStartUtc,
+  getDisplayCycleStartUtc,
+  isGameCycleStale,
   normalizeCycleAt,
 } from "../utils/gameSchedule.js";
 
@@ -21,36 +22,8 @@ function formatGame(row) {
   };
 }
 
-async function ensureGameCycles(supabase, games) {
-  const tasks = [];
-
-  for (const game of games) {
-    if (game.status === "cancelled") continue;
-    if (game.weekday == null || !game.start_time) continue;
-
-    const currentCycle = getCurrentRsvpCycleStartUtc({
-      weekday: game.weekday,
-      startTime: game.start_time,
-      timezone: game.timezone,
-    });
-    if (!currentCycle) continue;
-
-    const storedCycle = normalizeCycleAt(game.rsvp_cycle_at);
-    if (storedCycle === currentCycle) continue;
-
-    tasks.push(
-      supabase.rpc("reset_game_rsvp_cycle", {
-        p_game_id: game.id,
-        p_cycle: currentCycle,
-      }),
-    );
-  }
-
-  if (tasks.length === 0) return;
-
-  const results = await Promise.all(tasks);
-  const error = results.find((result) => result.error)?.error;
-  if (error) throw error;
+function getGameDisplayCycle(game) {
+  return normalizeCycleAt(getDisplayCycleStartUtc(game));
 }
 
 function groupRsvps(rows) {
@@ -255,8 +228,6 @@ export async function fetchAppData() {
 
   if (gamesResult.error) throw gamesResult.error;
 
-  await ensureGameCycles(supabase, gamesResult.data || []);
-
   const rsvpsResult = await supabase
     .from("rsvps")
     .select("game_id, user_id, name, plus_ones")
@@ -279,23 +250,29 @@ export async function fetchAppData() {
   if (guestsResult.error) throw guestsResult.error;
 
   const games = (gamesResult.data || []).map(formatGame);
-  const currentCycles = Object.fromEntries(
-    games.map((game) => [game.id, normalizeCycleAt(getCurrentRsvpCycleStartUtc(game))]),
+  const displayCycles = Object.fromEntries(
+    games.map((game) => [game.id, getGameDisplayCycle(game)]),
   );
 
+  const activeRsvpRows = (rsvpsResult.data || []).filter((row) => {
+    const game = games.find((entry) => entry.id === row.game_id);
+    if (!game || isGameCycleStale(game)) return false;
+    return true;
+  });
+
   const activeCheckIns = (checkInsResult.data || []).filter((row) => {
-    const expected = currentCycles[row.game_id];
+    const expected = displayCycles[row.game_id];
     return expected && normalizeCycleAt(row.cycle_at) === expected;
   });
 
   const activeGuests = (guestsResult.data || []).filter((row) => {
-    const expected = currentCycles[row.game_id];
+    const expected = displayCycles[row.game_id];
     return expected && normalizeCycleAt(row.cycle_at) === expected;
   });
 
   return {
     games,
-    rsvps: groupRsvps(rsvpsResult.data || []),
+    rsvps: groupRsvps(activeRsvpRows),
     checkIns: groupCheckIns(activeCheckIns),
     guests: groupGuests(activeGuests),
   };

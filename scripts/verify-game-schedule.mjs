@@ -2,6 +2,7 @@ import {
   compareGamesForLanding,
   getCountdownToStartMs,
   getCurrentRsvpCycleStartUtc,
+  isGameCycleStale,
   isGameEnded,
   isGameLive,
   showsStartingSoonLabel,
@@ -41,12 +42,17 @@ const cases = [
     expected: ANCHOR,
   },
   {
-    label: "Thursday morning still counts toward this Wed (until 24h after start)",
+    label: "Thursday morning still counts toward this Wed (until 12h after start)",
     now: "2026-05-21T09:00:00.000Z",
     expected: ANCHOR,
   },
   {
-    label: "Friday after reset flips to next Wed",
+    label: "Thursday afternoon after 12h reset flips to next Wed",
+    now: "2026-05-21T13:00:00.000Z",
+    expected: "2026-05-28T01:00:00.000Z",
+  },
+  {
+    label: "Friday after reset counts toward next Wed",
     now: "2026-05-22T13:00:00.000Z",
     expected: "2026-05-28T01:00:00.000Z",
   },
@@ -112,6 +118,43 @@ assert(
 assert(
   !isRsvpOpen(WEDNESDAY_EVENING, new Date("2026-05-21T09:00:00.000Z")),
   "during ended RSVP closed",
+);
+
+const WEDNESDAY_GAME = {
+  id: "g_test",
+  ...WEDNESDAY_EVENING,
+  rsvpCycleAt: ANCHOR,
+};
+
+assert(
+  isGameEnded(WEDNESDAY_GAME, new Date("2026-05-21T09:00:00.000Z")),
+  "synced game with stored cycle is ended",
+);
+assert(
+  isGameCycleStale(WEDNESDAY_GAME, new Date("2026-05-22T13:00:00.000Z")),
+  "stored cycle behind clock is stale",
+);
+assert(
+  isGameEnded(WEDNESDAY_GAME, new Date("2026-05-22T13:00:00.000Z")),
+  "stale cycle stays ended until reset",
+);
+assert(
+  !isRsvpOpen(WEDNESDAY_GAME, new Date("2026-05-22T13:00:00.000Z")),
+  "stale cycle keeps RSVP closed",
+);
+
+const syncedNextWeek = {
+  id: "g_test",
+  ...WEDNESDAY_EVENING,
+  rsvpCycleAt: "2026-05-28T01:00:00.000Z",
+};
+assert(
+  isRsvpOpen(syncedNextWeek, new Date("2026-05-22T13:00:00.000Z")),
+  "after reset sync RSVP reopens",
+);
+assert(
+  !isGameCycleStale(syncedNextWeek, new Date("2026-05-22T13:00:00.000Z")),
+  "synced stored cycle is not stale",
 );
 
 assert(
@@ -186,4 +229,4 @@ assert(
   "compareGamesForLanding matches upcoming order",
 );
 
-console.log(`All ${cases.length + 29} game schedule checks passed.`);
+console.log(`All ${cases.length + 36} game schedule checks passed.`);
