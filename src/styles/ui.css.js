@@ -242,6 +242,166 @@ export const uiStyles = `
     gap: var(--space-3);
   }
 
+  .select-field {
+    position: relative;
+    width: 100%;
+  }
+
+  .select-field__trigger {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-2);
+    width: 100%;
+    min-height: 42px;
+    padding: var(--space-2) var(--space-3);
+    border: 1px solid var(--input-border);
+    border-radius: var(--radius-sm);
+    background: var(--input-bg);
+    color: var(--text);
+    font-family: var(--font-sans);
+    font-size: var(--font-body);
+    line-height: 1.2;
+    text-align: left;
+    cursor: pointer;
+    appearance: none;
+    -webkit-appearance: none;
+    -webkit-tap-highlight-color: transparent;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  }
+
+  .select-field__trigger:hover:not(:disabled) {
+    border-color: color-mix(in srgb, var(--input-border) 55%, var(--card-ring));
+  }
+
+  .select-field__trigger--open,
+  .select-field__trigger:focus-visible {
+    border-color: var(--status-go-color);
+    outline: none;
+    box-shadow: 0 0 0 1px color-mix(in srgb, var(--status-go-color) 35%, transparent);
+  }
+
+  .select-field__trigger:focus:not(:focus-visible) {
+    outline: none;
+  }
+
+  .select-field__trigger:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+  }
+
+  .select-field__value {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .select-field__value--placeholder {
+    color: var(--text-faint);
+  }
+
+  .select-field__chevron {
+    flex-shrink: 0;
+    color: var(--text-muted);
+    transition: transform 0.15s ease, color 0.15s ease;
+  }
+
+  .select-field__trigger--open .select-field__chevron {
+    transform: rotate(180deg);
+    color: var(--text-subtle);
+  }
+
+  .select-field__menu {
+    position: absolute;
+    top: calc(100% + var(--space-1));
+    left: 0;
+    right: 0;
+    z-index: 1;
+    margin: 0;
+    padding: var(--space-1);
+    list-style: none;
+    background: var(--card-bg);
+    border: 1px solid var(--card-ring);
+    border-radius: var(--radius-sm);
+    box-shadow:
+      0 8px 24px color-mix(in srgb, var(--overlay) 55%, transparent),
+      0 0 0 1px color-mix(in srgb, var(--card-ring) 70%, transparent);
+    max-height: 220px;
+    overflow-y: auto;
+  }
+
+  .select-field__option {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-2);
+    width: 100%;
+    padding: var(--space-2) var(--space-3);
+    border: none;
+    border-radius: calc(var(--radius-sm) - 2px);
+    background: transparent;
+    color: var(--text);
+    font-family: var(--font-sans);
+    font-size: var(--font-body);
+    line-height: 1.2;
+    text-align: left;
+    cursor: pointer;
+    appearance: none;
+    -webkit-appearance: none;
+    -webkit-tap-highlight-color: transparent;
+    transition: background 0.12s ease, color 0.12s ease;
+  }
+
+  .select-field__option-label {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .select-field__option:hover,
+  .select-field__option--highlighted {
+    background: color-mix(in srgb, var(--btn-bg) 85%, transparent);
+  }
+
+  .select-field__option--selected {
+    background: color-mix(in srgb, var(--status-go-bg) 70%, var(--card-bg));
+    color: var(--text-strong);
+  }
+
+  .select-field__option--selected.select-field__option--highlighted {
+    background: color-mix(in srgb, var(--status-go-bg) 85%, var(--card-bg));
+  }
+
+  .select-field__option--positive {
+    color: var(--status-go-color);
+  }
+
+  .select-field__option--danger {
+    color: var(--cancel-btn-text);
+  }
+
+  .select-field__option:focus {
+    outline: none;
+  }
+
+  .select-field__option:focus-visible {
+    outline: 2px solid var(--chip-you-border);
+    outline-offset: -1px;
+  }
+
+  .select-field__option:focus:not(:focus-visible) {
+    outline: none;
+  }
+
+  .select-field__check {
+    flex-shrink: 0;
+    color: var(--status-go-color);
+    font-size: var(--font-label);
+    line-height: 1;
+  }
+
   .plus-ones {
     display: flex;
     align-items: center;

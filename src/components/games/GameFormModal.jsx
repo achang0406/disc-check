@@ -2,12 +2,23 @@ import { useState } from "react";
 import Button from "../ui/Button.jsx";
 import Field from "../ui/Field.jsx";
 import ModalShell from "../ui/ModalShell.jsx";
+import SelectField from "../ui/SelectField.jsx";
 import {
   DEFAULT_GAME_TIMEZONE,
   GAME_TIMEZONE_OPTIONS,
   WEEKDAY_OPTIONS,
 } from "../../constants/gameSchedule.js";
 import { formatSchedulePreview, fromTimeInputValue, toTimeInputValue } from "../../utils/time.js";
+
+const GAME_TYPE_OPTIONS = [
+  { value: "goaltimate", label: "Goaltimate", hint: "8+" },
+  { value: "big", label: "Biggie", hint: "14+" },
+];
+
+const GAME_STATUS_OPTIONS = [
+  { value: "open", label: "Open", tone: "positive" },
+  { value: "cancelled", label: "Cancelled", tone: "danger" },
+];
 
 const EMPTY_FORM = {
   name: "",
@@ -137,17 +148,13 @@ export default function GameFormModal({ mode, initial, saving, onSave, onClose, 
 
       <div className="field-grid">
         <Field label="Day of week">
-          <select
-            className="field__input"
+          <SelectField
             value={form.weekday}
-            onChange={(event) => setField("weekday", Number(event.target.value))}
-          >
-            {WEEKDAY_OPTIONS.map((option) => (
-              <option key={option.value} value={option.value}>
-                {option.label}
-              </option>
-            ))}
-          </select>
+            onChange={(weekday) => setField("weekday", Number(weekday))}
+            options={WEEKDAY_OPTIONS}
+            disabled={saving}
+            aria-label="Day of week"
+          />
         </Field>
         <Field label="Start time">
           <input
@@ -161,46 +168,39 @@ export default function GameFormModal({ mode, initial, saving, onSave, onClose, 
 
       <div className="field-grid">
         <Field label="Timezone">
-          <select
-            className="field__input"
+          <SelectField
             value={form.timezone}
-            onChange={(event) => setField("timezone", event.target.value)}
-          >
-            {GAME_TIMEZONE_OPTIONS.map((option) => (
-              <option key={option.value} value={option.value}>
-                {option.label}
-              </option>
-            ))}
-          </select>
+            onChange={(timezone) => setField("timezone", timezone)}
+            options={GAME_TIMEZONE_OPTIONS}
+            disabled={saving}
+            aria-label="Timezone"
+          />
         </Field>
         <Field label="Status">
-          <select
-            className="field__input"
+          <SelectField
             value={form.status}
-            onChange={(event) => setField("status", event.target.value)}
-          >
-            <option value="open">Open</option>
-            <option value="cancelled">Cancelled</option>
-          </select>
+            onChange={(status) => setField("status", status)}
+            options={GAME_STATUS_OPTIONS}
+            disabled={saving}
+            aria-label="Game status"
+          />
         </Field>
       </div>
 
       {preview ? <p className="field__hint">{preview}</p> : null}
 
       <div className="field-grid">
-        <Field label="Game size">
-          <select
-            className="field__input"
+        <Field label="Game type">
+          <SelectField
             value={form.type}
-            onChange={(event) => {
-              const type = event.target.value;
+            onChange={(type) => {
               setField("type", type);
               setField("target", type === "big" ? 14 : 8);
             }}
-          >
-            <option value="goaltimate">Goaltimate (8+)</option>
-            <option value="big">Big (14+)</option>
-          </select>
+            options={GAME_TYPE_OPTIONS}
+            disabled={saving}
+            aria-label="Game type"
+          />
         </Field>
         <Field label="Player target">
           <input

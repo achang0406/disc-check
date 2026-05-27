@@ -1,7 +1,11 @@
+export function getGameTypeLabel(type) {
+  if (type === "big") return "Biggie";
+  if (type === "goaltimate" || type === "small") return "Goaltimate";
+  return type || "Goaltimate";
+}
+
 export function formatGameType(type) {
-  if (type === "big") return "🔴 big";
-  if (type === "goaltimate" || type === "small") return "🟡 goaltimate";
-  return type;
+  return getGameTypeLabel(type);
 }
 
 export function isGoaltimateType(type) {

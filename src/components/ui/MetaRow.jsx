@@ -1,4 +1,5 @@
 import LocationDisplay from "../games/LocationDisplay.jsx";
+import { getGameTypeLabel } from "../../utils/gameType.js";
 import { formatGameLocation } from "../../utils/location.js";
 import {
   TIME_PERIOD_ICONS,
@@ -21,6 +22,7 @@ export default function MetaRow({ game, className = "", allowAddressCopy = false
           copyEnabled={allowAddressCopy}
           onCopy={allowAddressCopy ? onAddressCopy : undefined}
         />
+        <span className="meta-row__type"> · {getGameTypeLabel(game.type)}</span>
         <span className="meta-row__time"> · {formatGameTime(game)}</span>
         {period && (
           <span className="meta-row__slot" title={TIME_PERIOD_TEXT[period]}>
