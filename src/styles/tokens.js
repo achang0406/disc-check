@@ -1,4 +1,12 @@
-/** Layout & typography tokens — injected as CSS custom properties on :root. */
+/**
+ * Layout & typography tokens — injected as CSS custom properties on `:root`.
+ *
+ * Breakpoints (min-width, mobile-first). See `src/constants/breakpoints.js`.
+ * Responsive steps are applied in `theme.js` at sm / lg (md is layout-only).
+ *
+ * Layout tokens: `--layout-gutter*`, `--layout-inline-gap`, `--layout-stack-gap`,
+ * `--game-card-inset-*`, `--game-list-gap`, `--chat-bar-inset-*`
+ */
 export const TOKENS = {
   "--space-1": "4px",
   "--space-2": "8px",
@@ -17,18 +25,29 @@ export const TOKENS = {
   "--font-display": "22px",
   "--font-sans": "'DM Sans', sans-serif",
   "--font-mono": "'DM Mono', monospace",
+  "--bp-sm-min": "640px",
+  "--bp-md-min": "768px",
+  "--bp-lg-min": "1024px",
+  "--bp-xl-min": "1280px",
   "--bp-wide-min": "768px",
   "--bp-compact-max": "767px",
   "--max-detail": "640px",
   "--max-list": "640px",
   "--max-modal": "480px",
   "--max-modal-sm": "400px",
+  "--layout-gutter": "var(--space-3)",
+  "--layout-gutter-detail": "var(--space-3)",
+  "--layout-inline-gap": "var(--space-2)",
+  "--layout-stack-gap": "var(--space-2)",
+  "--game-list-gap": "var(--space-3)",
+  "--game-card-inset-y": "var(--space-3)",
+  "--game-card-inset-x": "var(--space-3)",
   "--z-toast": "100",
   "--z-presence": "150",
   "--z-chat": "160",
   "--z-modal": "200",
-  "--chat-bar-inset-x": "14px",
-  "--chat-bar-inset-y": "10px",
+  "--chat-bar-inset-x": "var(--space-3)",
+  "--chat-bar-inset-y": "var(--space-2)",
   "--chat-bar-width-wide": "50vw",
   "--chat-bar-height": "0px",
   "--chat-bar-lift": "0px",
@@ -36,8 +55,6 @@ export const TOKENS = {
   "--chat-bar-offset-right": "max(var(--chat-bar-inset-x), env(safe-area-inset-right, 0px))",
   "--chat-underlap": "40px",
   "--min-viewport-height": "500px",
-  "--game-card-inset-y": "clamp(14px, 1.6vw, 20px)",
-  "--game-card-inset-x": "clamp(var(--space-4), 1.8vw, 22px)",
 };
 
 export const TOKEN_CSS = Object.entries(TOKENS)

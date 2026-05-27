@@ -149,7 +149,7 @@ export const uiStyles = `
   .field {
     display: flex;
     flex-direction: column;
-    gap: 5px;
+    gap: var(--space-1);
   }
 
   .field__label {
@@ -642,7 +642,7 @@ export const uiStyles = `
     display: flex;
     flex-direction: column;
     align-items: flex-start;
-    gap: 2px;
+    gap: var(--space-1);
     margin-bottom: var(--space-2);
     max-width: 85%;
   }

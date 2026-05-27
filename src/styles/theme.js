@@ -1,5 +1,6 @@
 import { uiStyles } from "./ui.css.js";
 import { TOKEN_CSS } from "./tokens.js";
+import { BP_LG_MIN, BP_SM_MIN } from "../constants/breakpoints.js";
 
 export const card = {
   background: "var(--card-bg)",
@@ -30,6 +31,42 @@ export const input = {
 export const globalStyles = `
   :root {
     ${TOKEN_CSS}
+  }
+
+  @media (min-width: ${BP_SM_MIN}px) {
+    :root {
+      --font-label: 12px;
+      --font-body: 14px;
+      --font-emphasis: 16px;
+      --font-title: 18px;
+      --font-display: 24px;
+      --layout-gutter: var(--space-4);
+      --layout-gutter-detail: var(--space-4);
+      --game-card-inset-y: var(--space-4);
+      --game-card-inset-x: var(--space-4);
+      --chat-bar-inset-x: var(--space-4);
+    }
+  }
+
+  @media (min-width: ${BP_LG_MIN}px) {
+    :root {
+      --font-label: 14px;
+      --font-body: 16px;
+      --font-emphasis: 18px;
+      --font-title: 24px;
+      --font-display: 28px;
+      --max-detail: 720px;
+      --max-list: 720px;
+      --game-card-inset-y: var(--space-5);
+      --game-card-inset-x: var(--space-5);
+      --layout-gutter: var(--space-5);
+      --layout-gutter-detail: var(--space-5);
+      --layout-stack-gap: var(--space-3);
+      --layout-inline-gap: var(--space-3);
+      --game-list-gap: var(--space-4);
+      --chat-bar-inset-x: var(--space-4);
+      --chat-bar-inset-y: var(--space-3);
+    }
   }
 
   ${uiStyles}
@@ -124,8 +161,8 @@ export const globalStyles = `
 
   .game-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(clamp(240px, 26vw, 340px), 1fr));
-    gap: clamp(10px, 1.5vw, 16px);
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: var(--game-list-gap);
     width: 100%;
     max-width: min(960px, 92vw);
     justify-content: center;
@@ -225,7 +262,7 @@ export const globalStyles = `
   .game-detail-body {
     display: flex;
     flex-direction: column;
-    gap: var(--space-2);
+    gap: var(--layout-stack-gap);
     flex: 0 1 auto;
     min-height: 0;
   }
@@ -305,13 +342,13 @@ export const globalStyles = `
   .game-card__title-row {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: var(--layout-inline-gap);
     min-width: 0;
   }
 
   .game-card__title {
     margin: 0;
-    font-size: clamp(15px, 0.9vw + 13px, 19px);
+    font-size: var(--font-title);
     font-weight: 700;
     color: var(--text-strong);
     line-height: 1.2;
@@ -337,7 +374,7 @@ export const globalStyles = `
   }
 
   .game-card__meta {
-    margin: 4px 0 0;
+    margin: var(--space-1) 0 0;
     color: var(--text-muted);
     font-family: var(--font-mono);
     line-height: 1.4;
@@ -408,7 +445,7 @@ export const globalStyles = `
   }
 
   .game-card__detail {
-    margin: 0 0 clamp(8px, 1vw, 12px);
+    margin: 0 0 var(--space-3);
     font-size: var(--font-body);
     color: var(--text-subtle);
     font-family: var(--font-mono);
@@ -416,15 +453,15 @@ export const globalStyles = `
   }
 
   .game-card__divider {
-    margin-top: clamp(10px, 1.2vw, 14px);
-    padding-top: clamp(10px, 1.2vw, 14px);
+    margin-top: var(--space-3);
+    padding-top: var(--space-3);
     border-top: 1px solid var(--card-divider);
   }
 
   .game-card__actions {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: var(--layout-inline-gap);
   }
 
   .game-card__actions--stacked {
@@ -472,7 +509,7 @@ export const globalStyles = `
   .games-screen__admin-menu {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: var(--layout-inline-gap);
   }
 
   .games-screen__admin-badge {
@@ -663,7 +700,7 @@ export const globalStyles = `
     flex-direction: column;
     flex: 1;
     min-height: 0;
-    gap: var(--space-2);
+    gap: var(--layout-stack-gap);
     justify-content: flex-start;
     padding-bottom: calc(var(--chat-bar-height, 58px) + env(safe-area-inset-bottom, 0px));
   }
@@ -748,7 +785,7 @@ export const globalStyles = `
     border-top: 1px solid var(--card-divider);
     display: flex;
     flex-direction: column;
-    gap: var(--space-2);
+    gap: var(--layout-stack-gap);
   }
 
   .game-detail-panel__cta--saving {
@@ -763,7 +800,7 @@ export const globalStyles = `
     padding: var(--game-card-inset-y) var(--game-card-inset-x);
     height: auto;
     font-size: var(--font-body);
-    gap: var(--space-2);
+    gap: var(--layout-stack-gap);
   }
 
   .game-detail-layout__thread {
@@ -929,7 +966,7 @@ export const globalStyles = `
   }
 
   .game-detail-header__meta {
-    margin: 4px 0 0;
+    margin: var(--space-1) 0 0;
   }
 
   .game-detail-header__countdown {
@@ -1016,7 +1053,7 @@ export const globalStyles = `
     padding: var(--game-card-inset-y) var(--game-card-inset-x);
     display: flex;
     flex-direction: column;
-    gap: var(--space-2);
+    gap: var(--layout-stack-gap);
     font-size: var(--font-body);
   }
 
@@ -1040,7 +1077,7 @@ export const globalStyles = `
     overflow: hidden;
     display: flex;
     flex-direction: column;
-    gap: var(--space-2);
+    gap: var(--layout-stack-gap);
     min-height: 0;
   }
 
@@ -1075,21 +1112,21 @@ export const globalStyles = `
     overflow: auto;
     -webkit-overflow-scrolling: touch;
     overscroll-behavior: contain;
-    padding: 16px;
+    padding: var(--layout-gutter);
     width: 100%;
     box-sizing: border-box;
   }
 
   .games-screen__main--landing {
     align-items: flex-start;
-    padding-top: 12px;
+    padding-top: var(--space-3);
   }
 
   .games-screen__main--detail {
     align-items: stretch;
     justify-content: flex-start;
     flex-direction: column;
-    padding: clamp(8px, 2.5vw, 32px);
+    padding: var(--layout-gutter-detail);
     overflow: hidden;
   }
 
@@ -1102,15 +1139,15 @@ export const globalStyles = `
     color: var(--text-muted);
     font-family: var(--font-mono);
     font-size: var(--font-body);
-    margin: 0 0 12px;
+    margin: 0 0 var(--space-3);
   }
 
   .app-header {
     display: flex;
     align-items: center;
-    padding: 16px 16px 0;
+    padding: var(--layout-gutter) var(--layout-gutter) 0;
     flex-shrink: 0;
-    gap: 8px;
+    gap: var(--layout-inline-gap);
     position: relative;
     z-index: calc(var(--z-presence) + 2);
   }
@@ -1126,24 +1163,24 @@ export const globalStyles = `
   .app-header__leading {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: var(--layout-inline-gap);
     min-width: 0;
   }
 
   .app-header__brand {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: var(--layout-inline-gap);
     min-width: 0;
   }
 
   .app-header__logo {
-    font-size: 22px;
+    font-size: var(--font-display);
     line-height: 1;
   }
 
   .app-header__title {
-    font-size: 17px;
+    font-size: var(--font-title);
     font-weight: 700;
   }
 
@@ -1153,7 +1190,7 @@ export const globalStyles = `
     justify-content: center;
     width: 34px;
     height: 34px;
-    border-radius: 8px;
+    border-radius: var(--radius-sm);
     background: var(--toggle-bg);
     border: 1px solid var(--toggle-border);
     color: var(--text);
@@ -1166,7 +1203,7 @@ export const globalStyles = `
   .app-header__actions {
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: var(--space-3);
     flex-shrink: 0;
     margin-left: auto;
   }
@@ -1174,9 +1211,9 @@ export const globalStyles = `
   .watching-cluster {
     display: inline-flex;
     align-items: center;
-    gap: 6px;
+    gap: var(--space-2);
     max-width: 100%;
-    padding: 4px 10px;
+    padding: var(--space-1) var(--space-3);
     border-radius: var(--radius-pill);
     background: var(--card-bg);
     border: 1px solid var(--card-ring);
@@ -1192,8 +1229,8 @@ export const globalStyles = `
   }
 
   .watching-cluster__dot {
-    width: 8px;
-    height: 8px;
+    width: var(--space-2);
+    height: var(--space-2);
     border-radius: 50%;
     border: 1.5px solid var(--bg);
     box-shadow: 0 0 0 1px color-mix(in srgb, var(--text) 12%, transparent);
@@ -1241,7 +1278,7 @@ export const globalStyles = `
   .app-header__profile {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: var(--layout-inline-gap);
     background: none;
     border: none;
     padding: 0;
@@ -1276,7 +1313,7 @@ export const globalStyles = `
   }
 
   .app-header__profile-name {
-    font-size: 12px;
+    font-size: var(--font-label);
     color: var(--header-muted);
     font-family: 'DM Mono', monospace;
   }
@@ -1284,9 +1321,9 @@ export const globalStyles = `
   .game-list {
     display: flex;
     flex-direction: column;
-    gap: 12px;
+    gap: var(--game-list-gap);
     width: 100%;
-    max-width: min(640px, 92vw);
+    max-width: min(var(--max-list), 92vw);
     margin: 0 auto;
   }
 
@@ -1294,7 +1331,7 @@ export const globalStyles = `
     display: block;
     text-decoration: none;
     color: inherit;
-    padding: clamp(14px, 1.6vw, 18px) clamp(var(--space-4), 1.8vw, 20px);
+    padding: var(--game-card-inset-y) var(--game-card-inset-x);
     transition: transform 0.15s ease, box-shadow 0.15s ease;
     -webkit-tap-highlight-color: transparent;
   }
@@ -1321,21 +1358,21 @@ export const globalStyles = `
     display: flex;
     align-items: flex-start;
     justify-content: space-between;
-    gap: 10px;
-    margin-bottom: 6px;
+    gap: var(--space-3);
+    margin-bottom: var(--space-2);
   }
 
   .game-list-item__title-wrap {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: var(--layout-inline-gap);
     min-width: 0;
     flex: 1;
   }
 
   .game-list-item__title {
     margin: 0;
-    font-size: clamp(15px, 0.9vw + 13px, 18px);
+    font-size: var(--font-title);
     font-weight: 700;
     color: var(--text-strong);
     line-height: 1.2;
@@ -1344,7 +1381,7 @@ export const globalStyles = `
   .game-list-item__badges {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: var(--layout-inline-gap);
     flex-shrink: 0;
   }
 
@@ -1354,16 +1391,16 @@ export const globalStyles = `
 
   .game-list-item__detail,
   .meta-row--schedule.game-list-item__detail {
-    margin: 4px 0 0;
+    margin: var(--space-1) 0 0;
     color: var(--text-subtle);
   }
 
   .game-list-item__footer {
     display: flex;
     align-items: center;
-    gap: 10px;
-    margin-top: 12px;
-    padding-top: 12px;
+    gap: var(--space-3);
+    margin-top: var(--space-3);
+    padding-top: var(--space-3);
     border-top: 1px solid var(--card-divider);
   }
 
