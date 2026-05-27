@@ -14,11 +14,6 @@ export function formatChipExtras(entry) {
   return extras;
 }
 
-export function formatSignedUpLabel(count) {
-  if (count === 1) return "1 has signed up";
-  return `${count} have signed up`;
-}
-
 export function getInitials(name) {
   return name
     .split(" ")

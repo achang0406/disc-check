@@ -137,9 +137,9 @@ export const globalStyles = `
     flex-direction: column;
     background: var(--card-bg);
     border-radius: var(--radius-lg);
-    padding: clamp(14px, 1.6vw, 20px) clamp(var(--space-4), 1.8vw, 22px);
+    padding: var(--game-card-inset-y) var(--game-card-inset-x);
     box-shadow: 0 0 0 1px var(--card-ring);
-    font-size: clamp(12px, 0.35vw + 11px, 14px);
+    font-size: var(--font-body);
     min-height: 0;
     user-select: none;
     -webkit-user-select: none;
@@ -236,11 +236,11 @@ export const globalStyles = `
     gap: var(--space-1);
   }
 
-  .game-detail-players__label {
+  .game-detail-players__label,
+  .progress-bar__label {
     margin: 0;
-    font-size: 10px;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
+    font-size: var(--font-label);
+    letter-spacing: 0.04em;
     color: var(--text-faint);
     font-family: var(--font-mono);
   }
@@ -269,14 +269,6 @@ export const globalStyles = `
     justify-content: space-between;
     gap: var(--space-2);
     margin-bottom: 2px;
-  }
-
-  .progress-bar__label {
-    font-size: 10px;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    color: var(--text-faint);
-    font-family: var(--font-mono);
   }
 
   .progress-bar__count {
@@ -346,9 +338,8 @@ export const globalStyles = `
 
   .game-card__meta {
     margin: 4px 0 0;
-    font-size: clamp(11px, 0.25vw + 10px, 13px);
     color: var(--text-muted);
-    font-family: 'DM Mono', monospace;
+    font-family: var(--font-mono);
     line-height: 1.4;
   }
 
@@ -418,9 +409,9 @@ export const globalStyles = `
 
   .game-card__detail {
     margin: 0 0 clamp(8px, 1vw, 12px);
-    font-size: clamp(11px, 0.25vw + 10px, 13px);
+    font-size: var(--font-body);
     color: var(--text-subtle);
-    font-family: 'DM Mono', monospace;
+    font-family: var(--font-mono);
     line-height: 1.4;
   }
 
@@ -599,7 +590,7 @@ export const globalStyles = `
 
   .game-detail-header__title-row .commit-status-pill {
     padding: 4px 10px;
-    font-size: 11px;
+    font-size: var(--font-label);
   }
 
   .theme-toggle {
@@ -753,7 +744,7 @@ export const globalStyles = `
   }
 
   .game-detail-panel__actions {
-    padding: var(--space-3) clamp(var(--space-4), 1.8vw, 22px) clamp(14px, 1.6vw, 20px);
+    padding: var(--space-3) var(--game-card-inset-x) var(--game-card-inset-y);
     border-top: 1px solid var(--card-divider);
     display: flex;
     flex-direction: column;
@@ -769,7 +760,7 @@ export const globalStyles = `
   .game-card--embedded {
     background: transparent;
     box-shadow: none;
-    padding: clamp(14px, 1.6vw, 20px) clamp(var(--space-4), 1.8vw, 22px) 0;
+    padding: var(--game-card-inset-y) var(--game-card-inset-x);
     height: auto;
     font-size: var(--font-body);
     gap: var(--space-2);
@@ -939,7 +930,6 @@ export const globalStyles = `
 
   .game-detail-header__meta {
     margin: 4px 0 0;
-    font-size: var(--font-body);
   }
 
   .game-detail-header__countdown {
@@ -1023,11 +1013,17 @@ export const globalStyles = `
 
   .game-commit-strip {
     flex-shrink: 0;
-    padding: clamp(14px, 1.6vw, 20px) clamp(var(--space-4), 1.8vw, 22px) 0;
+    padding: var(--game-card-inset-y) var(--game-card-inset-x);
     display: flex;
     flex-direction: column;
     gap: var(--space-2);
     font-size: var(--font-body);
+  }
+
+  .game-commit-strip .game-detail-header__title-row .status-badge {
+    padding: 4px 10px;
+    font-size: var(--font-label);
+    letter-spacing: 0.06em;
   }
 
   .game-commit-strip__expandable {
@@ -1104,8 +1100,8 @@ export const globalStyles = `
 
   .games-screen__empty-text {
     color: var(--text-muted);
-    font-family: 'DM Mono', monospace;
-    font-size: 13px;
+    font-family: var(--font-mono);
+    font-size: var(--font-body);
     margin: 0 0 12px;
   }
 
@@ -1354,7 +1350,6 @@ export const globalStyles = `
 
   .game-list-item__meta {
     margin: 0;
-    font-size: clamp(11px, 0.25vw + 10px, 13px);
   }
 
   .game-list-item__detail,
@@ -1373,9 +1368,9 @@ export const globalStyles = `
   }
 
   .game-list-item__count {
-    font-size: 11px;
+    font-size: var(--font-label);
     color: var(--text-subtle);
-    font-family: 'DM Mono', monospace;
+    font-family: var(--font-mono);
     text-transform: uppercase;
     letter-spacing: 0.06em;
   }
@@ -1490,6 +1485,10 @@ export const globalStyles = `
     }
 
     .app-header__profile-name {
+      display: none;
+    }
+
+    .meta-row__period-text {
       display: none;
     }
   }

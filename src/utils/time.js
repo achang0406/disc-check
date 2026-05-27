@@ -1,9 +1,19 @@
 import { WEEKDAY_SHORT } from "../constants/gameSchedule.js";
 import { getGameSchedule, parseStartTime } from "./gameSchedule.js";
 
+export const TIME_PERIOD_ICONS = {
+  day: "☀️",
+  night: "🌙",
+};
+
+export const TIME_PERIOD_TEXT = {
+  day: "daytime",
+  night: "nighttime",
+};
+
 export const TIME_PERIOD_LABELS = {
-  day: "☀️ daytime",
-  night: "🌙 nighttime",
+  day: `${TIME_PERIOD_ICONS.day} ${TIME_PERIOD_TEXT.day}`,
+  night: `${TIME_PERIOD_ICONS.night} ${TIME_PERIOD_TEXT.night}`,
 };
 
 export function getTimePeriod(game) {

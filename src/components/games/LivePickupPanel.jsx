@@ -1,6 +1,5 @@
 import LockedRsvpChipList from "./LockedRsvpChipList.jsx";
 import WhoIsHereSection from "./WhoIsHereSection.jsx";
-import { formatSignedUpLabel } from "../../utils/format.js";
 
 export default function LivePickupPanel({
   profile,
@@ -56,9 +55,7 @@ export default function LivePickupPanel({
 
       {hasRsvps && (
         <div className="live-pickup__rsvp-group">
-          <p className="game-detail-players__label">
-            {formatSignedUpLabel(rsvpEntries.length)}
-          </p>
+          <p className="game-detail-players__label">Signed up</p>
           <LockedRsvpChipList
             entries={rsvpEntries}
             profileId={profile?.id}

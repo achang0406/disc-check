@@ -18,7 +18,7 @@ export default function LockedRsvpChipList({
   const checkedIn = checkedInUserIds ?? new Set();
 
   return (
-    <div className={cx("chip-list", "chip-list--locked-rsvp", className)}>
+    <div className={cx("chip-list", className)}>
       {entries.map((entry) => {
         const isYou = entry.userId === profileId;
         const isHere = checkedIn.has(entry.userId);

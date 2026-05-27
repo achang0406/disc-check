@@ -1,12 +1,16 @@
 import LocationDisplay from "../games/LocationDisplay.jsx";
 import { formatGameLocation } from "../../utils/location.js";
-import { TIME_PERIOD_LABELS, formatGameTime, getTimePeriod } from "../../utils/time.js";
+import {
+  TIME_PERIOD_ICONS,
+  TIME_PERIOD_TEXT,
+  formatGameTime,
+  getTimePeriod,
+} from "../../utils/time.js";
 
 /** Location and game time on one line. */
 export default function MetaRow({ game, className = "", allowAddressCopy = false, onAddressCopy }) {
   const { display, copyText } = formatGameLocation(game);
   const period = getTimePeriod(game);
-  const periodLabel = period ? TIME_PERIOD_LABELS[period] : null;
 
   return (
     <p className={`meta-row meta-row--location ${className}`.trim()}>
@@ -18,7 +22,15 @@ export default function MetaRow({ game, className = "", allowAddressCopy = false
           onCopy={allowAddressCopy ? onAddressCopy : undefined}
         />
         <span className="meta-row__time"> · {formatGameTime(game)}</span>
-        {periodLabel && <span className="meta-row__slot"> · {periodLabel}</span>}
+        {period && (
+          <span className="meta-row__slot" title={TIME_PERIOD_TEXT[period]}>
+            {" · "}
+            <span className="meta-row__period-icon" aria-hidden="true">
+              {TIME_PERIOD_ICONS[period]}
+            </span>
+            <span className="meta-row__period-text"> {TIME_PERIOD_TEXT[period]}</span>
+          </span>
+        )}
       </span>
     </p>
   );

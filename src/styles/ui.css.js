@@ -393,6 +393,10 @@ export const uiStyles = `
     color: var(--text-subtle);
   }
 
+  .meta-row__period-icon {
+    display: inline;
+  }
+
   .meta-row--schedule {
     color: var(--text-subtle);
     margin-bottom: var(--space-3);
@@ -434,26 +438,6 @@ export const uiStyles = `
   }
 
   .chip--you .chip__muted {
-    color: var(--chip-you-text);
-    opacity: 0.9;
-  }
-
-  .chip-list--locked-rsvp {
-    gap: var(--space-1) var(--space-2);
-    overflow: visible;
-  }
-
-  .chip-list--locked-rsvp .chip {
-    background: transparent;
-    border-color: transparent;
-    color: var(--text-subtle);
-    padding: 0;
-    font-size: var(--font-body);
-  }
-
-  .chip-list--locked-rsvp .chip--you {
-    background: transparent;
-    border-color: transparent;
     color: var(--chip-you-text);
     opacity: 0.9;
   }
@@ -511,15 +495,6 @@ export const uiStyles = `
     font-family: var(--font-mono);
     font-size: var(--font-body);
     line-height: 1.45;
-  }
-
-  .live-pickup__rsvp-group .chip-list--locked-rsvp .chip {
-    color: var(--text-faint);
-  }
-
-  .live-pickup__rsvp-group .chip-list--locked-rsvp .chip--you {
-    color: var(--chip-you-text);
-    opacity: 0.82;
   }
 
   .game-walk-ins__row {
