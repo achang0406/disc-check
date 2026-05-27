@@ -574,9 +574,9 @@ export const uiStyles = `
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    gap: 6px;
+    gap: var(--space-2);
     height: 28px;
-    padding: 0 11px;
+    padding: 0 var(--space-3);
     border: 1px solid var(--card-ring);
     border-radius: var(--radius-pill);
     background: transparent;
@@ -652,22 +652,34 @@ export const uiStyles = `
     font-family: var(--font-sans);
     font-size: var(--font-body);
     line-height: 1.4;
-    display: flex;
-    align-items: center;
-    gap: var(--space-1);
     min-width: 0;
+  }
+
+  .meta-row__text {
+    display: block;
+    min-width: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .meta-row__part {
+    display: inline;
+  }
+
+  .meta-row__part + .meta-row__part::before {
+    content: "·";
+    margin-left: var(--space-2);
+    margin-right: var(--space-2);
+    color: var(--text-faint);
+  }
+
+  .meta-row__slot::before {
+    margin-right: var(--space-1);
   }
 
   .meta-row__time {
     font-family: var(--font-mono);
-  }
-
-  .meta-row__text {
-    min-width: 0;
-    flex: 1;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
   }
 
   .meta-row--location {
@@ -675,11 +687,18 @@ export const uiStyles = `
   }
 
   .meta-row__slot {
+    display: inline-flex;
+    align-items: center;
     color: var(--text-subtle);
   }
 
   .meta-row__period-icon {
-    display: inline;
+    display: inline-flex;
+    flex-shrink: 0;
+  }
+
+  .meta-row__period-text {
+    margin-left: var(--space-2);
   }
 
   .meta-row--schedule {
@@ -703,7 +722,7 @@ export const uiStyles = `
   .chip {
     font-size: var(--font-body);
     line-height: 1.3;
-    padding: var(--space-1) 10px;
+    padding: var(--space-1) var(--space-3);
     border-radius: var(--radius-pill);
     background: var(--chip-bg);
     border: 1px solid var(--chip-border);

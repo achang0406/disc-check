@@ -312,7 +312,7 @@ export const globalStyles = `
     align-items: baseline;
     justify-content: space-between;
     gap: var(--space-2);
-    margin-bottom: 2px;
+    margin-bottom: var(--space-1);
   }
 
   .progress-bar__count {
@@ -378,12 +378,6 @@ export const globalStyles = `
   .game-card__edit-btn:hover {
     color: var(--text);
     border-color: var(--text-faint);
-  }
-
-  .game-card__meta {
-    margin: var(--space-1) 0 0;
-    color: var(--text-muted);
-    line-height: 1.4;
   }
 
   .location-display {
@@ -520,7 +514,7 @@ export const globalStyles = `
 
   .games-screen__admin-badge {
     font-size: 10px;
-    padding: 2px 8px;
+    padding: var(--space-1) var(--space-2);
     border-radius: 999px;
     background: var(--status-almost-bg);
     border: 1px solid var(--status-almost-color);
@@ -543,8 +537,8 @@ export const globalStyles = `
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    gap: 4px;
-    padding: 8px 14px;
+    gap: var(--space-1);
+    padding: var(--space-2) var(--space-3);
     border-radius: 999px;
     background: var(--rsvp-btn-bg);
     border: 1px solid var(--chip-you-border);
@@ -556,7 +550,7 @@ export const globalStyles = `
   }
 
   .games-screen__add-game--header {
-    padding: 6px 12px;
+    padding: var(--space-2) var(--space-3);
     font-size: 11px;
   }
 
@@ -581,9 +575,9 @@ export const globalStyles = `
   .status-badge {
     display: inline-flex;
     align-items: center;
-    gap: 5px;
+    gap: var(--space-1);
     border-radius: 999px;
-    padding: 4px 10px;
+    padding: var(--space-1) var(--space-3);
     font-family: 'DM Mono', monospace;
     font-weight: 600;
     font-size: var(--font-label);
@@ -630,7 +624,7 @@ export const globalStyles = `
   .commit-status-pill {
     flex-shrink: 0;
     font-size: var(--font-label);
-    padding: 2px 7px;
+    padding: var(--space-1) var(--space-2);
     border-radius: var(--radius-pill);
     background: var(--chip-you-bg);
     border: 1px solid var(--chip-you-border);
@@ -644,7 +638,7 @@ export const globalStyles = `
   }
 
   .game-detail-header__title-row .commit-status-pill {
-    padding: 4px 10px;
+    padding: var(--space-1) var(--space-3);
     font-size: var(--font-label);
   }
 
@@ -992,20 +986,21 @@ export const globalStyles = `
     flex-shrink: 0;
   }
 
-  .game-detail-header__meta {
+  .game-detail-header__meta,
+  .game-list-item__meta {
     margin: var(--space-1) 0 0;
   }
 
   .game-detail-header__countdown {
     display: inline-flex;
-    margin-top: var(--space-2);
+    margin-top: var(--space-1);
   }
 
   .game-list-item__starting-soon,
   .game-start-countdown {
     display: inline-flex;
     align-items: center;
-    padding: 2px 8px;
+    padding: var(--space-1) var(--space-2);
     border-radius: var(--radius-pill);
     background: var(--status-go-bg);
     border: 1px solid var(--status-go-color);
@@ -1083,7 +1078,7 @@ export const globalStyles = `
   }
 
   .game-commit-strip .game-detail-header__title-row .status-badge {
-    padding: 3px 8px;
+    padding: var(--space-1) var(--space-2);
     font-size: var(--font-label);
   }
 
@@ -1300,7 +1295,7 @@ export const globalStyles = `
 
   @media (max-width: 420px) {
     .watching-cluster {
-      padding: 4px 8px;
+      padding: var(--space-1) var(--space-2);
     }
   }
 
@@ -1405,7 +1400,6 @@ export const globalStyles = `
     align-items: flex-start;
     justify-content: space-between;
     gap: var(--space-3);
-    margin-bottom: var(--space-2);
   }
 
   .game-list-item__title-wrap {
@@ -1431,16 +1425,6 @@ export const globalStyles = `
     flex-shrink: 0;
   }
 
-  .game-list-item__meta {
-    margin: 0;
-  }
-
-  .game-list-item__detail,
-  .meta-row--schedule.game-list-item__detail {
-    margin: var(--space-1) 0 0;
-    color: var(--text-subtle);
-  }
-
   .game-list-item__footer {
     display: flex;
     align-items: center;
@@ -1458,7 +1442,7 @@ export const globalStyles = `
 
   .game-list-item__live {
     font-size: var(--font-label);
-    padding: 2px 8px;
+    padding: var(--space-1) var(--space-2);
     border-radius: 999px;
     background: var(--status-almost-bg);
     border: 1px solid var(--status-almost-color);
@@ -1469,7 +1453,7 @@ export const globalStyles = `
 
   .game-list-item__ended {
     font-size: var(--font-label);
-    padding: 2px 8px;
+    padding: var(--space-1) var(--space-2);
     border-radius: 999px;
     background: var(--btn-bg);
     border: 1px solid var(--card-ring);
@@ -1480,9 +1464,9 @@ export const globalStyles = `
 
   .game-detail-header__live {
     display: inline-flex;
-    margin-top: 6px;
+    margin-top: var(--space-1);
     font-size: var(--font-label);
-    padding: 2px 8px;
+    padding: var(--space-1) var(--space-2);
     border-radius: 999px;
     background: var(--status-almost-bg);
     border: 1px solid var(--status-almost-color);
@@ -1493,9 +1477,9 @@ export const globalStyles = `
 
   .game-detail-header__starting-soon {
     display: inline-flex;
-    margin-top: 6px;
+    margin-top: var(--space-1);
     font-size: var(--font-label);
-    padding: 2px 8px;
+    padding: var(--space-1) var(--space-2);
     border-radius: 999px;
     background: var(--status-go-bg);
     border: 1px solid var(--status-go-color);
@@ -1506,9 +1490,9 @@ export const globalStyles = `
 
   .game-detail-header__ended {
     display: inline-flex;
-    margin-top: 6px;
+    margin-top: var(--space-1);
     font-size: var(--font-label);
-    padding: 2px 8px;
+    padding: var(--space-1) var(--space-2);
     border-radius: 999px;
     background: var(--btn-bg);
     border: 1px solid var(--card-ring);
@@ -1545,7 +1529,7 @@ export const globalStyles = `
 
   @container game-detail (max-width: 380px) {
     .game-detail-header__title-row .status-badge {
-      padding: 3px 8px;
+      padding: var(--space-1) var(--space-2);
       font-size: var(--font-label);
     }
   }
@@ -1599,7 +1583,7 @@ export const globalStyles = `
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 6px;
+    gap: var(--space-2);
     width: min(100%, var(--max-list));
     pointer-events: auto;
   }
