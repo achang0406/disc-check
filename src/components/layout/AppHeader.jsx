@@ -4,6 +4,9 @@ import Button from "../ui/Button.jsx";
 import WatchingCluster from "../presence/WatchingCluster.jsx";
 import { suppressMouseFocus } from "../../utils/suppressMouseFocus.js";
 
+const ADMIN_TITLE_TAPS = 5;
+const ADMIN_TITLE_TAP_WINDOW_MS = 2000;
+
 function LogoutIcon() {
   return (
     <svg className="games-screen__admin-logout-icon" viewBox="0 0 24 24" aria-hidden="true">
@@ -43,6 +46,16 @@ export default function AppHeader({
 }) {
   const [adminMenuOpen, setAdminMenuOpen] = useState(false);
   const adminMenuRef = useRef(null);
+  const titleTapCountRef = useRef(0);
+  const titleTapTimerRef = useRef(null);
+
+  useEffect(() => {
+    return () => {
+      if (titleTapTimerRef.current) {
+        window.clearTimeout(titleTapTimerRef.current);
+      }
+    };
+  }, []);
 
   useEffect(() => {
     if (!isAdmin) {
@@ -83,6 +96,28 @@ export default function AppHeader({
     onAdminLogout?.();
   }, [onAdminLogout]);
 
+  const handleTitleTap = useCallback(() => {
+    if (!showAdmin || !adminAvailable || isAdmin) return;
+
+    titleTapCountRef.current += 1;
+
+    if (titleTapTimerRef.current) {
+      window.clearTimeout(titleTapTimerRef.current);
+    }
+
+    if (titleTapCountRef.current >= ADMIN_TITLE_TAPS) {
+      titleTapCountRef.current = 0;
+      titleTapTimerRef.current = null;
+      onAdminLoginClick?.();
+      return;
+    }
+
+    titleTapTimerRef.current = window.setTimeout(() => {
+      titleTapCountRef.current = 0;
+      titleTapTimerRef.current = null;
+    }, ADMIN_TITLE_TAP_WINDOW_MS);
+  }, [showAdmin, adminAvailable, isAdmin, onAdminLoginClick]);
+
   return (
     <header className="app-header">
       <div className="app-header__leading">
@@ -91,7 +126,15 @@ export default function AppHeader({
           <span className="app-header__logo" aria-hidden="true">
             🥏
           </span>
-          <span className="app-header__title">DiscCheck</span>
+          <span
+            className={`app-header__title${
+              showAdmin && adminAvailable && !isAdmin ? " app-header__title--tappable" : ""
+            }`}
+            onClick={handleTitleTap}
+            onMouseDown={suppressMouseFocus}
+          >
+            DiscCheck
+          </span>
           {showAdmin && isAdmin && (
             <div className="games-screen__admin-menu" ref={adminMenuRef}>
               <button
@@ -128,16 +171,6 @@ export default function AppHeader({
       ) : null}
 
       <div className="app-header__actions">
-        {showAdmin && adminAvailable && !isAdmin && (
-          <Button
-            variant="icon"
-            onClick={onAdminLoginClick}
-            aria-label="Admin login"
-            title="Admin login"
-          >
-            🔒
-          </Button>
-        )}
         {showAdmin && isAdmin && (
           <Button
             variant="ghost"

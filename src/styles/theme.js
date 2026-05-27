@@ -1208,6 +1208,11 @@ export const globalStyles = `
     font-weight: 700;
   }
 
+  .app-header__title--tappable {
+    user-select: none;
+    -webkit-user-select: none;
+  }
+
   .app-header__back {
     display: inline-flex;
     align-items: center;
