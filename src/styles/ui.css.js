@@ -269,7 +269,7 @@ export const uiStyles = `
     padding: var(--chat-bar-inset-y) calc(var(--space-2) + 32px) var(--chat-bar-inset-y)
       var(--chat-bar-inset-x);
     color: var(--text);
-    font-size: 15px;
+    font-size: 16px;
     font-family: var(--font-sans);
     outline: none;
   }
