@@ -8,7 +8,7 @@ export default function LockedRsvpChipList({
   entries,
   profileId,
   checkedInUserIds,
-  emptyLabel = "no one signed up",
+  emptyLabel = "No one signed up",
   className = "",
 }) {
   if (entries.length === 0) {

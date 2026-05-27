@@ -72,7 +72,7 @@ export default function GameDetailActions({
           onPlusOnesChange={isLive ? onHerePlusOnesChange : onPlusOnesChange}
           bringingKit={isLive ? hereBringingKit : bringingKit}
           onBringingKitChange={isLive ? onHereBringingKitChange : onBringingKitChange}
-          guestsLabel={isLive ? "with you" : "guests"}
+          guestsLabel={isLive ? "With you" : "Guests"}
           kitLabel={isLive ? "Has kit" : "Bringing kit"}
           disabled={saving}
         />

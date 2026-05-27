@@ -2,18 +2,21 @@ import { WEEKDAY_SHORT } from "../constants/gameSchedule.js";
 import { getGameSchedule, parseStartTime } from "./gameSchedule.js";
 
 export const TIME_PERIOD_ICONS = {
-  day: "☀️",
-  night: "🌙",
+  morning: "☀️",
+  afternoon: "☀️",
+  evening: "🌙",
 };
 
 export const TIME_PERIOD_TEXT = {
-  day: "daytime",
-  night: "nighttime",
+  morning: "Morning",
+  afternoon: "Afternoon",
+  evening: "Evening",
 };
 
 export const TIME_PERIOD_LABELS = {
-  day: `${TIME_PERIOD_ICONS.day} ${TIME_PERIOD_TEXT.day}`,
-  night: `${TIME_PERIOD_ICONS.night} ${TIME_PERIOD_TEXT.night}`,
+  morning: `${TIME_PERIOD_ICONS.morning} ${TIME_PERIOD_TEXT.morning}`,
+  afternoon: `${TIME_PERIOD_ICONS.afternoon} ${TIME_PERIOD_TEXT.afternoon}`,
+  evening: `${TIME_PERIOD_ICONS.evening} ${TIME_PERIOD_TEXT.evening}`,
 };
 
 export function getTimePeriod(game) {
@@ -23,7 +26,9 @@ export function getTimePeriod(game) {
   const clock = parseStartTime(schedule.startTime);
   if (!clock) return null;
 
-  return clock.hour >= 17 ? "night" : "day";
+  if (clock.hour < 12) return "morning";
+  if (clock.hour < 17) return "afternoon";
+  return "evening";
 }
 
 export function formatGameTime(game) {
@@ -49,15 +54,7 @@ export function formatGameTime(game) {
 
 /** @deprecated Use getTimePeriod for display; kept for schedule tests. */
 export function getTimeSlot(game) {
-  const schedule = getGameSchedule(game);
-  if (!schedule) return "other";
-
-  const clock = parseStartTime(schedule.startTime);
-  if (!clock) return "other";
-
-  if (clock.hour < 12) return "morning";
-  if (clock.hour < 17) return "afternoon";
-  return "evening";
+  return getTimePeriod(game) ?? "other";
 }
 
 export function toTimeInputValue(startTime) {

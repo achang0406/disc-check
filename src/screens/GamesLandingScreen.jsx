@@ -57,7 +57,7 @@ export default function GamesLandingScreen({
       <main className="games-screen__main games-screen__main--landing">
         {sortedGames.length === 0 ? (
           <EmptyState
-            text="no games yet"
+            text="No games yet"
             actionLabel={isAdmin ? "+ Add game" : undefined}
             onAction={isAdmin ? onAddGame : undefined}
           />

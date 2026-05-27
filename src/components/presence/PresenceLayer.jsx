@@ -318,7 +318,7 @@ export default function PresenceLayer({
       `}</style>
 
       {!connected && isSupabaseConfigured() && isWide && (
-        <div className="presence-connecting">connecting to presence…</div>
+        <div className="presence-connecting">Connecting to presence…</div>
       )}
 
       {others.map((user) => (

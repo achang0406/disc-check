@@ -146,7 +146,7 @@ export default function EditProfileModal({
         ) : (
           <>
             <Button variant="primary" block disabled={busy} onClick={handleSubmit}>
-              {checkingPhone || lookup === "loading" ? "checking phone…" : saving ? "saving..." : "Save"}
+              {checkingPhone || lookup === "loading" ? "checking phone…" : saving ? "Saving..." : "Save"}
             </Button>
             <Button variant="secondary" disabled={busy} onClick={onClose}>
               Cancel

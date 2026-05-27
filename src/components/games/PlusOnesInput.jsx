@@ -4,7 +4,7 @@ export default function PlusOnesInput({
   value,
   onChange,
   disabled = false,
-  label = "guests",
+  label = "Guests",
   max = 10,
 }) {
   const count = Number(value) || 0;

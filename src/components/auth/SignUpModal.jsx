@@ -84,7 +84,7 @@ export default function SignUpModal({ saving, onSubmit, onClose, onLookupPhone }
       footer={
         <>
           <Button variant="primary" block disabled={saving || lookup === "loading"} onClick={handleSubmit}>
-            {saving ? "saving..." : "Count me in"}
+            {saving ? "Saving..." : "Count me in"}
           </Button>
           <Button variant="secondary" disabled={saving} onClick={onClose}>
             Cancel

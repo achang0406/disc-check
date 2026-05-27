@@ -6,7 +6,7 @@ export default function CommitExtras({
   onPlusOnesChange,
   bringingKit,
   onBringingKitChange,
-  guestsLabel = "guests",
+  guestsLabel = "Guests",
   kitLabel = "Bringing kit",
   disabled = false,
 }) {

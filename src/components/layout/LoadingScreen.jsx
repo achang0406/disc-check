@@ -11,7 +11,7 @@ export default function LoadingScreen({ cssVars, exiting = false, onTransitionEn
         <div className="loading-screen__icon" aria-hidden="true">
           🥏
         </div>
-        <p className="loading-screen__label">loading...</p>
+        <p className="loading-screen__label">Loading...</p>
       </div>
     </div>
   );
