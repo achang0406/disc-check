@@ -1,6 +1,21 @@
 import { WEEKDAY_SHORT } from "../constants/gameSchedule.js";
 import { getGameSchedule, parseStartTime } from "./gameSchedule.js";
 
+export const TIME_PERIOD_LABELS = {
+  day: "☀️ daytime",
+  night: "🌙 nighttime",
+};
+
+export function getTimePeriod(game) {
+  const schedule = getGameSchedule(game);
+  if (!schedule) return null;
+
+  const clock = parseStartTime(schedule.startTime);
+  if (!clock) return null;
+
+  return clock.hour >= 17 ? "night" : "day";
+}
+
 export function formatGameTime(game) {
   const schedule = getGameSchedule(game);
   if (!schedule) return "";
@@ -22,6 +37,7 @@ export function formatGameTime(game) {
   return `${weekday} ${time}`;
 }
 
+/** @deprecated Use getTimePeriod for display; kept for schedule tests. */
 export function getTimeSlot(game) {
   const schedule = getGameSchedule(game);
   if (!schedule) return "other";

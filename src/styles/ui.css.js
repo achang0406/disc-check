@@ -379,6 +379,10 @@ export const uiStyles = `
     color: var(--text-muted);
   }
 
+  .meta-row__slot {
+    color: var(--text-subtle);
+  }
+
   .meta-row--schedule {
     color: var(--text-subtle);
     margin-bottom: var(--space-3);
@@ -517,6 +521,11 @@ export const uiStyles = `
   .game-walk-ins__input {
     flex: 1;
     min-width: 0;
+  }
+
+  .game-walk-ins__input:focus {
+    border-color: var(--card-ring) !important;
+    outline: none;
   }
 
   .game-walk-ins__list {
