@@ -153,9 +153,9 @@ export const globalStyles = `
 
   .game-card--detail {
     width: 100%;
-    height: 100%;
-    max-height: 100%;
-    overflow: hidden;
+    height: auto;
+    max-height: none;
+    overflow: visible;
   }
 
   .game-card--rsvpd {
@@ -177,9 +177,8 @@ export const globalStyles = `
   .game-card__phase-stack {
     position: relative;
     display: grid;
-    flex: 1;
+    flex: 0 1 auto;
     min-height: 0;
-    overflow: hidden;
   }
 
   .game-card--detail .game-card__phase {
@@ -227,7 +226,7 @@ export const globalStyles = `
     display: flex;
     flex-direction: column;
     gap: var(--space-2);
-    flex: 1;
+    flex: 0 1 auto;
     min-height: 0;
   }
 
@@ -729,7 +728,7 @@ export const globalStyles = `
     background: transparent;
     box-shadow: none;
     padding: clamp(14px, 1.6vw, 20px) clamp(var(--space-4), 1.8vw, 22px) 0;
-    height: 100%;
+    height: auto;
     font-size: var(--font-body);
     gap: var(--space-2);
   }
@@ -1425,31 +1424,15 @@ export const globalStyles = `
     container-type: inline-size;
     container-name: game-detail;
     width: 100%;
-    height: min(
-      620px,
-      calc(100dvh - 6.5rem - env(safe-area-inset-bottom, 0px) - 2 * clamp(8px, 2.5vw, 32px) - 7rem)
-    );
-    max-height: 100%;
-    min-height: 0;
+    flex-shrink: 0;
     display: flex;
     flex-direction: column;
-    flex-shrink: 0;
   }
 
   .game-detail .game-card {
     width: 100%;
-    flex: 1;
+    flex: 0 1 auto;
     min-height: 0;
-  }
-
-  @media (min-width: 768px) {
-    .game-detail {
-      min-height: var(--min-game-card-height-wide);
-    }
-
-    .game-detail .game-card {
-      min-height: var(--min-game-card-height-wide);
-    }
   }
 
   @container game-detail (max-width: 380px) {
