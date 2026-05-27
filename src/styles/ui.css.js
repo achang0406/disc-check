@@ -642,13 +642,17 @@ export const uiStyles = `
 
   .meta-row {
     margin: 0;
-    font-family: var(--font-mono);
+    font-family: var(--font-sans);
     font-size: var(--font-body);
     line-height: 1.4;
     display: flex;
     align-items: center;
     gap: var(--space-1);
     min-width: 0;
+  }
+
+  .meta-row__time {
+    font-family: var(--font-mono);
   }
 
   .meta-row__text {
@@ -685,7 +689,7 @@ export const uiStyles = `
   .chip-list__empty {
     margin: 0;
     color: var(--text-faint);
-    font-family: var(--font-mono);
+    font-family: var(--font-sans);
     font-size: var(--font-body);
   }
 
@@ -697,7 +701,7 @@ export const uiStyles = `
     background: var(--chip-bg);
     border: 1px solid var(--chip-border);
     color: var(--chip-text);
-    font-family: var(--font-mono);
+    font-family: var(--font-sans);
     white-space: nowrap;
   }
 
@@ -732,7 +736,7 @@ export const uiStyles = `
   .live-pickup__lead {
     margin: 0;
     color: var(--text-muted);
-    font-family: var(--font-mono);
+    font-family: var(--font-sans);
     font-size: var(--font-body);
     line-height: 1.45;
   }
@@ -749,10 +753,6 @@ export const uiStyles = `
 
   .live-pickup__here-list {
     gap: var(--space-1) var(--space-2);
-    padding: var(--space-2) var(--space-3);
-    border-radius: var(--radius-md);
-    background: color-mix(in srgb, var(--btn-bg) 72%, transparent);
-    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--card-ring) 85%, transparent);
   }
 
   .live-pickup__rsvp-group {
@@ -766,7 +766,7 @@ export const uiStyles = `
   .live-pickup__waiting {
     margin: 0;
     color: var(--text-faint);
-    font-family: var(--font-mono);
+    font-family: var(--font-sans);
     font-size: var(--font-body);
     line-height: 1.45;
   }

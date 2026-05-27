@@ -79,56 +79,56 @@ export default function WhoIsHereSection({
     >
       {showLabel && label && <p className="game-detail-players__label">{label}</p>}
 
-      {hasPeople && (
+      {hasPeople ? (
         <div className="chip-list live-pickup__here-list">
           {checkInEntries.map((entry) => {
-            const isYou = entry.userId === profileId;
-            const name = displayPlayerName(entry, profileId);
-            const kitSuffix = formatKitSuffix(entry);
-            const extras = formatChipExtras(entry);
+              const isYou = entry.userId === profileId;
+              const name = displayPlayerName(entry, profileId);
+              const kitSuffix = formatKitSuffix(entry);
+              const extras = formatChipExtras(entry);
 
-            return (
-              <span
-                key={entry.userId}
-                className={cx("chip", isYou && "chip--you")}
-                title={
-                  entry.plusOnes > 0
-                    ? `${name} + ${entry.plusOnes} guest${entry.plusOnes !== 1 ? "s" : ""}${kitSuffix}`
-                    : `${name}${kitSuffix}`
-                }
-              >
-                {name}
-                {extras && <span className="chip__muted">{extras}</span>}
-              </span>
-            );
-          })}
-
-          {walkInEntries.map((entry) => (
-            <span key={entry.id} className="walk-in-chip">
-              <span className={cx("chip", "chip--walk-in")}>{entry.name}</span>
-              {allowWalkInRemove && !disabled && (
-                <button
-                  type="button"
-                  className="walk-in-chip__remove"
-                  aria-label={`Remove ${entry.name}`}
-                  onMouseDown={suppressMouseFocus}
-                  onClick={() => onRemoveWalkIn?.(entry.id)}
+              return (
+                <span
+                  key={entry.userId}
+                  className={cx("chip", isYou && "chip--you")}
+                  title={
+                    entry.plusOnes > 0
+                      ? `${name} + ${entry.plusOnes} guest${entry.plusOnes !== 1 ? "s" : ""}${kitSuffix}`
+                      : `${name}${kitSuffix}`
+                  }
                 >
-                  ×
-                </button>
-              )}
-            </span>
-          ))}
-        </div>
-      )}
+                  {name}
+                  {extras && <span className="chip__muted">{extras}</span>}
+                </span>
+              );
+            })}
 
-      {showWalkInInput && (
+            {walkInEntries.map((entry) => (
+              <span key={entry.id} className="walk-in-chip">
+                <span className={cx("chip", "chip--walk-in")}>{entry.name}</span>
+                {allowWalkInRemove && !disabled && (
+                  <button
+                    type="button"
+                    className="walk-in-chip__remove"
+                    aria-label={`Remove ${entry.name}`}
+                    onMouseDown={suppressMouseFocus}
+                    onClick={() => onRemoveWalkIn?.(entry.id)}
+                  >
+                    ×
+                  </button>
+                )}
+              </span>
+            ))}
+        </div>
+      ) : null}
+
+      {showWalkInInput ? (
         <WalkInAddForm
           disabled={disabled}
           placeholder={inputPlaceholder}
           onAdd={onAddWalkIn}
         />
-      )}
+      ) : null}
     </div>
   );
 }

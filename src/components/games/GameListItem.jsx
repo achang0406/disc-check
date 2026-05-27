@@ -70,7 +70,7 @@ export default function GameListItem({
           {isLive ? "here now" : isEnded ? "attended" : "signed up"} · {count} / {game.target}
         </span>
         {isLive ? (
-          <span className="game-list-item__live">live now</span>
+          <span className="game-list-item__live">Live now</span>
         ) : isEnded ? (
           <span className="game-list-item__ended">ended</span>
         ) : !cancelled ? (

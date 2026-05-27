@@ -21,7 +21,7 @@ export default function GameStartStatus({
 
   return (
     <span className={[pillClassName, className].filter(Boolean).join(" ")}>
-      starting soon
+      Starting soon
     </span>
   );
 }

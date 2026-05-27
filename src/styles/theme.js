@@ -277,9 +277,16 @@ export const globalStyles = `
   .progress-bar__label {
     margin: 0;
     font-size: var(--font-label);
-    letter-spacing: 0.04em;
-    color: var(--text-faint);
+    font-weight: 500;
+    letter-spacing: 0;
+    color: var(--text-subtle);
     font-family: var(--font-mono);
+  }
+
+  .game-detail-players--empty .chip-list__empty {
+    color: var(--text-muted);
+    line-height: 1.45;
+    font-family: var(--font-sans);
   }
 
   .game-detail-players--locked {
@@ -376,7 +383,6 @@ export const globalStyles = `
   .game-card__meta {
     margin: var(--space-1) 0 0;
     color: var(--text-muted);
-    font-family: var(--font-mono);
     line-height: 1.4;
   }
 
@@ -575,13 +581,14 @@ export const globalStyles = `
   .status-badge {
     display: inline-flex;
     align-items: center;
-    gap: 6px;
+    gap: 5px;
     border-radius: 999px;
-    padding: 5px 14px;
+    padding: 4px 10px;
     font-family: 'DM Mono', monospace;
     font-weight: 600;
-    font-size: 14px;
+    font-size: var(--font-label);
     letter-spacing: 0.06em;
+    text-transform: uppercase;
     border: 1.5px solid;
     flex-shrink: 0;
   }
@@ -629,7 +636,6 @@ export const globalStyles = `
     border: 1px solid var(--chip-you-border);
     color: var(--chip-you-text);
     font-family: var(--font-mono);
-    letter-spacing: 0.06em;
     font-weight: 600;
   }
 
@@ -881,6 +887,14 @@ export const globalStyles = `
       gap: var(--space-2);
     }
 
+    .game-detail-layout__thread:has(.game-chat-thread__empty) {
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      padding-left: var(--chat-bar-inset-x);
+      padding-right: var(--chat-bar-inset-x);
+    }
+
     .game-detail-layout__thread .chat-message {
       margin-bottom: 0;
       flex-shrink: 0;
@@ -933,8 +947,9 @@ export const globalStyles = `
   }
 
   .game-chat-thread__empty {
-    margin: auto;
+    margin: 0;
     padding: var(--space-5) var(--space-3);
+    max-width: 16rem;
     text-align: center;
     color: var(--text-faint);
     font-family: var(--font-mono);
@@ -996,11 +1011,9 @@ export const globalStyles = `
     background: var(--status-go-bg);
     border: 1px solid var(--status-go-color);
     color: var(--status-go-color);
-    font-family: 'DM Mono', monospace;
-    font-size: 10px;
+    font-family: var(--font-mono);
+    font-size: var(--font-label);
     font-weight: 600;
-    letter-spacing: 0.06em;
-    text-transform: uppercase;
   }
 
   .game-start-countdown {
@@ -1071,9 +1084,8 @@ export const globalStyles = `
   }
 
   .game-commit-strip .game-detail-header__title-row .status-badge {
-    padding: 4px 10px;
+    padding: 3px 8px;
     font-size: var(--font-label);
-    letter-spacing: 0.06em;
   }
 
   .game-commit-strip__expandable {
@@ -1438,79 +1450,67 @@ export const globalStyles = `
     font-size: var(--font-label);
     color: var(--text-subtle);
     font-family: var(--font-mono);
-    text-transform: uppercase;
-    letter-spacing: 0.06em;
   }
 
   .game-list-item__live {
-    font-size: 10px;
+    font-size: var(--font-label);
     padding: 2px 8px;
     border-radius: 999px;
     background: var(--status-almost-bg);
     border: 1px solid var(--status-almost-color);
     color: var(--status-almost-color);
-    font-family: 'DM Mono', monospace;
+    font-family: var(--font-mono);
     font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.06em;
   }
 
   .game-list-item__ended {
-    font-size: 10px;
+    font-size: var(--font-label);
     padding: 2px 8px;
     border-radius: 999px;
     background: var(--btn-bg);
     border: 1px solid var(--card-ring);
     color: var(--text-subtle);
-    font-family: 'DM Mono', monospace;
+    font-family: var(--font-mono);
     font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.06em;
   }
 
   .game-detail-header__live {
     display: inline-flex;
     margin-top: 6px;
-    font-size: 10px;
+    font-size: var(--font-label);
     padding: 2px 8px;
     border-radius: 999px;
     background: var(--status-almost-bg);
     border: 1px solid var(--status-almost-color);
     color: var(--status-almost-color);
-    font-family: 'DM Mono', monospace;
+    font-family: var(--font-mono);
     font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.06em;
   }
 
   .game-detail-header__starting-soon {
     display: inline-flex;
     margin-top: 6px;
-    font-size: 10px;
+    font-size: var(--font-label);
     padding: 2px 8px;
     border-radius: 999px;
     background: var(--status-go-bg);
     border: 1px solid var(--status-go-color);
     color: var(--status-go-color);
-    font-family: 'DM Mono', monospace;
+    font-family: var(--font-mono);
     font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.06em;
   }
 
   .game-detail-header__ended {
     display: inline-flex;
     margin-top: 6px;
-    font-size: 10px;
+    font-size: var(--font-label);
     padding: 2px 8px;
     border-radius: 999px;
     background: var(--btn-bg);
     border: 1px solid var(--card-ring);
     color: var(--text-subtle);
-    font-family: 'DM Mono', monospace;
+    font-family: var(--font-mono);
     font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.06em;
   }
 
   .game-list-item__countdown {
@@ -1541,8 +1541,8 @@ export const globalStyles = `
 
   @container game-detail (max-width: 380px) {
     .game-detail-header__title-row .status-badge {
-      padding: 4px 10px;
-      font-size: 11px;
+      padding: 3px 8px;
+      font-size: var(--font-label);
     }
   }
 

@@ -94,6 +94,11 @@ export default function GameChatThread({ messages, selfId }) {
         return;
       }
 
+      if (thread.querySelector(".game-chat-thread__empty")) {
+        clearThreadPad();
+        return;
+      }
+
       const input = document.querySelector(".chat-bar__input");
       if (!input) return;
 
@@ -139,7 +144,7 @@ export default function GameChatThread({ messages, selfId }) {
       }
       clearThreadPad();
     };
-  }, []);
+  }, [messages.length]);
 
   const handleScroll = () => {
     const node = scrollRef.current;

@@ -48,17 +48,15 @@ export default function GameCommitStrip({
         <ProgressBar
           count={count}
           target={game.target}
-          label={isLive ? "Here now" : isEnded ? "Attended" : "RSVP"}
+          label={isLive ? "Here now" : isEnded ? "Attended" : "Rsvp"}
         />
 
         <div className="game-commit-strip__expandable" aria-hidden={!expanded}>
           <div className="game-commit-strip__expandable-inner">
             {!cancelled && !inPickupWindow && (
               <GameDetailPlayersSection
-                label="Signed up"
                 entries={rsvpEntries}
                 profileId={profile?.id}
-                emptyLabel="no signups yet"
               />
             )}
 

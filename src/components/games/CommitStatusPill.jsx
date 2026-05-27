@@ -6,7 +6,7 @@ export default function CommitStatusPill({
   reserveSpace = false,
 }) {
   const committed = !cancelled && (rsvpd || checkedIn);
-  const label = isLive && checkedIn ? "HERE" : "IN";
+  const label = isLive && checkedIn ? "Here" : "In";
 
   if (!reserveSpace && !committed) {
     return null;

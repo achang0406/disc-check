@@ -22,12 +22,10 @@ export default function GameCardBody({
     <div className="game-card__phase-stack">
       <section className={`game-card__phase game-card__phase--rsvp${inPickupWindow ? " game-card__phase--exit" : ""}`}>
         <div className="game-detail-body">
-          <ProgressBar count={rsvpCount} target={game.target} label="RSVP" />
+          <ProgressBar count={rsvpCount} target={game.target} label="Rsvp" />
           <GameDetailPlayersSection
-            label="Signed up"
             entries={rsvpEntries}
             profileId={profile?.id}
-            emptyLabel="no signups yet"
           />
         </div>
       </section>
