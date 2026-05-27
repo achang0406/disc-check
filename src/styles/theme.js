@@ -86,6 +86,8 @@ export const globalStyles = `
   html {
     height: 100vh;
     height: 100dvh;
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
   }
 
   body, #root {

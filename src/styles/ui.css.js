@@ -269,13 +269,21 @@ export const uiStyles = `
     padding: var(--chat-bar-inset-y) calc(var(--space-2) + 32px) var(--chat-bar-inset-y)
       var(--chat-bar-inset-x);
     color: var(--text);
-    font-size: 16px;
+    font-size: max(16px, 1rem);
+    line-height: 1.4;
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
     font-family: var(--font-sans);
     outline: none;
   }
 
+  .composer-field__input:focus {
+    font-size: max(16px, 1rem);
+  }
+
   .composer-field__input::placeholder {
     color: var(--text-faint);
+    font-size: max(16px, 1rem);
   }
 
   .composer-field__submit {
@@ -933,5 +941,19 @@ export const uiStyles = `
 
   .chat-message--self .chat-message__bubble {
     color: #0a0a0a;
+  }
+
+  @media (max-width: 767px) {
+    .field__input,
+    .input,
+    .phone-field__input {
+      font-size: max(16px, 1rem);
+    }
+
+    .field__input::placeholder,
+    .input::placeholder,
+    .phone-field__input::placeholder {
+      font-size: max(16px, 1rem);
+    }
   }
 `;
