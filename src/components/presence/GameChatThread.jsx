@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { MQ_WIDE } from "../../constants/breakpoints.js";
+import { suppressMouseFocus } from "../../utils/suppressMouseFocus.js";
 
 function ChatBubble({ message, selfId }) {
   const isSelf = message.senderId === selfId;
@@ -21,9 +22,9 @@ function ChatBubble({ message, selfId }) {
   );
 }
 
-function scrollToBottom(node) {
+function scrollToLatest(node) {
   if (!node) return;
-  node.scrollTop = node.scrollHeight;
+  node.scrollTop = 0;
 }
 
 export default function GameChatThread({ messages, selfId }) {
@@ -35,10 +36,10 @@ export default function GameChatThread({ messages, selfId }) {
     typeof window !== "undefined" ? !window.matchMedia(MQ_WIDE).matches : false,
   );
 
-  const jumpToBottom = useCallback(() => {
+  const jumpToLatest = useCallback(() => {
     const node = scrollRef.current;
     if (!node) return;
-    scrollToBottom(node);
+    scrollToLatest(node);
     stickToBottomRef.current = true;
     setShowJumpToBottom(false);
   }, []);
@@ -64,8 +65,8 @@ export default function GameChatThread({ messages, selfId }) {
     const sentBySelf = hasNewMessages && lastMessage?.senderId === selfId;
 
     if (sentBySelf || stickToBottomRef.current) {
-      scrollToBottom(node);
-      requestAnimationFrame(() => scrollToBottom(node));
+      scrollToLatest(node);
+      requestAnimationFrame(() => scrollToLatest(node));
       stickToBottomRef.current = true;
       setShowJumpToBottom(false);
     } else if (hasNewMessages && isCompact) {
@@ -144,11 +145,10 @@ export default function GameChatThread({ messages, selfId }) {
     const node = scrollRef.current;
     if (!node) return;
 
-    const distanceFromBottom = node.scrollHeight - node.scrollTop - node.clientHeight;
-    const atBottom = distanceFromBottom < 48;
-    stickToBottomRef.current = atBottom;
+    const atLatest = node.scrollTop < 48;
+    stickToBottomRef.current = atLatest;
 
-    if (atBottom) {
+    if (atLatest) {
       setShowJumpToBottom(false);
     }
   };
@@ -166,12 +166,9 @@ export default function GameChatThread({ messages, selfId }) {
         {messages.length === 0 ? (
           <p className="game-chat-thread__empty">Say hi — chat helps get a game going.</p>
         ) : (
-          <div className="game-chat-thread__messages">
-            <div className="game-chat-thread__spacer" aria-hidden="true" />
-            {messages.map((message) => (
-              <ChatBubble key={message.id} message={message} selfId={selfId} />
-            ))}
-          </div>
+          [...messages].reverse().map((message) => (
+            <ChatBubble key={message.id} message={message} selfId={selfId} />
+          ))
         )}
       </div>
 
@@ -179,7 +176,8 @@ export default function GameChatThread({ messages, selfId }) {
         <button
           type="button"
           className="game-chat-thread__jump"
-          onClick={jumpToBottom}
+          onMouseDown={suppressMouseFocus}
+          onClick={jumpToLatest}
           aria-label="Jump to latest messages"
         >
           New messages ↓

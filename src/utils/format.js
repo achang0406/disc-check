@@ -7,6 +7,13 @@ export function formatKitSuffix(entry) {
   return entry.bringingKit ? " · kit" : "";
 }
 
+export function formatChipExtras(entry) {
+  let extras = "";
+  if (entry.plusOnes > 0) extras += ` +${entry.plusOnes}`;
+  if (entry.bringingKit) extras += " · kit";
+  return extras;
+}
+
 export function getInitials(name) {
   return name
     .split(" ")

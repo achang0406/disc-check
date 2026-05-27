@@ -102,6 +102,23 @@ export const globalStyles = `
   }
 
   * { box-sizing: border-box; }
+
+  button,
+  a,
+  summary,
+  [role="button"],
+  label.bringing-kit,
+  .location-display--copyable {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  button:focus:not(:focus-visible),
+  a:focus:not(:focus-visible),
+  summary:focus:not(:focus-visible),
+  [role="button"]:focus:not(:focus-visible) {
+    outline: none;
+  }
+
   input:focus, select:focus { border-color: #22c55e !important; outline: none; }
   ::placeholder { color: var(--text-faint); }
 
@@ -729,6 +746,16 @@ export const globalStyles = `
   }
 
   @media (max-width: 767px) {
+    .games-screen--detail .games-screen__main--detail {
+      flex: 1 1 0;
+      min-height: 0;
+    }
+
+    .games-screen--detail .game-detail-layout--responsive {
+      flex: 1 1 0;
+      min-height: 0;
+    }
+
     .game-detail-layout--responsive {
       gap: 0;
     }
@@ -768,21 +795,11 @@ export const globalStyles = `
       padding-left: var(--chat-thread-pad-left, var(--chat-bar-inset-x));
       padding-right: var(--chat-thread-pad-right, var(--chat-bar-inset-x));
       padding-bottom: var(--space-2);
-    }
-
-    .game-chat-thread__messages {
-      display: flex;
-      flex-direction: column;
-      min-height: 100%;
+      flex-direction: column-reverse;
       gap: var(--space-2);
     }
 
-    .game-chat-thread__spacer {
-      flex: 1 1 auto;
-      min-height: 0;
-    }
-
-    .game-chat-thread__messages .chat-message {
+    .game-detail-layout__thread .chat-message {
       margin-bottom: 0;
       flex-shrink: 0;
     }
@@ -1193,6 +1210,17 @@ export const globalStyles = `
     padding: 0;
     cursor: pointer;
     color: inherit;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .app-header__profile:focus:not(:focus-visible) {
+    outline: none;
+  }
+
+  .app-header__profile:focus-visible {
+    outline: 2px solid var(--text-faint);
+    outline-offset: 2px;
+    border-radius: var(--radius-sm);
   }
 
   .app-header__avatar {
@@ -1231,6 +1259,16 @@ export const globalStyles = `
     color: inherit;
     padding: clamp(14px, 1.6vw, 18px) clamp(var(--space-4), 1.8vw, 20px);
     transition: transform 0.15s ease, box-shadow 0.15s ease;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .game-list-item:focus:not(:focus-visible) {
+    outline: none;
+  }
+
+  .game-list-item:focus-visible {
+    outline: 2px solid var(--text-faint);
+    outline-offset: 2px;
   }
 
   .game-list-item:hover {

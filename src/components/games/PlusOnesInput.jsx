@@ -1,3 +1,5 @@
+import { suppressMouseFocus } from "../../utils/suppressMouseFocus.js";
+
 export default function PlusOnesInput({
   value,
   onChange,
@@ -15,6 +17,7 @@ export default function PlusOnesInput({
       <button
         type="button"
         className="plus-ones__btn"
+        onMouseDown={suppressMouseFocus}
         onClick={() => onChange(Math.max(0, count - 1))}
         disabled={disabled || count <= 0}
         aria-label={`Remove ${label}`}
@@ -33,6 +36,7 @@ export default function PlusOnesInput({
       <button
         type="button"
         className="plus-ones__btn"
+        onMouseDown={suppressMouseFocus}
         onClick={() => onChange(Math.min(max, count + 1))}
         disabled={disabled}
         aria-label={`Add ${label}`}

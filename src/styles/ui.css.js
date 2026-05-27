@@ -20,6 +20,16 @@ export const uiStyles = `
     line-height: 1.2;
     cursor: pointer;
     transition: opacity 0.12s ease, border-color 0.12s ease, background 0.12s ease;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .btn:focus:not(:focus-visible) {
+    outline: none;
+  }
+
+  .btn:focus-visible {
+    outline: 2px solid var(--text-faint);
+    outline-offset: 2px;
   }
 
   .btn:disabled {
@@ -346,10 +356,6 @@ export const uiStyles = `
     white-space: nowrap;
   }
 
-  .chip__kit {
-    font-style: italic;
-  }
-
   .meta-row {
     margin: 0;
     font-family: var(--font-mono);
@@ -413,7 +419,7 @@ export const uiStyles = `
     color: var(--text-subtle);
   }
 
-  .chip--you .chip__kit {
+  .chip--you .chip__muted {
     color: var(--chip-you-text);
     opacity: 0.9;
   }

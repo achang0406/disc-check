@@ -1,6 +1,7 @@
 import { getInitials } from "../../utils/format.js";
 import Button from "../ui/Button.jsx";
 import WatchingCluster from "../presence/WatchingCluster.jsx";
+import { suppressMouseFocus } from "../../utils/suppressMouseFocus.js";
 
 export default function AppHeader({
   profile,
@@ -71,7 +72,12 @@ export default function AppHeader({
           {theme === "dark" ? "☀️" : "🌙"}
         </Button>
         {profile && (
-          <button type="button" className="app-header__profile" onClick={onProfileClick}>
+          <button
+            type="button"
+            className="app-header__profile"
+            onClick={onProfileClick}
+            onMouseDown={suppressMouseFocus}
+          >
             <div className="app-header__avatar">{getInitials(profile.name)}</div>
             <span className="app-header__profile-name">{profile.name}</span>
           </button>

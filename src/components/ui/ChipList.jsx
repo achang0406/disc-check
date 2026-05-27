@@ -1,4 +1,4 @@
-import { displayPlayerName, formatKitSuffix } from "../../utils/format.js";
+import { displayPlayerName, formatChipExtras, formatKitSuffix } from "../../utils/format.js";
 
 function cx(...parts) {
   return parts.filter(Boolean).join(" ");
@@ -20,6 +20,7 @@ export default function ChipList({
         const isYou = entry.userId === profileId;
         const label = displayPlayerName(entry, profileId);
         const kitSuffix = formatKitSuffix(entry);
+        const extras = formatChipExtras(entry);
         return (
           <span
             key={entry.userId}
@@ -31,12 +32,7 @@ export default function ChipList({
             }
           >
             {label}
-            {entry.plusOnes > 0 && <span className="chip__muted"> +{entry.plusOnes}</span>}
-            {entry.bringingKit && (
-              <span className="chip__muted chip__kit" title="Bringing game kit">
-                · kit
-              </span>
-            )}
+            {extras && <span className="chip__muted">{extras}</span>}
           </span>
         );
       })}

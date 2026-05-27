@@ -1,6 +1,7 @@
 import { useState } from "react";
 import Button from "../ui/Button.jsx";
 import Field from "../ui/Field.jsx";
+import { suppressMouseFocus } from "../../utils/suppressMouseFocus.js";
 
 function cx(...parts) {
   return parts.filter(Boolean).join(" ");
@@ -41,6 +42,7 @@ export default function GameWalkInsSection({
                   type="button"
                   className="walk-in-chip__remove"
                   aria-label={`Remove ${entry.name}`}
+                  onMouseDown={suppressMouseFocus}
                   onClick={() => onRemove?.(entry.id)}
                 >
                   ×

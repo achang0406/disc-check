@@ -1,3 +1,5 @@
+import { suppressMouseFocus } from "../../utils/suppressMouseFocus.js";
+
 function KitIcon() {
   return (
     <svg className="bringing-kit__icon" viewBox="0 0 24 24" aria-hidden="true">
@@ -28,10 +30,8 @@ export default function BringingKitToggle({
       aria-label={label}
       title={label}
       disabled={disabled}
-      onClick={(event) => {
-        onChange(!value);
-        event.currentTarget.blur();
-      }}
+      onMouseDown={suppressMouseFocus}
+      onClick={() => onChange(!value)}
     >
       <KitIcon />
       <span className="bringing-kit__label">{label}</span>

@@ -5,6 +5,7 @@ import MetaRow from "../ui/MetaRow.jsx";
 import CommitStatusPill from "./CommitStatusPill.jsx";
 import GameStartStatus from "./GameStartStatus.jsx";
 import StatusBadge from "./StatusBadge.jsx";
+import { suppressMouseFocus } from "../../utils/suppressMouseFocus.js";
 
 export default function GameListItem({
   game,
@@ -22,6 +23,7 @@ export default function GameListItem({
     <Link
       to={`/games/${game.id}`}
       className={`game-list-item surface${cancelled ? " game-list-item--cancelled" : ""}`}
+      onMouseDown={suppressMouseFocus}
     >
       <div className="game-list-item__top">
         <div className="game-list-item__title-wrap">

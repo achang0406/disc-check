@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { requestChatNotificationPermission } from "../../hooks/useChatAlerts.js";
+import { suppressMouseFocus } from "../../utils/suppressMouseFocus.js";
 
 function readNotificationPermission() {
   if (typeof Notification === "undefined") return "unsupported";
@@ -45,6 +46,7 @@ export default function ChatAlertsLink({ className = "" }) {
     <button
       type="button"
       className={["chat-alerts-link", className].filter(Boolean).join(" ")}
+      onMouseDown={suppressMouseFocus}
       onClick={handleEnable}
       disabled={requesting}
     >

@@ -2,6 +2,7 @@ import MetaRow from "../ui/MetaRow.jsx";
 import CommitStatusPill from "./CommitStatusPill.jsx";
 import GameStartStatus from "./GameStartStatus.jsx";
 import StatusBadge from "./StatusBadge.jsx";
+import { suppressMouseFocus } from "../../utils/suppressMouseFocus.js";
 
 function HeaderCaret({ expanded }) {
   return (
@@ -67,6 +68,7 @@ export default function GameDetailHeader({
         <button
           type="button"
           className="game-detail-header__row-wrap"
+          onMouseDown={suppressMouseFocus}
           onClick={onToggle}
           aria-expanded={expanded}
           aria-label={expanded ? "Collapse game details" : "Expand game details"}
