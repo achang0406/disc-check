@@ -185,6 +185,16 @@ export const uiStyles = `
     font-family: var(--font-mono);
   }
 
+  .phone-field {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+  }
+
+  .phone-field__remove {
+    align-self: flex-start;
+  }
+
   .field-grid {
     display: grid;
     grid-template-columns: 1fr 1fr;

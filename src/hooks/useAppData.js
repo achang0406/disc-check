@@ -633,6 +633,7 @@ export function useAppData(showToast) {
     if (!trimmedName) return;
 
     const normalizedPhone = normalizePhone(phone);
+    const removedPhone = Boolean(profile.phone) && !normalizedPhone;
     setSavingGameId("profile");
 
     try {
@@ -694,7 +695,7 @@ export function useAppData(showToast) {
       }
 
       setShowEditProfile(false);
-      showToast("Profile updated");
+      showToast(removedPhone ? "Phone removed" : "Profile updated");
     } catch (error) {
       const message = error?.message?.includes("phone already linked")
         ? "That phone is linked to another profile"

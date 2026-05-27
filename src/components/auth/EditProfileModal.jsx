@@ -20,6 +20,12 @@ export default function EditProfileModal({
   const [error, setError] = useState("");
   const [phoneError, setPhoneError] = useState("");
   const [checkingPhone, setCheckingPhone] = useState(false);
+  const hadPhone = Boolean(profile.phone);
+  const clearingPhone = hadPhone && !phone.trim();
+
+  const phoneHint = clearingPhone
+    ? "Your phone will be unlinked when you save. RSVPs on this device stay as-is."
+    : undefined;
 
   const handleSubmit = async () => {
     const trimmedName = name.trim();
@@ -99,6 +105,9 @@ export default function EditProfileModal({
           setPhoneError("");
         }}
         error={phoneError}
+        hint={phoneHint}
+        onRemove={() => setPhone("")}
+        removeDisabled={busy}
       />
 
       <Field label="Speech bubble color">

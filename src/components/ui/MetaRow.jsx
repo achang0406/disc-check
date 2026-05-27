@@ -4,7 +4,7 @@ import { TIME_PERIOD_LABELS, formatGameTime, getTimePeriod } from "../../utils/t
 
 /** Location and game time on one line. */
 export default function MetaRow({ game, className = "", allowAddressCopy = false, onAddressCopy }) {
-  const { display, tooltip, copyText } = formatGameLocation(game);
+  const { display, copyText } = formatGameLocation(game);
   const period = getTimePeriod(game);
   const periodLabel = period ? TIME_PERIOD_LABELS[period] : null;
 
@@ -13,7 +13,6 @@ export default function MetaRow({ game, className = "", allowAddressCopy = false
       <span className="meta-row__text">
         <LocationDisplay
           display={display}
-          tooltip={tooltip}
           copyText={copyText}
           copyEnabled={allowAddressCopy}
           onCopy={allowAddressCopy ? onAddressCopy : undefined}

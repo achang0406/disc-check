@@ -367,6 +367,32 @@ export const globalStyles = `
 
   .location-display--copyable .location-display__label {
     cursor: pointer;
+    user-select: none;
+    -webkit-user-select: none;
+  }
+
+  .location-display__copy-action {
+    position: fixed;
+    z-index: calc(var(--z-toast) + 2);
+    margin: 0;
+    padding: 6px 12px;
+    border-radius: var(--radius-pill);
+    border: 1px solid var(--card-ring);
+    background: var(--card-bg);
+    color: var(--text-muted);
+    font-family: var(--font-mono);
+    font-size: var(--font-label);
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .location-display__copy-action:hover {
+    color: var(--text);
+    border-color: var(--text-faint);
   }
 
   .location-display__tooltip {
@@ -452,6 +478,12 @@ export const globalStyles = `
     font-family: var(--font-mono);
   }
 
+  .games-screen__admin-menu {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
   .games-screen__admin-badge {
     font-size: 10px;
     padding: 2px 8px;
@@ -461,6 +493,16 @@ export const globalStyles = `
     color: var(--status-almost-color);
     font-family: 'DM Mono', monospace;
     font-weight: 600;
+    cursor: pointer;
+  }
+
+  .games-screen__admin-badge:focus:not(:focus-visible) {
+    outline: none;
+  }
+
+  .games-screen__admin-badge:focus-visible {
+    outline: 2px solid var(--card-ring);
+    outline-offset: 2px;
   }
 
   .games-screen__add-game {

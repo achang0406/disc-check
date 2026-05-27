@@ -14,14 +14,13 @@ export function parseCityFromAddress(address) {
   return "";
 }
 
-/** Display label when set, otherwise the address. Hover shows full address when available. */
+/** Display label when set, otherwise the address. */
 export function formatGameLocation({ location, address }) {
   const label = location?.trim() || "";
   const fullAddress = address?.trim() || "";
   const city = parseCityFromAddress(fullAddress);
   const display = label || fullAddress || city || "";
-  const tooltip = fullAddress || undefined;
   const copyText = fullAddress || undefined;
 
-  return { display, tooltip, copyText, city };
+  return { display, copyText, city };
 }

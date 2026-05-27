@@ -1,3 +1,4 @@
+import { useCallback, useEffect, useRef, useState } from "react";
 import { getInitials } from "../../utils/format.js";
 import Button from "../ui/Button.jsx";
 import WatchingCluster from "../presence/WatchingCluster.jsx";
@@ -17,6 +18,43 @@ export default function AppHeader({
   leading,
   watching,
 }) {
+  const [adminMenuOpen, setAdminMenuOpen] = useState(false);
+  const adminMenuRef = useRef(null);
+
+  useEffect(() => {
+    if (!isAdmin) {
+      setAdminMenuOpen(false);
+    }
+  }, [isAdmin]);
+
+  useEffect(() => {
+    if (!adminMenuOpen) return undefined;
+
+    const dismiss = (event) => {
+      if (adminMenuRef.current?.contains(event.target)) return;
+      setAdminMenuOpen(false);
+    };
+
+    const onKeyDown = (event) => {
+      if (event.key === "Escape") {
+        setAdminMenuOpen(false);
+      }
+    };
+
+    document.addEventListener("pointerdown", dismiss);
+    document.addEventListener("keydown", onKeyDown);
+
+    return () => {
+      document.removeEventListener("pointerdown", dismiss);
+      document.removeEventListener("keydown", onKeyDown);
+    };
+  }, [adminMenuOpen]);
+
+  const handleAdminLogout = useCallback(() => {
+    setAdminMenuOpen(false);
+    onAdminLogout?.();
+  }, [onAdminLogout]);
+
   return (
     <header className="app-header">
       <div className="app-header__leading">
@@ -27,12 +65,28 @@ export default function AppHeader({
           </span>
           <span className="app-header__title">DiscCheck</span>
           {showAdmin && isAdmin && (
-            <>
-              <span className="games-screen__admin-badge">ADMIN</span>
-              <Button variant="ghost" className="games-screen__admin-link" onClick={onAdminLogout}>
-                Sign out
-              </Button>
-            </>
+            <div className="games-screen__admin-menu" ref={adminMenuRef}>
+              <button
+                type="button"
+                className="games-screen__admin-badge"
+                aria-expanded={adminMenuOpen}
+                aria-haspopup="true"
+                aria-label="Admin menu"
+                onMouseDown={suppressMouseFocus}
+                onClick={() => setAdminMenuOpen((open) => !open)}
+              >
+                ADMIN
+              </button>
+              {adminMenuOpen && (
+                <Button
+                  variant="ghost"
+                  className="games-screen__admin-link"
+                  onClick={handleAdminLogout}
+                >
+                  Sign out
+                </Button>
+              )}
+            </div>
           )}
         </div>
       </div>
