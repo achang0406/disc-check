@@ -4,6 +4,29 @@ import Button from "../ui/Button.jsx";
 import WatchingCluster from "../presence/WatchingCluster.jsx";
 import { suppressMouseFocus } from "../../utils/suppressMouseFocus.js";
 
+function LogoutIcon() {
+  return (
+    <svg className="games-screen__admin-logout-icon" viewBox="0 0 24 24" aria-hidden="true">
+      <path
+        d="M10 4H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h4"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.75"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M14 12H8M17 9l3 3-3 3"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.75"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
 export default function AppHeader({
   profile,
   theme,
@@ -41,10 +64,15 @@ export default function AppHeader({
       }
     };
 
+    const autoHideTimer = window.setTimeout(() => {
+      setAdminMenuOpen(false);
+    }, 3000);
+
     document.addEventListener("pointerdown", dismiss);
     document.addEventListener("keydown", onKeyDown);
 
     return () => {
+      window.clearTimeout(autoHideTimer);
       document.removeEventListener("pointerdown", dismiss);
       document.removeEventListener("keydown", onKeyDown);
     };
@@ -79,11 +107,13 @@ export default function AppHeader({
               </button>
               {adminMenuOpen && (
                 <Button
-                  variant="ghost"
+                  variant="icon"
                   className="games-screen__admin-link"
                   onClick={handleAdminLogout}
+                  aria-label="Sign out"
+                  title="Sign out"
                 >
-                  Sign out
+                  <LogoutIcon />
                 </Button>
               )}
             </div>
@@ -113,8 +143,13 @@ export default function AppHeader({
             variant="ghost"
             className="games-screen__add-game games-screen__add-game--header"
             onClick={onAddGame}
+            aria-label="Add game"
+            title="Add game"
           >
-            + Add game
+            <span className="games-screen__add-game-icon" aria-hidden="true">
+              +
+            </span>
+            <span className="games-screen__add-game-label">Add game</span>
           </Button>
         )}
         <Button

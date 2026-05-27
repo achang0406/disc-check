@@ -5,7 +5,7 @@
  * Responsive steps are applied in `theme.js` at sm / lg (md is layout-only).
  *
  * Layout tokens: `--layout-gutter*`, `--layout-inline-gap`, `--layout-stack-gap`,
- * `--game-card-inset-*`, `--game-list-gap`, `--chat-bar-inset-*`
+ * `--game-card-inset-*`, `--game-list-gap`, `--chat-bar-inset-*`, `--chat-bar-anchor-inset`
  */
 export const TOKENS = {
   "--space-1": "4px",
@@ -48,6 +48,7 @@ export const TOKENS = {
   "--z-modal": "200",
   "--chat-bar-inset-x": "var(--space-3)",
   "--chat-bar-inset-y": "var(--space-2)",
+  "--chat-bar-anchor-inset": "var(--space-5)",
   "--chat-bar-width-wide": "50vw",
   "--chat-bar-height": "0px",
   "--chat-bar-lift": "0px",

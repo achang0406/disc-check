@@ -1,5 +1,4 @@
 import { useState } from "react";
-import Button from "../ui/Button.jsx";
 import Field from "../ui/Field.jsx";
 import { displayPlayerName, formatChipExtras, formatKitSuffix } from "../../utils/format.js";
 import { suppressMouseFocus } from "../../utils/suppressMouseFocus.js";
@@ -16,7 +15,8 @@ function WalkInAddForm({
   const [name, setName] = useState("");
   const [error, setError] = useState("");
 
-  const handleAdd = () => {
+  const handleAdd = (event) => {
+    event?.preventDefault?.();
     const trimmed = name.trim();
     if (!trimmed) {
       setError("enter a name");
@@ -29,9 +29,9 @@ function WalkInAddForm({
 
   return (
     <Field error={error}>
-      <div className="game-walk-ins__row">
+      <form className="composer-row game-walk-ins__row" onSubmit={handleAdd}>
         <input
-          className="field__input game-walk-ins__input"
+          className="composer-row__input game-walk-ins__input"
           value={name}
           onChange={(event) => {
             setName(event.target.value);
@@ -40,12 +40,17 @@ function WalkInAddForm({
           placeholder={placeholder}
           disabled={disabled}
           aria-label="Walk-in name"
-          onKeyDown={(event) => event.key === "Enter" && handleAdd()}
         />
-        <Button variant="secondary" disabled={disabled} onClick={handleAdd}>
-          Add
-        </Button>
-      </div>
+        <button
+          type="submit"
+          className="composer-row__submit game-walk-ins__submit"
+          disabled={disabled || !name.trim()}
+          aria-label="Add walk-in"
+          title="Add walk-in"
+        >
+          +
+        </button>
+      </form>
     </Field>
   );
 }

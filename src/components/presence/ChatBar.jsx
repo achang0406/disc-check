@@ -97,25 +97,34 @@ export default function ChatBar({
     <div ref={anchorRef} className="chat-bar-anchor chat-bar-anchor--detail">
       <div className="chat-bar-stack">
         {showAlertsToggle ? <ChatAlertsLink /> : null}
-        <form className="chat-bar" onSubmit={handleSubmit}>
-        <input
-          ref={inputRef}
-          className="chat-bar__input"
-          type="text"
-          value={value}
-          onChange={(event) => onChange(event.target.value)}
-          placeholder={
-            connected
-              ? isWide
-                ? "Type anywhere, or here…"
-                : "Say something…"
-              : "Connecting…"
-          }
-          disabled={!connected}
-          maxLength={MAX_CHAT_LENGTH}
-          enterKeyHint="send"
-          autoComplete="off"
-        />
+        <form className="chat-bar composer-row" onSubmit={handleSubmit}>
+          <input
+            ref={inputRef}
+            className="composer-row__input chat-bar__input"
+            type="text"
+            value={value}
+            onChange={(event) => onChange(event.target.value)}
+            placeholder={
+              connected
+                ? isWide
+                  ? "Type anywhere, or here…"
+                  : "Say something…"
+                : "Connecting…"
+            }
+            disabled={!connected}
+            maxLength={MAX_CHAT_LENGTH}
+            enterKeyHint="send"
+            autoComplete="off"
+          />
+          <button
+            type="submit"
+            className="composer-row__submit chat-bar__send"
+            disabled={!connected || !value.trim()}
+            aria-label="Send message"
+            title="Send message"
+          >
+            →
+          </button>
         </form>
       </div>
     </div>

@@ -18,11 +18,20 @@ export default function GameListItem({
   onEditGame,
 }) {
   const cancelled = game.status === "cancelled";
+  const itemClass = [
+    "game-list-item",
+    "surface",
+    cancelled ? "game-list-item--cancelled" : "",
+    isLive ? "game-list-item--live" : "",
+    !isLive && rsvpd && !cancelled ? "game-list-item--rsvpd" : "",
+  ]
+    .filter(Boolean)
+    .join(" ");
 
   return (
     <Link
       to={`/games/${game.id}`}
-      className={`game-list-item surface${cancelled ? " game-list-item--cancelled" : ""}`}
+      className={itemClass}
       onMouseDown={suppressMouseFocus}
     >
       <div className="game-list-item__top">

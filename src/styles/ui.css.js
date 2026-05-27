@@ -242,6 +242,79 @@ export const uiStyles = `
     gap: var(--space-3);
   }
 
+  .composer-row {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    width: 100%;
+  }
+
+  .composer-row__input {
+    flex: 1;
+    min-width: 0;
+    width: 100%;
+    background: var(--card-bg);
+    border: 1px solid var(--game-card-ring);
+    border-radius: var(--radius-pill);
+    padding: var(--chat-bar-inset-y) var(--chat-bar-inset-x);
+    color: var(--text);
+    font-size: 15px;
+    font-family: var(--font-sans);
+    outline: none;
+  }
+
+  .composer-row__input:focus {
+    outline: none;
+    border-color: color-mix(in srgb, var(--game-card-ring) 55%, var(--text-subtle)) !important;
+  }
+
+  .composer-row__input::placeholder {
+    color: var(--text-faint);
+  }
+
+  .composer-row__submit {
+    width: 38px;
+    height: 38px;
+    padding: 0;
+    border-radius: var(--radius-pill);
+    background: var(--card-bg);
+    border: 1px solid var(--game-card-ring);
+    color: var(--text-subtle);
+    font-size: 17px;
+    font-weight: 600;
+    line-height: 1;
+    cursor: pointer;
+    flex-shrink: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    appearance: none;
+    -webkit-appearance: none;
+    -webkit-tap-highlight-color: transparent;
+    transition:
+      color 0.15s ease,
+      border-color 0.15s ease,
+      background 0.15s ease,
+      opacity 0.15s ease;
+  }
+
+  .composer-row__submit:not(:disabled):hover,
+  .composer-row__submit:not(:disabled):focus-visible {
+    color: var(--status-go-color);
+    border-color: var(--status-go-color);
+    background: color-mix(in srgb, var(--status-go-bg) 65%, var(--card-bg));
+    outline: none;
+  }
+
+  .composer-row__submit:focus:not(:focus-visible) {
+    outline: none;
+  }
+
+  .composer-row__submit:disabled {
+    opacity: 0.35;
+    cursor: not-allowed;
+  }
+
   .select-field {
     position: relative;
     width: 100%;
@@ -699,19 +772,7 @@ export const uiStyles = `
   }
 
   .game-walk-ins__row {
-    display: flex;
-    gap: var(--space-2);
-    align-items: stretch;
-  }
-
-  .game-walk-ins__input {
-    flex: 1;
-    min-width: 0;
-  }
-
-  .game-walk-ins__input:focus {
-    border-color: var(--card-ring) !important;
-    outline: none;
+    align-items: center;
   }
 
   .game-walk-ins__list {
