@@ -874,7 +874,7 @@ export const globalStyles = `
       left: 0;
       right: 0;
       height: var(--chat-underlap);
-      background: linear-gradient(to bottom, var(--card-bg), transparent);
+      background: linear-gradient(to bottom, var(--bg), transparent);
       pointer-events: none;
       z-index: 2;
     }
@@ -882,7 +882,7 @@ export const globalStyles = `
     .game-detail-layout__thread {
       padding-left: var(--chat-thread-pad-left, var(--chat-bar-inset-x));
       padding-right: var(--chat-thread-pad-right, var(--chat-bar-inset-x));
-      padding-bottom: var(--space-2);
+      padding-bottom: 0;
       flex-direction: column-reverse;
       gap: var(--space-2);
     }
@@ -949,7 +949,6 @@ export const globalStyles = `
   .game-chat-thread__empty {
     margin: 0;
     padding: var(--space-5) var(--space-3);
-    max-width: 16rem;
     text-align: center;
     color: var(--text-faint);
     font-family: var(--font-mono);
@@ -1586,6 +1585,7 @@ export const globalStyles = `
   }
 
   .chat-bar-anchor--detail {
+    padding-top: var(--space-2);
     padding-left: max(var(--chat-bar-inset-x), env(safe-area-inset-left, 0px));
     padding-right: max(var(--chat-bar-inset-x), env(safe-area-inset-right, 0px));
   }

@@ -243,48 +243,57 @@ export const uiStyles = `
   }
 
   .composer-row {
-    display: flex;
-    align-items: center;
-    gap: var(--space-2);
     width: 100%;
   }
 
-  .composer-row__input {
-    flex: 1;
-    min-width: 0;
+  .composer-field {
+    position: relative;
+    display: flex;
+    align-items: center;
     width: 100%;
     background: var(--card-bg);
     border: 1px solid var(--game-card-ring);
     border-radius: var(--radius-pill);
-    padding: var(--chat-bar-inset-y) var(--chat-bar-inset-x);
+  }
+
+  .composer-field:focus-within {
+    border-color: color-mix(in srgb, var(--game-card-ring) 55%, var(--text-subtle));
+  }
+
+  .composer-field__input {
+    flex: 1;
+    min-width: 0;
+    width: 100%;
+    border: none;
+    background: transparent;
+    padding: var(--chat-bar-inset-y) calc(var(--space-2) + 32px) var(--chat-bar-inset-y)
+      var(--chat-bar-inset-x);
     color: var(--text);
     font-size: 15px;
     font-family: var(--font-sans);
     outline: none;
   }
 
-  .composer-row__input:focus {
-    outline: none;
-    border-color: color-mix(in srgb, var(--game-card-ring) 55%, var(--text-subtle)) !important;
-  }
-
-  .composer-row__input::placeholder {
+  .composer-field__input::placeholder {
     color: var(--text-faint);
   }
 
-  .composer-row__submit {
-    width: 38px;
-    height: 38px;
+  .composer-field__submit {
+    position: absolute;
+    top: 50%;
+    right: var(--space-1);
+    transform: translateY(-50%);
+    width: 32px;
+    height: 32px;
     padding: 0;
+    border: none;
     border-radius: var(--radius-pill);
-    background: var(--card-bg);
-    border: 1px solid var(--game-card-ring);
+    background: transparent;
     color: var(--text-subtle);
     font-size: 17px;
     font-weight: 600;
     line-height: 1;
     cursor: pointer;
-    flex-shrink: 0;
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -293,24 +302,22 @@ export const uiStyles = `
     -webkit-tap-highlight-color: transparent;
     transition:
       color 0.15s ease,
-      border-color 0.15s ease,
       background 0.15s ease,
       opacity 0.15s ease;
   }
 
-  .composer-row__submit:not(:disabled):hover,
-  .composer-row__submit:not(:disabled):focus-visible {
+  .composer-field__submit:not(:disabled):hover,
+  .composer-field__submit:not(:disabled):focus-visible {
     color: var(--status-go-color);
-    border-color: var(--status-go-color);
     background: color-mix(in srgb, var(--status-go-bg) 65%, var(--card-bg));
     outline: none;
   }
 
-  .composer-row__submit:focus:not(:focus-visible) {
+  .composer-field__submit:focus:not(:focus-visible) {
     outline: none;
   }
 
-  .composer-row__submit:disabled {
+  .composer-field__submit:disabled {
     opacity: 0.35;
     cursor: not-allowed;
   }

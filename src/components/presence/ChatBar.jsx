@@ -37,10 +37,10 @@ export default function ChatBar({
     };
 
     const syncOffsets = () => {
-      const input = anchor.querySelector(".chat-bar__input");
-      if (!input) return;
+      const field = anchor.querySelector(".chat-bar__field");
+      if (!field) return;
 
-      const rect = input.getBoundingClientRect();
+      const rect = field.getBoundingClientRect();
       root.style.setProperty("--chat-bar-offset-left", `${rect.left}px`);
       root.style.setProperty("--chat-bar-offset-right", `${window.innerWidth - rect.right}px`);
     };
@@ -62,9 +62,9 @@ export default function ChatBar({
 
     const resizeObserver = new ResizeObserver(update);
     resizeObserver.observe(anchor);
-    const input = anchor.querySelector(".chat-bar__input");
-    if (input) {
-      resizeObserver.observe(input);
+    const field = anchor.querySelector(".chat-bar__field");
+    if (field) {
+      resizeObserver.observe(field);
     }
 
     window.addEventListener("resize", update);
@@ -98,33 +98,35 @@ export default function ChatBar({
       <div className="chat-bar-stack">
         {showAlertsToggle ? <ChatAlertsLink /> : null}
         <form className="chat-bar composer-row" onSubmit={handleSubmit}>
-          <input
-            ref={inputRef}
-            className="composer-row__input chat-bar__input"
-            type="text"
-            value={value}
-            onChange={(event) => onChange(event.target.value)}
-            placeholder={
-              connected
-                ? isWide
-                  ? "Type anywhere, or here…"
-                  : "Say something…"
-                : "Connecting…"
-            }
-            disabled={!connected}
-            maxLength={MAX_CHAT_LENGTH}
-            enterKeyHint="send"
-            autoComplete="off"
-          />
-          <button
-            type="submit"
-            className="composer-row__submit chat-bar__send"
-            disabled={!connected || !value.trim()}
-            aria-label="Send message"
-            title="Send message"
-          >
-            →
-          </button>
+          <div className="composer-field chat-bar__field">
+            <input
+              ref={inputRef}
+              className="composer-field__input chat-bar__input"
+              type="text"
+              value={value}
+              onChange={(event) => onChange(event.target.value)}
+              placeholder={
+                connected
+                  ? isWide
+                    ? "Type anywhere, or here…"
+                    : "Say something…"
+                  : "Connecting…"
+              }
+              disabled={!connected}
+              maxLength={MAX_CHAT_LENGTH}
+              enterKeyHint="send"
+              autoComplete="off"
+            />
+            <button
+              type="submit"
+              className="composer-field__submit chat-bar__send"
+              disabled={!connected || !value.trim()}
+              aria-label="Send message"
+              title="Send message"
+            >
+              →
+            </button>
+          </div>
         </form>
       </div>
     </div>

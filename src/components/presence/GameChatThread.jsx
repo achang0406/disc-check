@@ -99,11 +99,11 @@ export default function GameChatThread({ messages, selfId }) {
         return;
       }
 
-      const input = document.querySelector(".chat-bar__input");
-      if (!input) return;
+      const field = document.querySelector(".chat-bar__field");
+      if (!field) return;
 
       const threadRect = thread.getBoundingClientRect();
-      const inputRect = input.getBoundingClientRect();
+      const inputRect = field.getBoundingClientRect();
 
       root.style.setProperty(
         "--chat-thread-pad-left",
@@ -118,9 +118,9 @@ export default function GameChatThread({ messages, selfId }) {
     const resizeObserver = new ResizeObserver(syncThreadPadding);
     resizeObserver.observe(thread);
 
-    const input = document.querySelector(".chat-bar__input");
-    if (input) {
-      resizeObserver.observe(input);
+    const field = document.querySelector(".chat-bar__field");
+    if (field) {
+      resizeObserver.observe(field);
     }
 
     window.addEventListener("resize", syncThreadPadding);

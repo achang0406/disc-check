@@ -30,26 +30,28 @@ function WalkInAddForm({
   return (
     <Field error={error}>
       <form className="composer-row game-walk-ins__row" onSubmit={handleAdd}>
-        <input
-          className="composer-row__input game-walk-ins__input"
-          value={name}
-          onChange={(event) => {
-            setName(event.target.value);
-            setError("");
-          }}
-          placeholder={placeholder}
-          disabled={disabled}
-          aria-label="Walk-in name"
-        />
-        <button
-          type="submit"
-          className="composer-row__submit game-walk-ins__submit"
-          disabled={disabled || !name.trim()}
-          aria-label="Add walk-in"
-          title="Add walk-in"
-        >
-          +
-        </button>
+        <div className="composer-field game-walk-ins__field">
+          <input
+            className="composer-field__input game-walk-ins__input"
+            value={name}
+            onChange={(event) => {
+              setName(event.target.value);
+              setError("");
+            }}
+            placeholder={placeholder}
+            disabled={disabled}
+            aria-label="Walk-in name"
+          />
+          <button
+            type="submit"
+            className="composer-field__submit game-walk-ins__submit"
+            disabled={disabled || !name.trim()}
+            aria-label="Add walk-in"
+            title="Add walk-in"
+          >
+            +
+          </button>
+        </div>
       </form>
     </Field>
   );
