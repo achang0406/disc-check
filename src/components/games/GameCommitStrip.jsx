@@ -1,6 +1,5 @@
-import LockedRsvpChipList from "./LockedRsvpChipList.jsx";
+import LivePickupPanel from "./LivePickupPanel.jsx";
 import GameDetailPlayersSection from "./GameDetailPlayersSection.jsx";
-import GameWalkInsSection from "./GameWalkInsSection.jsx";
 import GameDetailHeader from "./GameDetailHeader.jsx";
 import ProgressBar from "./ProgressBar.jsx";
 
@@ -24,8 +23,6 @@ export default function GameCommitStrip({
   saving = false,
 }) {
   const cancelled = game.status === "cancelled";
-  const checkedInUserIds = new Set(checkInEntries.map((entry) => entry.userId));
-
   const inPickupWindow = isLive || isEnded;
 
   return (
@@ -66,36 +63,17 @@ export default function GameCommitStrip({
             )}
 
             {!cancelled && inPickupWindow && (
-              <>
-                <div className="game-detail-players game-detail-players--locked">
-                  <p className="game-detail-players__label">
-                    RSVP locked · {rsvpCount} signed up
-                  </p>
-                  <LockedRsvpChipList
-                    entries={rsvpEntries}
-                    profileId={profile?.id}
-                    checkedInUserIds={checkedInUserIds}
-                    emptyLabel="no one signed up"
-                  />
-                </div>
-
-                <GameDetailPlayersSection
-                  label="Who's here"
-                  entries={checkInEntries}
-                  profileId={profile?.id}
-                  emptyLabel="no one checked in yet"
-                />
-
-                {!isEnded && (
-                  <GameWalkInsSection
-                    entries={walkInEntries}
-                    disabled={!profile || saving}
-                    showInput={expanded}
-                    onAdd={(name) => onAddWalkIn?.(game.id, name)}
-                    onRemove={(guestId) => onRemoveWalkIn?.(game.id, guestId)}
-                  />
-                )}
-              </>
+              <LivePickupPanel
+                profile={profile}
+                isEnded={isEnded}
+                rsvpEntries={rsvpEntries}
+                checkInEntries={checkInEntries}
+                walkInEntries={walkInEntries}
+                disabled={!profile || saving}
+                showWalkInInput={expanded}
+                onAddWalkIn={(name) => onAddWalkIn?.(game.id, name)}
+                onRemoveWalkIn={(guestId) => onRemoveWalkIn?.(game.id, guestId)}
+              />
             )}
           </div>
         </div>

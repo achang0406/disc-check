@@ -451,6 +451,63 @@ export const uiStyles = `
     flex-shrink: 0;
   }
 
+  .live-pickup {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+  }
+
+  .live-pickup__lead {
+    margin: 0;
+    color: var(--text-muted);
+    font-family: var(--font-mono);
+    font-size: var(--font-body);
+    line-height: 1.45;
+  }
+
+  .live-pickup__lead--subtle {
+    color: var(--text-faint);
+  }
+
+  .live-pickup__here {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+  }
+
+  .live-pickup__here-list {
+    gap: var(--space-1) var(--space-2);
+    padding: var(--space-2) var(--space-3);
+    border-radius: var(--radius-md);
+    background: color-mix(in srgb, var(--btn-bg) 72%, transparent);
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--card-ring) 85%, transparent);
+  }
+
+  .live-pickup__rsvp-group {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+    padding-top: var(--space-1);
+    border-top: 1px solid color-mix(in srgb, var(--card-ring) 65%, transparent);
+  }
+
+  .live-pickup__waiting {
+    margin: 0;
+    color: var(--text-faint);
+    font-family: var(--font-mono);
+    font-size: var(--font-body);
+    line-height: 1.45;
+  }
+
+  .live-pickup__rsvp-group .chip-list--locked-rsvp .chip {
+    color: var(--text-faint);
+  }
+
+  .live-pickup__rsvp-group .chip-list--locked-rsvp .chip--you {
+    color: var(--chip-you-text);
+    opacity: 0.82;
+  }
+
   .game-walk-ins__row {
     display: flex;
     gap: var(--space-2);
