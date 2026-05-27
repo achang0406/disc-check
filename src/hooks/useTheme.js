@@ -4,13 +4,37 @@ import { THEMES } from "../styles/themes.js";
 
 const STORAGE_KEY = "disc_theme";
 
+function getStoredTheme() {
+  try {
+    return localStorage.getItem(STORAGE_KEY) === "light" ? "light" : "dark";
+  } catch {
+    return "dark";
+  }
+}
+
+function applyTheme(theme) {
+  const vars = THEMES[theme];
+  const root = document.documentElement;
+
+  for (const [key, value] of Object.entries(TOKENS)) {
+    root.style.setProperty(key, value);
+  }
+  for (const [key, value] of Object.entries(vars)) {
+    root.style.setProperty(key, value);
+  }
+
+  root.style.background = vars["--bg"];
+  root.style.colorScheme = theme;
+  document.body.style.background = vars["--bg"];
+  document.body.style.margin = "0";
+  document.body.style.color = vars["--text"];
+}
+
 export function useTheme() {
   const [theme, setTheme] = useState(() => {
-    try {
-      return localStorage.getItem(STORAGE_KEY) === "light" ? "light" : "dark";
-    } catch {
-      return "dark";
-    }
+    const initial = getStoredTheme();
+    applyTheme(initial);
+    return initial;
   });
 
   useEffect(() => {
@@ -20,17 +44,7 @@ export function useTheme() {
       // Storage unavailable.
     }
 
-    const vars = THEMES[theme];
-    const root = document.documentElement;
-    for (const [key, value] of Object.entries(TOKENS)) {
-      root.style.setProperty(key, value);
-    }
-    for (const [key, value] of Object.entries(vars)) {
-      root.style.setProperty(key, value);
-    }
-    root.style.background = vars["--bg"];
-    document.body.style.background = vars["--bg"];
-    document.body.style.margin = "0";
+    applyTheme(theme);
   }, [theme]);
 
   const toggleTheme = useCallback(() => {

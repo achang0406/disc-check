@@ -3,7 +3,39 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="color-scheme" content="dark light" />
     <title>DiscCheck</title>
+    <style>
+      html {
+        margin: 0;
+        --initial-bg: #0a0a0a;
+        --initial-text: #e8e8e8;
+        background: var(--initial-bg);
+        color: var(--initial-text);
+        color-scheme: dark;
+      }
+
+      body {
+        margin: 0;
+        background: var(--initial-bg);
+        color: var(--initial-text);
+      }
+    </style>
+    <script>
+      (function () {
+        try {
+          var theme = localStorage.getItem("disc_theme") === "light" ? "light" : "dark";
+          var bg = theme === "light" ? "#f4f4ef" : "#0a0a0a";
+          var text = theme === "light" ? "#1a1a1a" : "#e8e8e8";
+          var root = document.documentElement;
+          root.style.setProperty("--initial-bg", bg);
+          root.style.setProperty("--initial-text", text);
+          root.style.colorScheme = theme === "light" ? "light" : "dark";
+        } catch (error) {
+          // Storage unavailable — keep dark defaults.
+        }
+      })();
+    </script>
     <link
       href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&family=DM+Mono:wght@400;500;600&display=swap"
       rel="stylesheet"
