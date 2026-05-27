@@ -626,6 +626,36 @@ export function useAppData(showToast) {
     setShowEditProfile(false);
   };
 
+  const handleRecoverProfile = async (existingProfile) => {
+    if (!existingProfile?.id) return;
+
+    setSavingGameId("profile");
+
+    try {
+      const nextProfile = {
+        id: existingProfile.id,
+        name: existingProfile.name,
+        phone: existingProfile.phone ?? null,
+        bubbleColor: existingProfile.bubbleColor || colorForId(existingProfile.id),
+      };
+
+      saveProfile(nextProfile);
+      setProfile(nextProfile);
+
+      if (useSupabaseRef.current) {
+        const data = await fetchAppData();
+        applyServerData(data);
+      }
+
+      setShowEditProfile(false);
+      showToast(`Switched to ${nextProfile.name}`);
+    } catch {
+      showToast("Couldn't switch profile — try again", "error");
+    }
+
+    setSavingGameId(null);
+  };
+
   const handleUpdateProfile = async ({ name, bubbleColor, phone }) => {
     if (!profile) return;
 
@@ -743,6 +773,7 @@ export function useAppData(showToast) {
     closeSignUp,
     openEditProfile,
     closeEditProfile,
+    handleRecoverProfile,
     handleUpdateProfile,
     lookupProfileByPhone,
     validatePhoneForProfile,

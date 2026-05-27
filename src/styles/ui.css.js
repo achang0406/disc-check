@@ -186,13 +186,54 @@ export const uiStyles = `
   }
 
   .phone-field {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-2);
+    position: relative;
   }
 
-  .phone-field__remove {
-    align-self: flex-start;
+  .phone-field__input {
+    width: 100%;
+  }
+
+  .phone-field--clearable .phone-field__input {
+    padding-right: calc(var(--space-4) + 14px);
+  }
+
+  .phone-field__clear {
+    position: absolute;
+    top: 50%;
+    right: var(--space-2);
+    transform: translateY(-50%);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    padding: 0;
+    border: none;
+    border-radius: var(--radius-pill);
+    background: transparent;
+    color: var(--text-faint);
+    font-size: var(--font-body);
+    line-height: 1;
+    cursor: pointer;
+  }
+
+  .phone-field__clear:hover:not(:disabled) {
+    color: var(--text-muted);
+    background: color-mix(in srgb, var(--btn-bg) 80%, transparent);
+  }
+
+  .phone-field__clear:focus:not(:focus-visible) {
+    outline: none;
+  }
+
+  .phone-field__clear:focus-visible {
+    outline: 2px solid var(--card-ring);
+    outline-offset: 1px;
+  }
+
+  .phone-field__clear:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
   }
 
   .field-grid {

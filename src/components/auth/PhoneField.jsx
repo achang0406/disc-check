@@ -1,5 +1,5 @@
 import Field from "../ui/Field.jsx";
-import Button from "../ui/Button.jsx";
+import { suppressMouseFocus } from "../../utils/suppressMouseFocus.js";
 
 const DEFAULT_HINT = "Links your RSVPs across devices. Never shown to other players.";
 
@@ -11,7 +11,7 @@ export default function PhoneField({
   onRemove,
   removeDisabled = false,
 }) {
-  const showRemove = Boolean(onRemove && value.trim());
+  const showClear = Boolean(onRemove && value.trim());
 
   return (
     <Field
@@ -19,9 +19,9 @@ export default function PhoneField({
       error={error}
       hint={hint}
     >
-      <div className="phone-field">
+      <div className={`phone-field${showClear ? " phone-field--clearable" : ""}`}>
         <input
-          className="field__input"
+          className="field__input phone-field__input"
           type="tel"
           inputMode="tel"
           autoComplete="tel"
@@ -29,16 +29,17 @@ export default function PhoneField({
           onChange={(event) => onChange(event.target.value)}
           placeholder="(555) 555-5555"
         />
-        {showRemove && (
-          <Button
+        {showClear && (
+          <button
             type="button"
-            variant="ghost"
-            className="phone-field__remove"
+            className="phone-field__clear"
+            aria-label="Remove phone number"
             disabled={removeDisabled}
+            onMouseDown={suppressMouseFocus}
             onClick={onRemove}
           >
-            Remove phone
-          </Button>
+            ×
+          </button>
         )}
       </div>
     </Field>

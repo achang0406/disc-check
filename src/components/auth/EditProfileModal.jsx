@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { colorForId } from "../../constants/presence.js";
 import Button from "../ui/Button.jsx";
 import Field from "../ui/Field.jsx";
@@ -13,6 +13,8 @@ export default function EditProfileModal({
   onSubmit,
   onClose,
   onValidatePhone,
+  onLookupPhone,
+  onRecoverProfile,
 }) {
   const [name, setName] = useState(profile.name);
   const [phone, setPhone] = useState(formatPhoneDisplay(profile.phone));
@@ -20,14 +22,65 @@ export default function EditProfileModal({
   const [error, setError] = useState("");
   const [phoneError, setPhoneError] = useState("");
   const [checkingPhone, setCheckingPhone] = useState(false);
+  const [lookup, setLookup] = useState(null);
+  const lookupRequestId = useRef(0);
+
   const hadPhone = Boolean(profile.phone);
   const clearingPhone = hadPhone && !phone.trim();
+  const normalizedCurrent = normalizePhone(profile.phone);
+  const normalizedNew = normalizePhone(phone);
 
-  const phoneHint = clearingPhone
-    ? "Your phone will be unlinked when you save. RSVPs on this device stay as-is."
-    : undefined;
+  const linkedProfile =
+    lookup && typeof lookup === "object" && lookup.id && lookup.id !== profile.id ? lookup : null;
+
+  useEffect(() => {
+    if (!onLookupPhone) return undefined;
+
+    const trimmedPhone = phone.trim();
+    if (!trimmedPhone || !isValidPhone(trimmedPhone)) {
+      setLookup(null);
+      return undefined;
+    }
+
+    if (normalizedNew && normalizedNew === normalizedCurrent) {
+      setLookup(null);
+      return undefined;
+    }
+
+    const requestId = ++lookupRequestId.current;
+    setLookup("loading");
+
+    const timer = setTimeout(async () => {
+      try {
+        const existing = await onLookupPhone(trimmedPhone);
+        if (requestId !== lookupRequestId.current) return;
+        setLookup(existing ?? "not-found");
+      } catch {
+        if (requestId !== lookupRequestId.current) return;
+        setLookup(null);
+      }
+    }, 400);
+
+    return () => clearTimeout(timer);
+  }, [phone, normalizedCurrent, normalizedNew, onLookupPhone]);
+
+  let phoneHint = "Links your RSVPs across devices. Never shown to other players.";
+  if (clearingPhone) {
+    phoneHint = "Your phone will be unlinked when you save. RSVPs on this device stay as-is.";
+  } else if (lookup === "loading") {
+    phoneHint = "Checking for an existing profile…";
+  } else if (linkedProfile) {
+    phoneHint = `This number is linked to ${linkedProfile.name}. Switch to that profile to use it here.`;
+  } else if (lookup === "not-found" && phone.trim() && isValidPhone(phone)) {
+    phoneHint = "No profile on this number yet — we'll link it when you save.";
+  }
 
   const handleSubmit = async () => {
+    if (linkedProfile) {
+      setPhoneError("Switch to the existing profile to use this number");
+      return;
+    }
+
     const trimmedName = name.trim();
     if (!trimmedName) {
       setError("enter your name");
@@ -39,8 +92,10 @@ export default function EditProfileModal({
       return;
     }
 
-    const normalizedNew = normalizePhone(phone);
-    const normalizedCurrent = normalizePhone(profile.phone);
+    if (lookup === "loading") {
+      setPhoneError("checking phone…");
+      return;
+    }
 
     if (normalizedNew && normalizedNew !== normalizedCurrent && onValidatePhone) {
       setCheckingPhone(true);
@@ -67,21 +122,37 @@ export default function EditProfileModal({
     });
   };
 
-  const busy = saving || checkingPhone;
+  const handleRecover = () => {
+    if (!linkedProfile || saving) return;
+    onRecoverProfile?.(linkedProfile);
+  };
+
+  const busy = saving || checkingPhone || lookup === "loading";
 
   return (
     <ModalShell
       title="Edit profile"
       onClose={onClose}
       footer={
-        <>
-          <Button variant="primary" block disabled={busy} onClick={handleSubmit}>
-            {checkingPhone ? "checking phone…" : saving ? "saving..." : "Save"}
-          </Button>
-          <Button variant="secondary" disabled={busy} onClick={onClose}>
-            Cancel
-          </Button>
-        </>
+        linkedProfile ? (
+          <>
+            <Button variant="primary" block disabled={busy} onClick={handleRecover}>
+              {saving ? "switching..." : `Switch to ${linkedProfile.name}`}
+            </Button>
+            <Button variant="secondary" disabled={saving} onClick={onClose}>
+              Cancel
+            </Button>
+          </>
+        ) : (
+          <>
+            <Button variant="primary" block disabled={busy} onClick={handleSubmit}>
+              {checkingPhone || lookup === "loading" ? "checking phone…" : saving ? "saving..." : "Save"}
+            </Button>
+            <Button variant="secondary" disabled={busy} onClick={onClose}>
+              Cancel
+            </Button>
+          </>
+        )
       }
     >
       <Field label="Name" error={error}>
@@ -94,7 +165,7 @@ export default function EditProfileModal({
           }}
           placeholder="e.g. Alex Rivera"
           autoFocus
-          onKeyDown={(event) => event.key === "Enter" && handleSubmit()}
+          onKeyDown={(event) => event.key === "Enter" && !linkedProfile && handleSubmit()}
         />
       </Field>
 
@@ -103,10 +174,16 @@ export default function EditProfileModal({
         onChange={(value) => {
           setPhone(value);
           setPhoneError("");
+          if (!value.trim()) {
+            setLookup(null);
+          }
         }}
         error={phoneError}
         hint={phoneHint}
-        onRemove={() => setPhone("")}
+        onRemove={() => {
+          setPhone("");
+          setLookup(null);
+        }}
         removeDisabled={busy}
       />
 

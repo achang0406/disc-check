@@ -142,6 +142,8 @@ function AppRoutes() {
           onSubmit={app.handleUpdateProfile}
           onClose={app.closeEditProfile}
           onValidatePhone={app.validatePhoneForProfile}
+          onLookupPhone={app.lookupProfileByPhone}
+          onRecoverProfile={app.handleRecoverProfile}
         />
       )}
 
