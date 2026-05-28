@@ -20,6 +20,7 @@ export const CHAT_TTL_MS = 3000;
 export const CURSOR_THROTTLE_MS = 32;
 export const DRAFT_THROTTLE_MS = 80;
 export const MAX_CHAT_LENGTH = 120;
+export const CHAT_CACHE_MAX_MESSAGES = 50;
 export const SPEECH_BUBBLE_WRAP_CH = 22;
 export const SPEECH_BUBBLE_EDGE_PADDING = 16;
 

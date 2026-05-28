@@ -12,6 +12,7 @@ import {
   isEditableTarget,
 } from "../constants/presence.js";
 import { getSupabase, isSupabaseConfigured } from "../lib/supabase.js";
+import { appendChatMessage, loadChatCache, saveChatCache } from "../utils/chatCache.js";
 
 function createLocalChat(message, x, y) {
   return {
@@ -78,7 +79,7 @@ export function usePresence(profile, gameId, isWide) {
   const [others, setOthers] = useState({});
   const [watchingPeers, setWatchingPeers] = useState({});
   const [localChat, setLocalChat] = useState(null);
-  const [messages, setMessages] = useState([]);
+  const [messages, setMessages] = useState(() => (gameId ? loadChatCache(gameId) : []));
   const [draft, setDraft] = useState("");
   const [connected, setConnected] = useState(false);
   const [cursor, setCursor] = useState({ x: 0.5, y: 0.5 });
@@ -151,14 +152,20 @@ export function usePresence(profile, gameId, isWide) {
   }, [cursor]);
 
   useEffect(() => {
-    setMessages([]);
     setOthers({});
     setWatchingPeers({});
     watchingPeersRef.current = {};
     setLocalChat(null);
     setDraft("");
     draftRef.current = "";
+    setMessages(gameId ? loadChatCache(gameId) : []);
   }, [gameId]);
+
+  useEffect(() => {
+    if (!gameId) return;
+    if (messages.length === 0) return;
+    saveChatCache(gameId, messages);
+  }, [gameId, messages]);
 
   useEffect(() => {
     if (mode === "thread") {
@@ -233,7 +240,7 @@ export function usePresence(profile, gameId, isWide) {
           createdAt: payload.createdAt,
         });
 
-        setMessages((current) => [...current, threadMessage]);
+        setMessages((current) => appendChatMessage(current, threadMessage));
 
         if (modeRef.current === "thread") {
           return;
@@ -356,8 +363,28 @@ export function usePresence(profile, gameId, isWide) {
       if (modeRef.current === "thread") {
         const createdAt = Date.now();
         const messageId = `${sessionId}-${createdAt}`;
-        setMessages((current) => [
-          ...current,
+        setMessages((current) =>
+          appendChatMessage(
+            current,
+            createThreadMessage({
+              id: messageId,
+              senderId: sessionId,
+              name: displayName,
+              color,
+              text: trimmed,
+              createdAt,
+            }),
+          ),
+        );
+        broadcast("chat", { message: trimmed, messageId, createdAt });
+        return;
+      }
+
+      const createdAt = Date.now();
+      const messageId = `${sessionId}-${createdAt}`;
+      setMessages((current) =>
+        appendChatMessage(
+          current,
           createThreadMessage({
             id: messageId,
             senderId: sessionId,
@@ -366,24 +393,8 @@ export function usePresence(profile, gameId, isWide) {
             text: trimmed,
             createdAt,
           }),
-        ]);
-        broadcast("chat", { message: trimmed, messageId, createdAt });
-        return;
-      }
-
-      const createdAt = Date.now();
-      const messageId = `${sessionId}-${createdAt}`;
-      setMessages((current) => [
-        ...current,
-        createThreadMessage({
-          id: messageId,
-          senderId: sessionId,
-          name: displayName,
-          color,
-          text: trimmed,
-          createdAt,
-        }),
-      ]);
+        ),
+      );
       broadcast("chat_draft", { message: "", x, y });
       setLocalChat(createLocalChat(trimmed, x, y));
       broadcast("chat", { message: trimmed, messageId, createdAt, x, y });
