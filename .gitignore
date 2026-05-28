@@ -6,3 +6,4 @@ dist
 .env*.local
 .vercel
 supabase/.temp/
+.npm-cache

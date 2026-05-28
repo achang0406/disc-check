@@ -32,7 +32,11 @@ function AppRoutes() {
   const isLanding = useMatch({ path: "/", end: true });
   const detailMatch = useMatch("/games/:gameId");
   const gameId = detailMatch?.params?.gameId ?? null;
-  const presence = usePresence(app.profile, gameId, isWide);
+  const detailGame = useMemo(
+    () => (gameId ? app.gamesMeta.find((item) => item.id === gameId) ?? null : null),
+    [gameId, app.gamesMeta],
+  );
+  const presence = usePresence(app.profile, gameId, isWide, detailGame?.name ?? "");
   const glowUserIds = useMemo(() => {
     if (!gameId) return new Set();
 

@@ -13,6 +13,11 @@ import {
 } from "../constants/presence.js";
 import { getSupabase, isSupabaseConfigured } from "../lib/supabase.js";
 import { appendChatMessage, loadChatCache, saveChatCache } from "../utils/chatCache.js";
+import {
+  ensureChatPushRegistration,
+  notifyChatPush,
+  registerChatPushAfterSend,
+} from "../lib/push.js";
 
 function createLocalChat(message, x, y) {
   return {
@@ -73,7 +78,7 @@ function isTouchIgnoredTarget(target) {
   return Boolean(target.closest(".chat-bar-anchor"));
 }
 
-export function usePresence(profile, gameId, isWide) {
+export function usePresence(profile, gameId, isWide, gameName = "") {
   const mode = getPresenceMode(isWide);
 
   const [others, setOthers] = useState({});
@@ -166,6 +171,11 @@ export function usePresence(profile, gameId, isWide) {
     if (messages.length === 0) return;
     saveChatCache(gameId, messages);
   }, [gameId, messages]);
+
+  useEffect(() => {
+    if (!gameId) return undefined;
+    void ensureChatPushRegistration({ gameId, subscriberId: sessionId });
+  }, [gameId, sessionId]);
 
   useEffect(() => {
     if (mode === "thread") {
@@ -351,37 +361,11 @@ export function usePresence(profile, gameId, isWide) {
     [broadcast, getPosition],
   );
 
-  const sendChat = useCallback(
-    (message) => {
-      const trimmed = message.trim();
-      if (!trimmed) return;
-
-      const { x, y } = getPosition();
-      setDraft("");
-      draftRef.current = "";
-
-      if (modeRef.current === "thread") {
-        const createdAt = Date.now();
-        const messageId = `${sessionId}-${createdAt}`;
-        setMessages((current) =>
-          appendChatMessage(
-            current,
-            createThreadMessage({
-              id: messageId,
-              senderId: sessionId,
-              name: displayName,
-              color,
-              text: trimmed,
-              createdAt,
-            }),
-          ),
-        );
-        broadcast("chat", { message: trimmed, messageId, createdAt });
-        return;
-      }
-
+  const deliverChatMessage = useCallback(
+    async (trimmed, extras = {}) => {
       const createdAt = Date.now();
       const messageId = `${sessionId}-${createdAt}`;
+
       setMessages((current) =>
         appendChatMessage(
           current,
@@ -395,11 +379,43 @@ export function usePresence(profile, gameId, isWide) {
           }),
         ),
       );
+
+      broadcast("chat", { message: trimmed, messageId, createdAt, ...extras });
+
+      if (!gameId) return;
+
+      await registerChatPushAfterSend({ gameId, subscriberId: sessionId });
+      void notifyChatPush({
+        gameId,
+        senderId: sessionId,
+        senderName: displayName,
+        text: trimmed,
+        messageId,
+        gameName,
+      });
+    },
+    [broadcast, color, displayName, gameId, gameName, sessionId],
+  );
+
+  const sendChat = useCallback(
+    (message) => {
+      const trimmed = message.trim();
+      if (!trimmed) return;
+
+      const { x, y } = getPosition();
+      setDraft("");
+      draftRef.current = "";
+
+      if (modeRef.current === "thread") {
+        void deliverChatMessage(trimmed);
+        return;
+      }
+
       broadcast("chat_draft", { message: "", x, y });
       setLocalChat(createLocalChat(trimmed, x, y));
-      broadcast("chat", { message: trimmed, messageId, createdAt, x, y });
+      void deliverChatMessage(trimmed, { x, y });
     },
-    [broadcast, color, displayName, getPosition, sessionId],
+    [broadcast, deliverChatMessage, getPosition],
   );
 
   const setThreadDraft = useCallback(
