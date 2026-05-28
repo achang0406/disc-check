@@ -99,6 +99,7 @@ export const uiStyles = `
     justify-content: center;
     padding: var(--space-5);
     background: var(--overlay);
+    pointer-events: auto;
   }
 
   .modal {

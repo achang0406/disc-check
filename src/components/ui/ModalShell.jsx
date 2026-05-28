@@ -11,8 +11,17 @@ export default function ModalShell({
   wide = false,
   onClose,
 }) {
+  const dismissFromBackdrop = (event) => {
+    if (event.target !== event.currentTarget) return;
+    onClose?.();
+  };
+
   return (
-    <div className="modal-overlay" onClick={onClose}>
+    <div
+      className="modal-overlay"
+      onClick={onClose}
+      onPointerDown={dismissFromBackdrop}
+    >
       <div
         className={cx("modal", "surface", wide && "modal--wide")}
         onClick={(event) => event.stopPropagation()}
