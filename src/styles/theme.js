@@ -1147,6 +1147,44 @@ export const globalStyles = `
     padding-top: var(--space-3);
   }
 
+  .install-app-link {
+    margin: 0;
+    padding: 0;
+    border: none;
+    background: none;
+    color: var(--text-faint);
+    font-size: 11px;
+    font-family: var(--font-mono);
+    line-height: 1.3;
+    cursor: pointer;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+    text-decoration-color: color-mix(in srgb, var(--text-faint) 55%, transparent);
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .install-app-link:hover:not(:disabled) {
+    color: var(--text-subtle);
+    text-decoration-color: currentColor;
+  }
+
+  .install-app-link:disabled {
+    opacity: 0.7;
+    cursor: wait;
+  }
+
+  .install-app-help {
+    margin: 0;
+    padding-left: 1.1rem;
+    color: var(--text-subtle);
+    font-size: var(--font-body);
+    line-height: 1.5;
+  }
+
+  .install-app-help li + li {
+    margin-top: var(--space-2);
+  }
+
   .games-screen__main--detail {
     align-items: stretch;
     justify-content: flex-start;
@@ -1185,6 +1223,10 @@ export const globalStyles = `
     display: flex;
     justify-content: center;
     pointer-events: none;
+  }
+
+  .app-header__center .install-app-link {
+    pointer-events: auto;
   }
 
   .app-header__leading {

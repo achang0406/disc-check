@@ -52,6 +52,7 @@ export default function GamesLandingScreen({
         onAdminLogout={onAdminLogout}
         onAddGame={onAddGame}
         showAdmin
+        showInstallLink
       />
 
       <main className="games-screen__main games-screen__main--landing">

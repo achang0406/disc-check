@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { getInitials } from "../../utils/format.js";
 import Button from "../ui/Button.jsx";
+import InstallAppLink from "./InstallAppLink.jsx";
 import WatchingCluster from "../presence/WatchingCluster.jsx";
 import { suppressMouseFocus } from "../../utils/suppressMouseFocus.js";
 
@@ -41,6 +42,7 @@ export default function AppHeader({
   onAdminLogout,
   onAddGame,
   showAdmin = false,
+  showInstallLink = false,
   leading,
   watching,
 }) {
@@ -169,9 +171,13 @@ export default function AppHeader({
         </div>
       </div>
 
-      {watching?.length > 0 ? (
+      {(watching?.length > 0 || showInstallLink) ? (
         <div className="app-header__center">
-          <WatchingCluster watchers={watching} />
+          {watching?.length > 0 ? (
+            <WatchingCluster watchers={watching} />
+          ) : (
+            <InstallAppLink />
+          )}
         </div>
       ) : null}
 
