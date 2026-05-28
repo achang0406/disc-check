@@ -96,8 +96,10 @@ export default function AppHeader({
     onAdminLogout?.();
   }, [onAdminLogout]);
 
+  const brandTappable = showAdmin && adminAvailable && !isAdmin;
+
   const handleTitleTap = useCallback(() => {
-    if (!showAdmin || !adminAvailable || isAdmin) return;
+    if (!brandTappable) return;
 
     titleTapCountRef.current += 1;
 
@@ -116,22 +118,25 @@ export default function AppHeader({
       titleTapCountRef.current = 0;
       titleTapTimerRef.current = null;
     }, ADMIN_TITLE_TAP_WINDOW_MS);
-  }, [showAdmin, adminAvailable, isAdmin, onAdminLoginClick]);
+  }, [brandTappable, onAdminLoginClick]);
 
   return (
     <header className="app-header">
       <div className="app-header__leading">
         {leading}
         <div className="app-header__brand">
-          <span className="app-header__logo" aria-hidden="true">
+          <span
+            className={`app-header__logo${brandTappable ? " app-header__title--tappable" : ""}`}
+            aria-hidden="true"
+            onClick={brandTappable ? handleTitleTap : undefined}
+            onMouseDown={brandTappable ? suppressMouseFocus : undefined}
+          >
             🥏
           </span>
           <span
-            className={`app-header__title${
-              showAdmin && adminAvailable && !isAdmin ? " app-header__title--tappable" : ""
-            }`}
-            onClick={handleTitleTap}
-            onMouseDown={suppressMouseFocus}
+            className={`app-header__title${brandTappable ? " app-header__title--tappable" : ""}`}
+            onClick={brandTappable ? handleTitleTap : undefined}
+            onMouseDown={brandTappable ? suppressMouseFocus : undefined}
           >
             DiscCheck
           </span>
