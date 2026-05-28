@@ -1,6 +1,17 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { MAX_CHAT_LENGTH } from "../../constants/presence.js";
+import { getPortalTarget } from "../../utils/portalTarget.js";
 import ChatAlertsLink from "./ChatAlertsLink.jsx";
+
+function getKeyboardOffset(viewport) {
+  if (!viewport) return 0;
+
+  const heightGap = window.innerHeight - viewport.height;
+  if (heightGap < 80) return 0;
+
+  return Math.max(0, heightGap - viewport.offsetTop);
+}
 
 export default function ChatBar({
   inputRef,
@@ -12,6 +23,11 @@ export default function ChatBar({
   showAlertsToggle = false,
 }) {
   const anchorRef = useRef(null);
+  const [portalTarget, setPortalTarget] = useState(null);
+
+  useEffect(() => {
+    setPortalTarget(getPortalTarget());
+  }, []);
 
   useEffect(() => {
     const anchor = anchorRef.current;
@@ -55,9 +71,9 @@ export default function ChatBar({
         return;
       }
 
-      const keyboardOffset = Math.max(0, window.innerHeight - viewport.height - viewport.offsetTop);
+      const keyboardOffset = getKeyboardOffset(viewport);
       root.style.setProperty("--chat-bar-lift", `${keyboardOffset}px`);
-      anchor.style.transform = keyboardOffset > 0 ? `translateY(-${keyboardOffset}px)` : "";
+      anchor.style.transform = keyboardOffset > 0 ? `translate3d(0, -${keyboardOffset}px, 0)` : "";
     };
 
     const resizeObserver = new ResizeObserver(update);
@@ -93,7 +109,7 @@ export default function ChatBar({
     onSend(value);
   };
 
-  return (
+  const chatBar = (
     <div ref={anchorRef} className="chat-bar-anchor chat-bar-anchor--detail">
       <div className="chat-bar-stack">
         {showAlertsToggle ? <ChatAlertsLink /> : null}
@@ -131,4 +147,8 @@ export default function ChatBar({
       </div>
     </div>
   );
+
+  if (!portalTarget) return null;
+
+  return createPortal(chatBar, portalTarget);
 }

@@ -1,4 +1,5 @@
 import { useEffect, useRef } from "react";
+import { clearAppBadge, incrementAppBadge, notifyServiceWorkerClearBadge } from "../lib/appBadge.js";
 
 const BASE_TITLE = "DiscCheck";
 
@@ -29,6 +30,8 @@ export function useChatAlerts({ gameId, gameName, messages, selfId, enabled = tr
       if (document.hidden) return;
       unreadRef.current = 0;
       document.title = BASE_TITLE;
+      void clearAppBadge();
+      notifyServiceWorkerClearBadge();
     };
 
     document.addEventListener("visibilitychange", clearUnread);
@@ -68,6 +71,8 @@ export function useChatAlerts({ gameId, gameName, messages, selfId, enabled = tr
         count > 1
           ? `(${count}) ${preview} · ${BASE_TITLE}`
           : `${latest.name}: ${preview} · ${BASE_TITLE}`;
+
+      void incrementAppBadge(incoming.length);
 
       if (typeof Notification !== "undefined" && Notification.permission === "granted") {
         for (const message of incoming) {

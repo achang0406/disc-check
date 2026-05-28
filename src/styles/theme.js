@@ -86,12 +86,14 @@ export const globalStyles = `
   html {
     height: 100vh;
     height: 100dvh;
+    min-height: -webkit-fill-available;
     -webkit-text-size-adjust: 100%;
     text-size-adjust: 100%;
   }
 
   body, #root {
     height: 100%;
+    min-height: -webkit-fill-available;
   }
 
   .app-shell {
@@ -110,6 +112,8 @@ export const globalStyles = `
     color: var(--text);
     opacity: 1;
     transition: opacity 0.48s ease;
+    padding-top: var(--safe-area-top);
+    padding-bottom: var(--safe-area-bottom);
   }
 
   .loading-screen--exiting {
@@ -716,7 +720,7 @@ export const globalStyles = `
     min-height: 0;
     gap: var(--layout-stack-gap);
     justify-content: flex-start;
-    padding-bottom: calc(var(--chat-bar-height, 58px) + env(safe-area-inset-bottom, 0px));
+    padding-bottom: calc(var(--chat-bar-height, 58px) + var(--safe-area-bottom));
   }
 
   @media (min-width: 768px) {
@@ -1166,7 +1170,9 @@ export const globalStyles = `
   .app-header {
     display: flex;
     align-items: center;
-    padding: var(--layout-gutter) var(--layout-gutter) 0;
+    padding: calc(var(--layout-gutter) + var(--safe-area-top)) var(--layout-gutter) 0;
+    padding-left: calc(var(--layout-gutter) + var(--safe-area-left));
+    padding-right: calc(var(--layout-gutter) + var(--safe-area-right));
     flex-shrink: 0;
     gap: var(--layout-inline-gap);
     position: relative;
@@ -1570,15 +1576,16 @@ export const globalStyles = `
     display: flex;
     justify-content: center;
     padding: var(--chat-bar-anchor-inset) var(--chat-bar-inset-x)
-      calc(var(--chat-bar-anchor-inset) + env(safe-area-inset-bottom, 0px));
+      calc(var(--chat-bar-anchor-inset) + var(--safe-area-bottom));
+    padding-left: max(var(--chat-bar-inset-x), var(--safe-area-left));
+    padding-right: max(var(--chat-bar-inset-x), var(--safe-area-right));
     pointer-events: none;
     transition: none;
+    transform: translate3d(0, 0, 0);
   }
 
   .chat-bar-anchor--detail {
     padding-top: var(--space-2);
-    padding-left: max(var(--chat-bar-inset-x), env(safe-area-inset-left, 0px));
-    padding-right: max(var(--chat-bar-inset-x), env(safe-area-inset-right, 0px));
   }
 
   .chat-bar-stack {
@@ -1632,7 +1639,7 @@ export const globalStyles = `
       right: 0;
       justify-content: flex-end;
       padding: var(--chat-bar-anchor-inset);
-      padding-bottom: calc(var(--chat-bar-anchor-inset) + env(safe-area-inset-bottom, 0px));
+      padding-bottom: calc(var(--chat-bar-anchor-inset) + var(--safe-area-bottom));
       pointer-events: auto;
     }
 

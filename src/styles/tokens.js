@@ -54,6 +54,10 @@ export const TOKENS = {
   "--chat-bar-lift": "0px",
   "--chat-bar-offset-left": "max(var(--chat-bar-inset-x), env(safe-area-inset-left, 0px))",
   "--chat-bar-offset-right": "max(var(--chat-bar-inset-x), env(safe-area-inset-right, 0px))",
+  "--safe-area-top": "env(safe-area-inset-top, 0px)",
+  "--safe-area-bottom": "env(safe-area-inset-bottom, 0px)",
+  "--safe-area-left": "env(safe-area-inset-left, 0px)",
+  "--safe-area-right": "env(safe-area-inset-right, 0px)",
   "--chat-underlap": "40px",
   "--min-viewport-height": "500px",
 };
