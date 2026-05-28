@@ -6,6 +6,14 @@ const BADGE_COUNT_KEY = "/count";
 cleanupOutdatedCaches();
 precacheAndRoute(self.__WB_MANIFEST);
 
+self.addEventListener("install", () => {
+  self.skipWaiting();
+});
+
+self.addEventListener("activate", (event) => {
+  event.waitUntil(self.clients.claim());
+});
+
 async function readBadgeCount() {
   try {
     const cache = await caches.open(BADGE_CACHE);
@@ -46,6 +54,11 @@ async function clearBadgeCount() {
 self.addEventListener("message", (event) => {
   if (event.data?.type === "clear-badge") {
     event.waitUntil(clearBadgeCount());
+    return;
+  }
+
+  if (event.data?.type === "SKIP_WAITING") {
+    self.skipWaiting();
   }
 });
 
