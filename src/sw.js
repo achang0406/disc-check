@@ -2,6 +2,7 @@ import { cleanupOutdatedCaches, precacheAndRoute } from "workbox-precaching";
 
 const BADGE_CACHE = "disc-check-badge-v1";
 const BADGE_COUNT_KEY = "/count";
+const PUSH_MESSAGE_PATH = "/__push-message__";
 
 cleanupOutdatedCaches();
 precacheAndRoute(self.__WB_MANIFEST);
@@ -51,6 +52,61 @@ async function clearBadgeCount() {
   }
 }
 
+async function stashPushMessage(gameId, message) {
+  if (!gameId || !message?.id) return;
+
+  try {
+    const cache = await caches.open("disc-check-push-v1");
+    await cache.put(
+      new Request(`${self.location.origin}${PUSH_MESSAGE_PATH}/${gameId}/${message.id}`),
+      new Response(JSON.stringify(message)),
+    );
+  } catch {
+    // Ignore cache write failures.
+  }
+}
+
+async function notifyOpenClients(payload) {
+  const clients = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
+  for (const client of clients) {
+    client.postMessage({
+      type: "push-message",
+      gameId: payload.gameId,
+      message: payload.message,
+    });
+  }
+}
+
+async function openNotificationTarget(targetUrl, payload) {
+  const clients = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
+
+  for (const client of clients) {
+    if (!client.url.startsWith(self.location.origin)) continue;
+
+    await client.focus();
+
+    if ("navigate" in client) {
+      try {
+        await client.navigate(targetUrl);
+      } catch {
+        // Fall back to in-app navigation below.
+      }
+    }
+
+    client.postMessage({
+      type: "notification-open",
+      url: targetUrl,
+      gameId: payload.gameId,
+      message: payload.message,
+    });
+    return;
+  }
+
+  if (self.clients.openWindow) {
+    await self.clients.openWindow(targetUrl);
+  }
+}
+
 self.addEventListener("message", (event) => {
   if (event.data?.type === "clear-badge") {
     event.waitUntil(clearBadgeCount());
@@ -76,15 +132,22 @@ self.addEventListener("push", (event) => {
   const body = payload.body || "New chat message";
   const tag = payload.tag || "disc-check-chat";
   const url = payload.url || "/";
+  const gameId = payload.gameId || null;
+  const message = payload.message || null;
 
   event.waitUntil(
     (async () => {
+      if (gameId && message) {
+        await stashPushMessage(gameId, message);
+        await notifyOpenClients({ gameId, message });
+      }
+
       await self.registration.showNotification(title, {
         body,
         tag,
         icon: "/pwa-192x192.png",
         badge: "/pwa-192x192.png",
-        data: { url },
+        data: { url, gameId, message },
       });
       await incrementBadgeCount();
     })(),
@@ -94,24 +157,20 @@ self.addEventListener("push", (event) => {
 self.addEventListener("notificationclick", (event) => {
   event.notification.close();
 
-  const targetUrl = new URL(event.notification.data?.url || "/", self.location.origin).href;
+  const data = event.notification.data || {};
+  const targetUrl = new URL(data.url || "/", self.location.origin).href;
+  const payload = {
+    gameId: data.gameId || null,
+    message: data.message || null,
+  };
 
   event.waitUntil(
     (async () => {
       await clearBadgeCount();
-
-      const clients = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
-      for (const client of clients) {
-        if (client.url.startsWith(self.location.origin) && "focus" in client) {
-          return client.focus();
-        }
+      if (payload.gameId && payload.message) {
+        await stashPushMessage(payload.gameId, payload.message);
       }
-
-      if (self.clients.openWindow) {
-        return self.clients.openWindow(targetUrl);
-      }
-
-      return undefined;
+      await openNotificationTarget(targetUrl, payload);
     })(),
   );
 });

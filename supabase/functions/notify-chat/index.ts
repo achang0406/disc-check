@@ -34,7 +34,8 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const { gameId, senderId, senderName, text, messageId, gameName } = await req.json();
+    const { gameId, senderId, senderName, senderColor, text, messageId, gameName, createdAt } =
+      await req.json();
 
     if (!gameId || !senderId || !text) {
       return jsonResponse({ error: "Missing required fields" }, 400);
@@ -44,20 +45,6 @@ Deno.serve(async (req) => {
       Deno.env.get("SUPABASE_URL")!,
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
     );
-
-    const { count: senderCount, error: senderError } = await supabase
-      .from("push_subscriptions")
-      .select("id", { count: "exact", head: true })
-      .eq("game_id", gameId)
-      .eq("subscriber_id", senderId);
-
-    if (senderError) {
-      return jsonResponse({ error: senderError.message }, 500);
-    }
-
-    if (!senderCount) {
-      return jsonResponse({ error: "Sender is not registered for chat push" }, 403);
-    }
 
     const { data: subscriptions, error: subsError } = await supabase
       .from("push_subscriptions")
@@ -73,11 +60,22 @@ Deno.serve(async (req) => {
 
     const context = typeof gameName === "string" && gameName.trim() ? gameName.trim() : "game chat";
     const title = `${senderName || "Someone"} · ${context}`;
+    const resolvedMessageId = messageId || `${senderId}-${Date.now()}`;
+    const resolvedCreatedAt = Number.isFinite(Number(createdAt)) ? Number(createdAt) : Date.now();
     const payload = JSON.stringify({
       title,
       body: text,
-      tag: `disc-check-chat-${gameId}-${messageId || Date.now()}`,
+      tag: `disc-check-chat-${gameId}-${resolvedMessageId}`,
       url: `/games/${gameId}`,
+      gameId,
+      message: {
+        id: resolvedMessageId,
+        senderId,
+        name: senderName || "Someone",
+        color: typeof senderColor === "string" && senderColor ? senderColor : "#888888",
+        text,
+        createdAt: resolvedCreatedAt,
+      },
     });
 
     let sent = 0;

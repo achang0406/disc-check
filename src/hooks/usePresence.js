@@ -13,11 +13,12 @@ import {
 } from "../constants/presence.js";
 import { getSupabase, isSupabaseConfigured } from "../lib/supabase.js";
 import { appendChatMessage, loadChatCache, saveChatCache } from "../utils/chatCache.js";
+import { notifyChatPush } from "../lib/push.js";
 import {
-  ensureChatPushRegistration,
-  notifyChatPush,
-  registerChatPushAfterSend,
-} from "../lib/push.js";
+  consumePushMessagesForGame,
+  mergePushMessagesIntoCache,
+  mergePushMessageIntoCache,
+} from "../utils/pushMessageStore.js";
 
 function createLocalChat(message, x, y) {
   return {
@@ -163,7 +164,31 @@ export function usePresence(profile, gameId, isWide, gameName = "") {
     setLocalChat(null);
     setDraft("");
     draftRef.current = "";
-    setMessages(gameId ? loadChatCache(gameId) : []);
+
+    if (!gameId) {
+      setMessages([]);
+      return;
+    }
+
+    let cancelled = false;
+
+    const hydrateMessages = async () => {
+      const cached = loadChatCache(gameId);
+      const pending = await consumePushMessagesForGame(gameId);
+      const merged = mergePushMessagesIntoCache(gameId, cached, pending);
+      if (!cancelled) {
+        setMessages(merged);
+        if (merged.length > 0) {
+          saveChatCache(gameId, merged);
+        }
+      }
+    };
+
+    void hydrateMessages();
+
+    return () => {
+      cancelled = true;
+    };
   }, [gameId]);
 
   useEffect(() => {
@@ -174,8 +199,27 @@ export function usePresence(profile, gameId, isWide, gameName = "") {
 
   useEffect(() => {
     if (!gameId) return undefined;
-    void ensureChatPushRegistration({ gameId, subscriberId: sessionId });
-  }, [gameId, sessionId]);
+
+    const onServiceWorkerMessage = (event) => {
+      const data = event.data;
+      if (!data || typeof data !== "object" || !data.message) return;
+      if (data.type !== "push-message" && data.type !== "notification-open") return;
+
+      const targetGameId = data.gameId;
+      if (targetGameId !== gameId) return;
+
+      setMessages((current) => {
+        const next = mergePushMessageIntoCache(gameId, current, data.message);
+        saveChatCache(gameId, next);
+        return next;
+      });
+    };
+
+    navigator.serviceWorker?.addEventListener("message", onServiceWorkerMessage);
+    return () => {
+      navigator.serviceWorker?.removeEventListener("message", onServiceWorkerMessage);
+    };
+  }, [gameId]);
 
   useEffect(() => {
     if (mode === "thread") {
@@ -384,14 +428,15 @@ export function usePresence(profile, gameId, isWide, gameName = "") {
 
       if (!gameId) return;
 
-      await registerChatPushAfterSend({ gameId, subscriberId: sessionId });
       void notifyChatPush({
         gameId,
         senderId: sessionId,
         senderName: displayName,
+        senderColor: color,
         text: trimmed,
         messageId,
         gameName,
+        createdAt,
       });
     },
     [broadcast, color, displayName, gameId, gameName, sessionId],

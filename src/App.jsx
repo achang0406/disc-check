@@ -17,7 +17,7 @@ import { usePresence } from "./hooks/usePresence.js";
 import { useBreakpoint } from "./hooks/useBreakpoint.js";
 import { useGameClock } from "./hooks/useGameClock.js";
 import { useTheme } from "./hooks/useTheme.js";
-import { useToast } from "./hooks/useToast.js";
+import { useServiceWorkerNavigation } from "./hooks/useServiceWorkerNavigation.js";
 import GamesLandingScreen from "./screens/GamesLandingScreen.jsx";
 import GameDetailScreen from "./screens/GameDetailScreen.jsx";
 import { globalStyles } from "./styles/theme.js";
@@ -25,6 +25,7 @@ import { isGameLive } from "./utils/gameSchedule.js";
 
 function AppRoutes() {
   const { toast, showToast } = useToast();
+  useServiceWorkerNavigation();
   const { theme, toggleTheme, cssVars } = useTheme();
   const app = useAppData(showToast);
   const { isWide } = useBreakpoint();
@@ -218,9 +219,6 @@ function AppRoutes() {
           onChange={presence.setThreadDraft}
           onSend={presence.sendChat}
           connected={presence.connected}
-          showAlertsToggle
-          gameId={gameId ?? ""}
-          subscriberId={presence.self?.id ?? ""}
         />
       )}
     </div>

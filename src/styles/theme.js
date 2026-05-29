@@ -807,6 +807,33 @@ export const globalStyles = `
     gap: var(--layout-stack-gap);
   }
 
+  .game-chat-push {
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    padding: 0 var(--game-card-inset-x) var(--space-2);
+    min-height: 0;
+  }
+
+  .game-chat-push__button {
+    font-size: var(--font-label);
+    padding: var(--space-1) var(--space-3);
+  }
+
+  .game-chat-push__hint,
+  .game-chat-push__status {
+    margin: 0;
+    text-align: right;
+    color: var(--text-faint);
+    font-size: 11px;
+    font-family: var(--font-mono);
+    line-height: 1.3;
+  }
+
+  .game-chat-push__status {
+    color: var(--text-subtle);
+  }
+
   .game-detail-panel__cta--saving {
     background: var(--chip-you-bg);
     border-color: var(--chip-you-border);

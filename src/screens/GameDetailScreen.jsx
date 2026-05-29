@@ -17,9 +17,10 @@ import {
   STARTING_SOON_MS,
 } from "../utils/gameSchedule.js";
 import { countHeadcount, countPlayers } from "../utils/format.js";
+import GameChatPushButton from "../components/games/GameChatPushButton.jsx";
 import {
   ensureChatPushRegistration,
-  hasChattedInGame,
+  isGamePushSubscribed,
   isWebPushSupported,
 } from "../lib/push.js";
 import { getPresenceUsers } from "../utils/presenceUsers.js";
@@ -99,17 +100,13 @@ export default function GameDetailScreen({
   useEffect(() => {
     const subscriberId = presence?.self?.id;
     if (!gameId || !subscriberId || !isWebPushSupported()) return undefined;
-    if (!hasChattedInGame(gameId)) return undefined;
+    if (!isGamePushSubscribed(gameId)) return undefined;
     if (typeof Notification === "undefined" || Notification.permission !== "granted") {
       return undefined;
     }
 
     const syncPushRegistration = () => {
-      void ensureChatPushRegistration({
-        gameId,
-        subscriberId,
-        skipChattedCheck: true,
-      });
+      void ensureChatPushRegistration({ gameId, subscriberId });
     };
 
     syncPushRegistration();
@@ -275,6 +272,10 @@ export default function GameDetailScreen({
                 </div>
               }
               compact={commitStrip}
+            />
+            <GameChatPushButton
+              gameId={game.id}
+              subscriberId={presence?.self?.id ?? ""}
             />
             <GameDetailActions {...actionProps} isEnded={ended} />
           </div>

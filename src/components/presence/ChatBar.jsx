@@ -2,7 +2,6 @@ import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { MAX_CHAT_LENGTH } from "../../constants/presence.js";
 import { getPortalTarget } from "../../utils/portalTarget.js";
-import ChatAlertsLink from "./ChatAlertsLink.jsx";
 
 /** Inset between layout viewport bottom and visual viewport bottom (Safari chrome or keyboard). */
 function getViewportBottomInset(viewport) {
@@ -20,9 +19,6 @@ export default function ChatBar({
   onSend,
   connected,
   isWide = false,
-  showAlertsToggle = false,
-  gameId = "",
-  subscriberId = "",
 }) {
   const anchorRef = useRef(null);
   const inputFocusedRef = useRef(false);
@@ -145,9 +141,6 @@ export default function ChatBar({
   const chatBar = (
     <div ref={anchorRef} className="chat-bar-anchor chat-bar-anchor--detail">
       <div className="chat-bar-stack">
-        {showAlertsToggle ? (
-          <ChatAlertsLink gameId={gameId} subscriberId={subscriberId} />
-        ) : null}
         <form className="chat-bar composer-row" onSubmit={handleSubmit}>
           <div className="composer-field chat-bar__field">
             <input

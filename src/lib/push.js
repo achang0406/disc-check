@@ -1,16 +1,16 @@
 import { getSupabase, isSupabaseConfigured } from "./supabase.js";
 import { isIosDevice, isStandaloneDisplay } from "../utils/pwaInstall.js";
 
-const CHAT_PUSH_GAMES_KEY = "disc_chat_push_games";
+const PUSH_SUBSCRIBED_GAMES_KEY = "disc_push_subscribed_games";
 const VAPID_PUBLIC_KEY = import.meta.env.VITE_VAPID_PUBLIC_KEY;
 
 function isVapidConfigured() {
   return Boolean(VAPID_PUBLIC_KEY && !VAPID_PUBLIC_KEY.includes("your-vapid"));
 }
 
-function readChattedGames() {
+function readSubscribedGames() {
   try {
-    const raw = localStorage.getItem(CHAT_PUSH_GAMES_KEY);
+    const raw = localStorage.getItem(PUSH_SUBSCRIBED_GAMES_KEY);
     const parsed = raw ? JSON.parse(raw) : [];
     return Array.isArray(parsed) ? parsed.filter((id) => typeof id === "string") : [];
   } catch {
@@ -18,16 +18,16 @@ function readChattedGames() {
   }
 }
 
-export function markGameChatted(gameId) {
+export function markGamePushSubscribed(gameId) {
   if (!gameId) return;
-  const games = new Set(readChattedGames());
+  const games = new Set(readSubscribedGames());
   games.add(gameId);
-  localStorage.setItem(CHAT_PUSH_GAMES_KEY, JSON.stringify([...games]));
+  localStorage.setItem(PUSH_SUBSCRIBED_GAMES_KEY, JSON.stringify([...games]));
 }
 
-export function hasChattedInGame(gameId) {
+export function isGamePushSubscribed(gameId) {
   if (!gameId) return false;
-  return readChattedGames().includes(gameId);
+  return readSubscribedGames().includes(gameId);
 }
 
 /** @returns {{ supported: boolean, reason: string | null }} */
@@ -88,13 +88,8 @@ async function savePushSubscription({ gameId, subscriberId, subscription }) {
   return !error;
 }
 
-export async function ensureChatPushRegistration({
-  gameId,
-  subscriberId,
-  skipChattedCheck = false,
-}) {
+export async function ensureChatPushRegistration({ gameId, subscriberId }) {
   if (!gameId || !subscriberId || !isWebPushSupported()) return false;
-  if (!skipChattedCheck && !hasChattedInGame(gameId)) return false;
 
   if (typeof Notification !== "undefined" && Notification.permission === "default") {
     const permission = await Notification.requestPermission();
@@ -123,7 +118,7 @@ export async function ensureChatPushRegistration({
   }
 }
 
-/** Opt in from the alerts link — permission + PushManager subscription + DB row. */
+/** Opt in from the game detail button — permission + PushManager subscription + DB row. */
 export async function registerChatPushAlerts({ gameId, subscriberId }) {
   const support = getWebPushSupportState();
   if (!support.supported) {
@@ -133,8 +128,6 @@ export async function registerChatPushAlerts({ gameId, subscriberId }) {
   if (!gameId || !subscriberId) {
     return { ok: false, reason: "missing-identity" };
   }
-
-  markGameChatted(gameId);
 
   if (typeof Notification !== "undefined" && Notification.permission === "default") {
     const permission = await Notification.requestPermission();
@@ -147,29 +140,23 @@ export async function registerChatPushAlerts({ gameId, subscriberId }) {
     return { ok: false, reason: "denied" };
   }
 
-  const saved = await ensureChatPushRegistration({
-    gameId,
-    subscriberId,
-    skipChattedCheck: true,
-  });
+  const saved = await ensureChatPushRegistration({ gameId, subscriberId });
+  if (saved) {
+    markGamePushSubscribed(gameId);
+  }
 
   return { ok: saved, reason: saved ? null : "subscribe-failed" };
-}
-
-export async function registerChatPushAfterSend({ gameId, subscriberId }) {
-  if (!gameId || !subscriberId) return false;
-
-  markGameChatted(gameId);
-  return ensureChatPushRegistration({ gameId, subscriberId, skipChattedCheck: true });
 }
 
 export async function notifyChatPush({
   gameId,
   senderId,
   senderName,
+  senderColor,
   text,
   messageId,
   gameName,
+  createdAt,
 }) {
   if (!isSupabaseConfigured() || !gameId || !senderId || !text) return;
 
@@ -179,9 +166,11 @@ export async function notifyChatPush({
       gameId,
       senderId,
       senderName,
+      senderColor,
       text,
       messageId,
       gameName,
+      createdAt,
     },
   });
 
