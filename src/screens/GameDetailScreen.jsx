@@ -17,12 +17,13 @@ import {
   STARTING_SOON_MS,
 } from "../utils/gameSchedule.js";
 import { countHeadcount, countPlayers } from "../utils/format.js";
-import GameChatPushButton from "../components/games/GameChatPushButton.jsx";
 import {
   ensureChatPushRegistration,
-  isGamePushSubscribed,
+  isGamePushOptedOut,
+  isSubscribedToGameChatPush,
   isWebPushSupported,
 } from "../lib/push.js";
+import GameChatPushButton from "../components/games/GameChatPushButton.jsx";
 import { getPresenceUsers } from "../utils/presenceUsers.js";
 
 export default function GameDetailScreen({
@@ -100,13 +101,16 @@ export default function GameDetailScreen({
   useEffect(() => {
     const subscriberId = presence?.self?.id;
     if (!gameId || !subscriberId || !isWebPushSupported()) return undefined;
-    if (!isGamePushSubscribed(gameId)) return undefined;
     if (typeof Notification === "undefined" || Notification.permission !== "granted") {
       return undefined;
     }
 
     const syncPushRegistration = () => {
-      void ensureChatPushRegistration({ gameId, subscriberId });
+      if (isGamePushOptedOut(gameId)) return;
+      void (async () => {
+        if (!(await isSubscribedToGameChatPush({ gameId, subscriberId }))) return;
+        void ensureChatPushRegistration({ gameId, subscriberId });
+      })();
     };
 
     syncPushRegistration();
@@ -263,21 +267,29 @@ export default function GameDetailScreen({
 
       <main className="games-screen__main games-screen__main--detail">
         <div className="game-detail-layout game-detail-layout--responsive">
-          <div className={panelClass}>
-            <GameDetailHeightShell
-              isWide={isWide}
-              wide={
-                <div className="game-detail">
-                  <GameCard {...cardProps} embedded />
-                </div>
-              }
-              compact={commitStrip}
-            />
-            <GameChatPushButton
-              gameId={game.id}
-              subscriberId={presence?.self?.id ?? ""}
-            />
-            <GameDetailActions {...actionProps} isEnded={ended} />
+          <div className="game-detail-panel-block">
+            <div className={panelClass}>
+              <GameDetailHeightShell
+                isWide={isWide}
+                wide={
+                  <div className="game-detail">
+                    <GameCard {...cardProps} embedded />
+                  </div>
+                }
+                compact={commitStrip}
+              />
+              {!ended && game.status !== "cancelled" && (
+                <GameDetailActions {...actionProps} isEnded={ended} />
+              )}
+            </div>
+            {game.status !== "cancelled" && (
+              <div className="game-detail-panel__bell-row">
+                <GameChatPushButton
+                  gameId={game.id}
+                  subscriberId={presence?.self?.id ?? ""}
+                />
+              </div>
+            )}
           </div>
           {!isWide && (
             <div className="game-detail-layout__thread-wrap">

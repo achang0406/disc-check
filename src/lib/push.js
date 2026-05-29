@@ -1,16 +1,16 @@
 import { getSupabase, isSupabaseConfigured } from "./supabase.js";
 import { isIosDevice, isStandaloneDisplay } from "../utils/pwaInstall.js";
 
-const PUSH_SUBSCRIBED_GAMES_KEY = "disc_push_subscribed_games";
+const PUSH_OPTED_OUT_GAMES_KEY = "disc_push_opted_out_games";
 const VAPID_PUBLIC_KEY = import.meta.env.VITE_VAPID_PUBLIC_KEY;
 
 function isVapidConfigured() {
   return Boolean(VAPID_PUBLIC_KEY && !VAPID_PUBLIC_KEY.includes("your-vapid"));
 }
 
-function readSubscribedGames() {
+function readOptedOutGames() {
   try {
-    const raw = localStorage.getItem(PUSH_SUBSCRIBED_GAMES_KEY);
+    const raw = localStorage.getItem(PUSH_OPTED_OUT_GAMES_KEY);
     const parsed = raw ? JSON.parse(raw) : [];
     return Array.isArray(parsed) ? parsed.filter((id) => typeof id === "string") : [];
   } catch {
@@ -18,16 +18,20 @@ function readSubscribedGames() {
   }
 }
 
-export function markGamePushSubscribed(gameId) {
-  if (!gameId) return;
-  const games = new Set(readSubscribedGames());
-  games.add(gameId);
-  localStorage.setItem(PUSH_SUBSCRIBED_GAMES_KEY, JSON.stringify([...games]));
+export function isGamePushOptedOut(gameId) {
+  if (!gameId) return false;
+  return readOptedOutGames().includes(gameId);
 }
 
-export function isGamePushSubscribed(gameId) {
-  if (!gameId) return false;
-  return readSubscribedGames().includes(gameId);
+function setGamePushOptedOut(gameId, optedOut) {
+  if (!gameId) return;
+  const games = new Set(readOptedOutGames());
+  if (optedOut) {
+    games.add(gameId);
+  } else {
+    games.delete(gameId);
+  }
+  localStorage.setItem(PUSH_OPTED_OUT_GAMES_KEY, JSON.stringify([...games]));
 }
 
 /** @returns {{ supported: boolean, reason: string | null }} */
@@ -68,6 +72,52 @@ function urlBase64ToUint8Array(base64String) {
   return outputArray;
 }
 
+async function getBrowserPushEndpoint() {
+  try {
+    if (!("serviceWorker" in navigator) || !("PushManager" in window)) {
+      return null;
+    }
+    const registration = await navigator.serviceWorker.ready;
+    return (await registration.pushManager.getSubscription())?.endpoint ?? null;
+  } catch {
+    return null;
+  }
+}
+
+async function hasDbPushRegistration({ gameId, subscriberId }) {
+  if (!isSupabaseConfigured() || !gameId) return false;
+
+  const supabase = getSupabase();
+
+  if (subscriberId) {
+    const { data } = await supabase
+      .from("push_subscriptions")
+      .select("id")
+      .eq("game_id", gameId)
+      .eq("subscriber_id", subscriberId)
+      .maybeSingle();
+    if (data) return true;
+  }
+
+  const endpoint = await getBrowserPushEndpoint();
+  if (!endpoint) return false;
+
+  const { data } = await supabase
+    .from("push_subscriptions")
+    .select("id")
+    .eq("game_id", gameId)
+    .eq("endpoint", endpoint)
+    .maybeSingle();
+
+  return Boolean(data);
+}
+
+/** Whether this user is subscribed to chat push for a game (DB is source of truth). */
+export async function isSubscribedToGameChatPush({ gameId, subscriberId }) {
+  if (!gameId) return false;
+  return hasDbPushRegistration({ gameId, subscriberId });
+}
+
 async function savePushSubscription({ gameId, subscriberId, subscription }) {
   if (!isSupabaseConfigured()) return false;
 
@@ -88,8 +138,46 @@ async function savePushSubscription({ gameId, subscriberId, subscription }) {
   return !error;
 }
 
+async function deletePushRegistration({ gameId, subscriberId }) {
+  if (!isSupabaseConfigured() || !gameId) return false;
+
+  const supabase = getSupabase();
+  const endpoint = await getBrowserPushEndpoint();
+  let deleted = false;
+
+  if (subscriberId) {
+    const { error, count } = await supabase
+      .from("push_subscriptions")
+      .delete({ count: "exact" })
+      .eq("game_id", gameId)
+      .eq("subscriber_id", subscriberId);
+    if (error) {
+      console.warn("Push unsubscribe failed (subscriber)", error.message ?? error);
+    } else if ((count ?? 0) > 0) {
+      deleted = true;
+    }
+  }
+
+  if (endpoint) {
+    const { error, count } = await supabase
+      .from("push_subscriptions")
+      .delete({ count: "exact" })
+      .eq("game_id", gameId)
+      .eq("endpoint", endpoint);
+    if (error) {
+      console.warn("Push unsubscribe failed (endpoint)", error.message ?? error);
+    } else if ((count ?? 0) > 0) {
+      deleted = true;
+    }
+  }
+
+  return deleted;
+}
+
 export async function ensureChatPushRegistration({ gameId, subscriberId }) {
-  if (!gameId || !subscriberId || !isWebPushSupported()) return false;
+  if (!gameId || !subscriberId || isGamePushOptedOut(gameId) || !isWebPushSupported()) {
+    return false;
+  }
 
   if (typeof Notification !== "undefined" && Notification.permission === "default") {
     const permission = await Notification.requestPermission();
@@ -118,8 +206,7 @@ export async function ensureChatPushRegistration({ gameId, subscriberId }) {
   }
 }
 
-/** Opt in from the game detail button — permission + PushManager subscription + DB row. */
-export async function registerChatPushAlerts({ gameId, subscriberId }) {
+export async function subscribeToGameChatPush({ gameId, subscriberId }) {
   const support = getWebPushSupportState();
   if (!support.supported) {
     return { ok: false, reason: support.reason };
@@ -129,23 +216,19 @@ export async function registerChatPushAlerts({ gameId, subscriberId }) {
     return { ok: false, reason: "missing-identity" };
   }
 
-  if (typeof Notification !== "undefined" && Notification.permission === "default") {
-    const permission = await Notification.requestPermission();
-    if (permission !== "granted") {
-      return { ok: false, reason: "denied" };
-    }
-  }
-
-  if (typeof Notification !== "undefined" && Notification.permission !== "granted") {
-    return { ok: false, reason: "denied" };
-  }
-
+  setGamePushOptedOut(gameId, false);
   const saved = await ensureChatPushRegistration({ gameId, subscriberId });
-  if (saved) {
-    markGamePushSubscribed(gameId);
+  return { ok: saved, reason: saved ? null : "subscribe-failed" };
+}
+
+export async function unsubscribeFromGameChatPush({ gameId, subscriberId }) {
+  if (!gameId) {
+    return { ok: false, reason: "missing-identity" };
   }
 
-  return { ok: saved, reason: saved ? null : "subscribe-failed" };
+  setGamePushOptedOut(gameId, true);
+  await deletePushRegistration({ gameId, subscriberId });
+  return { ok: true, reason: null };
 }
 
 export async function notifyChatPush({

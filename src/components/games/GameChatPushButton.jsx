@@ -1,114 +1,138 @@
 import { useCallback, useEffect, useState } from "react";
 import {
   getWebPushSupportState,
-  isGamePushSubscribed,
-  registerChatPushAlerts,
+  isSubscribedToGameChatPush,
+  subscribeToGameChatPush,
+  unsubscribeFromGameChatPush,
 } from "../../lib/push.js";
-import { suppressMouseFocus } from "../../utils/suppressMouseFocus.js";
 
-function readNotificationPermission() {
-  if (typeof Notification === "undefined") return "unsupported";
-  return Notification.permission;
-}
-
-const FAILURE_COPY = {
-  denied: "Notifications are blocked in your browser settings.",
-  "subscribe-failed": "Could not enable push alerts. Try again after reloading the app.",
-  "missing-identity": "Finish loading this game, then try again.",
+const STATUS_LABEL = {
+  denied: "Notifications blocked in browser settings",
+  "subscribe-failed": "Could not enable chat notifications",
+  "missing-identity": "Loading… try again in a moment",
+  "ios-install-required": "Add DiscCheck to Home Screen for push notifications",
+  misconfigured: "Push notifications are not configured on this build",
+  unsupported: "Push notifications are not supported in this browser",
 };
 
+function ChatBellIcon({ active = false }) {
+  if (active) {
+    return (
+      <svg className="game-chat-push__icon-svg" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+        <path
+          fill="currentColor"
+          d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.9 2 2 2zm6-6V11c0-3.07-1.64-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.63 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2z"
+        />
+      </svg>
+    );
+  }
+
+  return (
+    <svg className="game-chat-push__icon-svg" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+      <path
+        fill="currentColor"
+        d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.9 2 2 2zm6-6V11c0-3.07-1.64-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.63 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2zm-2 1H8v-6c0-2.48 1.51-4.5 4-4.5s4 2.02 4 4.5v6z"
+      />
+    </svg>
+  );
+}
+
 export default function GameChatPushButton({ gameId = "", subscriberId = "" }) {
-  const [permission, setPermission] = useState(readNotificationPermission);
-  const [subscribed, setSubscribed] = useState(() => isGamePushSubscribed(gameId));
-  const [requesting, setRequesting] = useState(false);
-  const [failureReason, setFailureReason] = useState(null);
-  const [pushSupport, setPushSupport] = useState(() => getWebPushSupportState());
+  const [subscribed, setSubscribed] = useState(null);
+  const [busy, setBusy] = useState(false);
+  const [errorReason, setErrorReason] = useState(null);
+  const pushSupport = getWebPushSupportState();
+
+  const refresh = useCallback(async () => {
+    if (!gameId) {
+      setSubscribed(false);
+      return;
+    }
+    const active = await isSubscribedToGameChatPush({ gameId, subscriberId });
+    setSubscribed(active);
+  }, [gameId, subscriberId]);
 
   useEffect(() => {
-    setSubscribed(isGamePushSubscribed(gameId));
-  }, [gameId]);
-
-  useEffect(() => {
-    const sync = () => {
-      setPermission(readNotificationPermission());
-      setPushSupport(getWebPushSupportState());
-      setSubscribed(isGamePushSubscribed(gameId));
-    };
-    window.addEventListener("focus", sync);
-    document.addEventListener("visibilitychange", sync);
-    sync();
+    let cancelled = false;
+    void (async () => {
+      if (!gameId) {
+        if (!cancelled) setSubscribed(false);
+        return;
+      }
+      const active = await isSubscribedToGameChatPush({ gameId, subscriberId });
+      if (!cancelled) setSubscribed(active);
+    })();
     return () => {
-      window.removeEventListener("focus", sync);
-      document.removeEventListener("visibilitychange", sync);
+      cancelled = true;
     };
-  }, [gameId]);
+  }, [gameId, subscriberId]);
 
-  const handleSubscribe = useCallback(async () => {
-    setRequesting(true);
-    setFailureReason(null);
+  const handleClick = async () => {
+    if (!gameId || busy || subscribed === null) return;
+
+    if (subscribed) {
+      setBusy(true);
+      setSubscribed(false);
+      setErrorReason(null);
+      try {
+        await unsubscribeFromGameChatPush({ gameId, subscriberId });
+      } catch {
+        await refresh();
+      } finally {
+        setBusy(false);
+      }
+      return;
+    }
+
+    if (!subscriberId) {
+      setErrorReason("missing-identity");
+      return;
+    }
+
+    setBusy(true);
+    setErrorReason(null);
     try {
-      const result = await registerChatPushAlerts({ gameId, subscriberId });
-      setPermission(readNotificationPermission());
+      const result = await subscribeToGameChatPush({ gameId, subscriberId });
       if (result.ok) {
         setSubscribed(true);
       } else {
-        setFailureReason(result.reason);
+        setErrorReason(result.reason);
+        setSubscribed(false);
       }
     } finally {
-      setRequesting(false);
+      setBusy(false);
     }
-  }, [gameId, subscriberId]);
+  };
 
-  if (pushSupport.reason === "ios-install-required") {
-    return (
-      <div className="game-chat-push">
-        <p className="game-chat-push__hint">Add DiscCheck to your Home Screen to receive push notifications.</p>
-      </div>
-    );
-  }
-
-  if (!pushSupport.supported) {
-    return null;
-  }
-
-  if (permission === "denied") {
-    return (
-      <div className="game-chat-push">
-        <p className="game-chat-push__hint">{FAILURE_COPY.denied}</p>
-      </div>
-    );
-  }
-
-  if (failureReason && FAILURE_COPY[failureReason]) {
-    return (
-      <div className="game-chat-push">
-        <p className="game-chat-push__hint">{FAILURE_COPY[failureReason]}</p>
-      </div>
-    );
-  }
-
-  if (subscribed && permission === "granted") {
-    return (
-      <div className="game-chat-push">
-        <p className="game-chat-push__status">Chat notifications on</p>
-      </div>
-    );
-  }
-
-  if (permission === "unsupported") {
-    return null;
-  }
+  const label = subscribed
+    ? "Turn off chat notifications"
+    : errorReason || pushSupport.reason
+      ? STATUS_LABEL[errorReason || pushSupport.reason] || "Get chat notifications"
+      : subscribed === null
+        ? "Checking notification status…"
+        : "Get chat notifications";
 
   return (
     <div className="game-chat-push">
       <button
         type="button"
-        className="btn btn--secondary game-chat-push__button"
-        onMouseDown={suppressMouseFocus}
-        onClick={handleSubscribe}
-        disabled={requesting || !gameId || !subscriberId}
+        className={[
+          "game-chat-push__icon-btn",
+          subscribed ? "game-chat-push__icon-btn--on" : "",
+          !subscribed && (errorReason || pushSupport.reason === "ios-install-required")
+            ? "game-chat-push__icon-btn--blocked"
+            : "",
+          busy ? "game-chat-push__icon-btn--loading" : "",
+        ]
+          .filter(Boolean)
+          .join(" ")}
+        onClick={handleClick}
+        disabled={busy || subscribed === null}
+        aria-label={label}
+        aria-pressed={Boolean(subscribed)}
+        title={label}
       >
-        {requesting ? "Enabling…" : "Notify me about chat"}
+        <ChatBellIcon active={Boolean(subscribed)} />
       </button>
     </div>
   );

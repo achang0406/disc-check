@@ -24,29 +24,26 @@ export default function GameDetailActions({
   const cancelled = game.status === "cancelled";
   const committed = isLive ? checkedIn : rsvpd;
 
-  if (isEnded) return null;
+  if (isEnded || cancelled) return null;
 
-  const ctaLabel = cancelled
-    ? "Cancelled"
-    : isLive
-      ? saving
-        ? "..."
-        : checkedIn
-          ? "Leave"
-          : "I'm here"
-      : saving
-        ? "..."
-        : rsvpd
-          ? "Cancel"
-          : "Count me in";
+  const ctaLabel = isLive
+    ? saving
+      ? "..."
+      : checkedIn
+        ? "Leave"
+        : "I'm here"
+    : saving
+      ? "..."
+      : rsvpd
+        ? "Cancel"
+        : "Count me in";
 
-  const ctaVariant = committed && !cancelled ? "secondary" : "primary";
-  const ctaDisabled = cancelled || saving;
-  const ctaSavingClass =
-    saving && !committed ? " game-detail-panel__cta--saving" : "";
+  const ctaVariant = committed ? "secondary" : "primary";
+  const ctaDisabled = saving;
+  const ctaSavingClass = saving && !committed ? " game-detail-panel__cta--saving" : "";
 
   const handleClick = () => {
-    if (cancelled || saving) return;
+    if (saving) return;
     if (isLive) {
       if (checkedIn) {
         onCheckOut(game.id);
@@ -61,8 +58,6 @@ export default function GameDetailActions({
     }
     onRequestRsvp(game, plusOnes, bringingKit);
   };
-
-  if (cancelled) return null;
 
   return (
     <div className="game-detail-panel__actions">

@@ -768,6 +768,23 @@ export const globalStyles = `
     box-shadow: 0 0 0 1px var(--game-card-ring);
   }
 
+  .game-detail-panel-block {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    flex-shrink: 0;
+  }
+
+  .game-detail-panel-block .game-detail-panel__bell-row {
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    padding: var(--space-1) var(--game-card-inset-x) 0;
+    margin-top: var(--space-1);
+    position: relative;
+    z-index: 3;
+  }
+
   .game-detail-panel input,
   .game-detail-panel textarea {
     user-select: text;
@@ -811,27 +828,68 @@ export const globalStyles = `
     display: flex;
     justify-content: flex-end;
     align-items: center;
-    padding: 0 var(--game-card-inset-x) var(--space-2);
     min-height: 0;
   }
 
-  .game-chat-push__button {
-    font-size: var(--font-label);
-    padding: var(--space-1) var(--space-3);
+  .game-chat-push__icon-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    padding: 0;
+    border: 1px solid var(--toggle-border);
+    border-radius: var(--radius-pill);
+    background: var(--toggle-bg);
+    color: var(--text-muted);
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+    transition:
+      color 120ms ease,
+      background 120ms ease,
+      border-color 120ms ease,
+      opacity 120ms ease;
   }
 
-  .game-chat-push__hint,
-  .game-chat-push__status {
-    margin: 0;
-    text-align: right;
-    color: var(--text-faint);
-    font-size: 11px;
-    font-family: var(--font-mono);
-    line-height: 1.3;
+  .game-chat-push__icon-btn:hover:not(:disabled) {
+    color: var(--text);
+    border-color: var(--text-faint);
   }
 
-  .game-chat-push__status {
-    color: var(--text-subtle);
+  .game-chat-push__icon-btn:focus-visible {
+    outline: 2px solid var(--text-faint);
+    outline-offset: 2px;
+  }
+
+  .game-chat-push__icon-btn--on {
+    color: var(--chip-you-text);
+    background: var(--chip-you-bg);
+    border-color: var(--chip-you-border);
+  }
+
+  .game-chat-push__icon-btn--blocked {
+    opacity: 0.45;
+    cursor: not-allowed;
+  }
+
+  .game-chat-push__icon-btn--loading {
+    opacity: 0.7;
+    cursor: wait;
+  }
+
+  .game-chat-push__icon-btn:disabled {
+    cursor: default;
+    opacity: 0.55;
+  }
+
+  .game-chat-push__icon-btn--on:not(:disabled) {
+    opacity: 1;
+  }
+
+  .game-chat-push__icon-svg {
+    width: 20px;
+    height: 20px;
+    display: block;
   }
 
   .game-detail-panel__cta--saving {

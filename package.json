@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "dev:ngrok": "vite --host",
     "build": "vite build",
     "preview": "vite preview",
     "db:seed": "node scripts/seed.mjs",
