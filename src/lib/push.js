@@ -1,7 +1,12 @@
 import { getSupabase, isSupabaseConfigured } from "./supabase.js";
+import { isIosDevice, isStandaloneDisplay } from "../utils/pwaInstall.js";
 
 const CHAT_PUSH_GAMES_KEY = "disc_chat_push_games";
 const VAPID_PUBLIC_KEY = import.meta.env.VITE_VAPID_PUBLIC_KEY;
+
+function isVapidConfigured() {
+  return Boolean(VAPID_PUBLIC_KEY && !VAPID_PUBLIC_KEY.includes("your-vapid"));
+}
 
 function readChattedGames() {
   try {
@@ -25,13 +30,29 @@ export function hasChattedInGame(gameId) {
   return readChattedGames().includes(gameId);
 }
 
+/** @returns {{ supported: boolean, reason: string | null }} */
+export function getWebPushSupportState() {
+  if (!isVapidConfigured()) {
+    return { supported: false, reason: "misconfigured" };
+  }
+
+  if (
+    typeof window === "undefined" ||
+    !("serviceWorker" in navigator) ||
+    !("PushManager" in window)
+  ) {
+    return { supported: false, reason: "unsupported" };
+  }
+
+  if (isIosDevice() && !isStandaloneDisplay()) {
+    return { supported: false, reason: "ios-install-required" };
+  }
+
+  return { supported: true, reason: null };
+}
+
 export function isWebPushSupported() {
-  return (
-    typeof window !== "undefined" &&
-    "serviceWorker" in navigator &&
-    "PushManager" in window &&
-    Boolean(VAPID_PUBLIC_KEY)
-  );
+  return getWebPushSupportState().supported;
 }
 
 function urlBase64ToUint8Array(base64String) {
@@ -67,9 +88,13 @@ async function savePushSubscription({ gameId, subscriberId, subscription }) {
   return !error;
 }
 
-export async function ensureChatPushRegistration({ gameId, subscriberId }) {
+export async function ensureChatPushRegistration({
+  gameId,
+  subscriberId,
+  skipChattedCheck = false,
+}) {
   if (!gameId || !subscriberId || !isWebPushSupported()) return false;
-  if (!hasChattedInGame(gameId)) return false;
+  if (!skipChattedCheck && !hasChattedInGame(gameId)) return false;
 
   if (typeof Notification !== "undefined" && Notification.permission === "default") {
     const permission = await Notification.requestPermission();
@@ -92,16 +117,50 @@ export async function ensureChatPushRegistration({ gameId, subscriberId }) {
     }
 
     return savePushSubscription({ gameId, subscriberId, subscription });
-  } catch {
+  } catch (error) {
+    console.warn("Chat push registration failed", error);
     return false;
   }
+}
+
+/** Opt in from the alerts link — permission + PushManager subscription + DB row. */
+export async function registerChatPushAlerts({ gameId, subscriberId }) {
+  const support = getWebPushSupportState();
+  if (!support.supported) {
+    return { ok: false, reason: support.reason };
+  }
+
+  if (!gameId || !subscriberId) {
+    return { ok: false, reason: "missing-identity" };
+  }
+
+  markGameChatted(gameId);
+
+  if (typeof Notification !== "undefined" && Notification.permission === "default") {
+    const permission = await Notification.requestPermission();
+    if (permission !== "granted") {
+      return { ok: false, reason: "denied" };
+    }
+  }
+
+  if (typeof Notification !== "undefined" && Notification.permission !== "granted") {
+    return { ok: false, reason: "denied" };
+  }
+
+  const saved = await ensureChatPushRegistration({
+    gameId,
+    subscriberId,
+    skipChattedCheck: true,
+  });
+
+  return { ok: saved, reason: saved ? null : "subscribe-failed" };
 }
 
 export async function registerChatPushAfterSend({ gameId, subscriberId }) {
   if (!gameId || !subscriberId) return false;
 
   markGameChatted(gameId);
-  return ensureChatPushRegistration({ gameId, subscriberId });
+  return ensureChatPushRegistration({ gameId, subscriberId, skipChattedCheck: true });
 }
 
 export async function notifyChatPush({
@@ -127,6 +186,6 @@ export async function notifyChatPush({
   });
 
   if (error) {
-    console.warn("Chat push notify failed", error);
+    console.warn("Chat push notify failed", error.message ?? error);
   }
 }

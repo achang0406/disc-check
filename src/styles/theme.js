@@ -720,7 +720,7 @@ export const globalStyles = `
     min-height: 0;
     gap: var(--layout-stack-gap);
     justify-content: flex-start;
-    padding-bottom: calc(var(--chat-bar-height, 58px) + var(--safe-area-bottom));
+    padding-bottom: var(--chat-bar-height, 58px);
   }
 
   @media (min-width: 768px) {
@@ -882,7 +882,8 @@ export const globalStyles = `
     .game-detail-layout__thread {
       padding-left: var(--chat-thread-pad-left, var(--chat-bar-inset-x));
       padding-right: var(--chat-thread-pad-right, var(--chat-bar-inset-x));
-      padding-bottom: 0;
+      padding-bottom: var(--chat-thread-gap);
+      scroll-padding-bottom: var(--chat-thread-gap);
       flex-direction: column-reverse;
       gap: var(--space-2);
     }
@@ -893,6 +894,7 @@ export const globalStyles = `
       align-items: center;
       padding-left: var(--chat-bar-inset-x);
       padding-right: var(--chat-bar-inset-x);
+      padding-bottom: var(--chat-thread-gap);
     }
 
     .game-detail-layout__thread .chat-message {
@@ -1613,7 +1615,7 @@ export const globalStyles = `
     position: fixed;
     left: 0;
     right: 0;
-    bottom: 0;
+    bottom: var(--chat-bar-bottom, 0px);
     z-index: var(--z-chat);
     display: flex;
     justify-content: center;
@@ -1623,11 +1625,19 @@ export const globalStyles = `
     padding-right: max(var(--chat-bar-inset-x), var(--safe-area-right));
     pointer-events: none;
     transition: none;
-    transform: translate3d(0, 0, 0);
   }
 
   .chat-bar-anchor--detail {
     padding-top: var(--space-2);
+  }
+
+  @media (max-width: 767px) {
+    .chat-bar-anchor {
+      padding: var(--space-2) var(--chat-bar-inset-x)
+        max(var(--chat-bar-inset-y), var(--safe-area-bottom));
+      padding-left: max(var(--chat-bar-inset-x), var(--safe-area-left));
+      padding-right: max(var(--chat-bar-inset-x), var(--safe-area-right));
+    }
   }
 
   .chat-bar-stack {

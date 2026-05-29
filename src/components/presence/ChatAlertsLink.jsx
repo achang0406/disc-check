@@ -1,5 +1,8 @@
 import { useCallback, useEffect, useState } from "react";
-import { requestChatNotificationPermission } from "../../hooks/useChatAlerts.js";
+import {
+  getWebPushSupportState,
+  registerChatPushAlerts,
+} from "../../lib/push.js";
 import { suppressMouseFocus } from "../../utils/suppressMouseFocus.js";
 
 function readNotificationPermission() {
@@ -7,28 +10,62 @@ function readNotificationPermission() {
   return Notification.permission;
 }
 
-export default function ChatAlertsLink({ className = "" }) {
+const ALERT_FAILURE_COPY = {
+  denied: "Notifications are blocked in your browser settings.",
+  "subscribe-failed": "Could not enable push alerts. Try again after reloading the app.",
+  "missing-identity": "Finish loading this game, then try again.",
+};
+
+export default function ChatAlertsLink({ className = "", gameId = "", subscriberId = "" }) {
   const [permission, setPermission] = useState(readNotificationPermission);
   const [requesting, setRequesting] = useState(false);
+  const [failureReason, setFailureReason] = useState(null);
+  const [pushSupport, setPushSupport] = useState(() => getWebPushSupportState());
 
   useEffect(() => {
-    const sync = () => setPermission(readNotificationPermission());
+    const sync = () => {
+      setPermission(readNotificationPermission());
+      setPushSupport(getWebPushSupportState());
+    };
     window.addEventListener("focus", sync);
     document.addEventListener("visibilitychange", sync);
+    sync();
     return () => {
       window.removeEventListener("focus", sync);
       document.removeEventListener("visibilitychange", sync);
     };
   }, []);
 
+  useEffect(() => {
+    if (permission !== "granted" || !gameId || !subscriberId) return;
+    void registerChatPushAlerts({ gameId, subscriberId });
+  }, [permission, gameId, subscriberId]);
+
   const handleEnable = useCallback(async () => {
     setRequesting(true);
+    setFailureReason(null);
     try {
-      setPermission(await requestChatNotificationPermission());
+      const result = await registerChatPushAlerts({ gameId, subscriberId });
+      setPermission(readNotificationPermission());
+      if (!result.ok) {
+        setFailureReason(result.reason);
+      }
     } finally {
       setRequesting(false);
     }
-  }, []);
+  }, [gameId, subscriberId]);
+
+  if (pushSupport.reason === "ios-install-required") {
+    return (
+      <p className={["chat-alerts-link", "chat-alerts-link--muted", className].filter(Boolean).join(" ")}>
+        Add DiscCheck to your Home Screen to receive push notifications.
+      </p>
+    );
+  }
+
+  if (!pushSupport.supported) {
+    return null;
+  }
 
   if (permission === "unsupported" || permission === "granted") {
     return null;
@@ -37,7 +74,15 @@ export default function ChatAlertsLink({ className = "" }) {
   if (permission === "denied") {
     return (
       <p className={["chat-alerts-link", "chat-alerts-link--muted", className].filter(Boolean).join(" ")}>
-        Notifications are blocked in your browser settings.
+        {ALERT_FAILURE_COPY.denied}
+      </p>
+    );
+  }
+
+  if (failureReason && ALERT_FAILURE_COPY[failureReason]) {
+    return (
+      <p className={["chat-alerts-link", "chat-alerts-link--muted", className].filter(Boolean).join(" ")}>
+        {ALERT_FAILURE_COPY[failureReason]}
       </p>
     );
   }

@@ -17,6 +17,11 @@ import {
   STARTING_SOON_MS,
 } from "../utils/gameSchedule.js";
 import { countHeadcount, countPlayers } from "../utils/format.js";
+import {
+  ensureChatPushRegistration,
+  hasChattedInGame,
+  isWebPushSupported,
+} from "../lib/push.js";
 import { getPresenceUsers } from "../utils/presenceUsers.js";
 
 export default function GameDetailScreen({
@@ -90,6 +95,27 @@ export default function GameDetailScreen({
     selfId: presence?.self?.id,
     enabled: Boolean(game && presence?.connected),
   });
+
+  useEffect(() => {
+    const subscriberId = presence?.self?.id;
+    if (!gameId || !subscriberId || !isWebPushSupported()) return undefined;
+    if (!hasChattedInGame(gameId)) return undefined;
+    if (typeof Notification === "undefined" || Notification.permission !== "granted") {
+      return undefined;
+    }
+
+    const syncPushRegistration = () => {
+      void ensureChatPushRegistration({
+        gameId,
+        subscriberId,
+        skipChattedCheck: true,
+      });
+    };
+
+    syncPushRegistration();
+    document.addEventListener("visibilitychange", syncPushRegistration);
+    return () => document.removeEventListener("visibilitychange", syncPushRegistration);
+  }, [gameId, presence?.self?.id]);
 
   const cardProps = {
     profile,

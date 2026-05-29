@@ -4,14 +4,14 @@ import { MAX_CHAT_LENGTH } from "../../constants/presence.js";
 import { getPortalTarget } from "../../utils/portalTarget.js";
 import ChatAlertsLink from "./ChatAlertsLink.jsx";
 
-function getKeyboardOffset(viewport) {
+/** Inset between layout viewport bottom and visual viewport bottom (Safari chrome or keyboard). */
+function getViewportBottomInset(viewport) {
   if (!viewport) return 0;
-
-  const heightGap = window.innerHeight - viewport.height;
-  if (heightGap < 80) return 0;
-
-  return Math.max(0, heightGap - viewport.offsetTop);
+  return Math.max(0, window.innerHeight - viewport.height - viewport.offsetTop);
 }
+
+const KEYBOARD_INSET_MIN = 150;
+const SAFARI_CHROME_INSET_MAX = 140;
 
 export default function ChatBar({
   inputRef,
@@ -21,8 +21,11 @@ export default function ChatBar({
   connected,
   isWide = false,
   showAlertsToggle = false,
+  gameId = "",
+  subscriberId = "",
 }) {
   const anchorRef = useRef(null);
+  const inputFocusedRef = useRef(false);
   const [portalTarget, setPortalTarget] = useState(null);
 
   useEffect(() => {
@@ -36,6 +39,7 @@ export default function ChatBar({
     const clearChatBarVars = () => {
       root.style.removeProperty("--chat-bar-height");
       root.style.removeProperty("--chat-bar-lift");
+      root.style.removeProperty("--chat-bar-bottom");
       root.style.removeProperty("--chat-bar-offset-left");
       root.style.removeProperty("--chat-bar-offset-right");
     };
@@ -43,13 +47,14 @@ export default function ChatBar({
     if (!anchor) return undefined;
 
     if (isWide) {
-      anchor.style.transform = "";
       clearChatBarVars();
       return undefined;
     }
 
     const syncHeight = () => {
-      root.style.setProperty("--chat-bar-height", `${anchor.offsetHeight}px`);
+      const measured = anchor.getBoundingClientRect().height;
+      const height = Math.ceil(Math.max(measured, anchor.offsetHeight));
+      root.style.setProperty("--chat-bar-height", `${height}px`);
     };
 
     const syncOffsets = () => {
@@ -65,15 +70,26 @@ export default function ChatBar({
     const update = () => {
       syncHeight();
       syncOffsets();
+
       if (!viewport) {
         root.style.setProperty("--chat-bar-lift", "0px");
-        anchor.style.transform = "";
+        root.style.setProperty("--chat-bar-bottom", "0px");
         return;
       }
 
-      const keyboardOffset = getKeyboardOffset(viewport);
-      root.style.setProperty("--chat-bar-lift", `${keyboardOffset}px`);
-      anchor.style.transform = keyboardOffset > 0 ? `translate3d(0, -${keyboardOffset}px, 0)` : "";
+      const inset = getViewportBottomInset(viewport);
+      const keyboardOpen =
+        inputFocusedRef.current && inset >= KEYBOARD_INSET_MIN;
+      const safariChrome =
+        !keyboardOpen && inset > 0 && inset < SAFARI_CHROME_INSET_MAX;
+
+      if (keyboardOpen || safariChrome) {
+        root.style.setProperty("--chat-bar-bottom", `${inset}px`);
+      } else {
+        root.style.setProperty("--chat-bar-bottom", "0px");
+      }
+
+      root.style.setProperty("--chat-bar-lift", keyboardOpen ? `${inset}px` : "0px");
     };
 
     const resizeObserver = new ResizeObserver(update);
@@ -83,7 +99,21 @@ export default function ChatBar({
       resizeObserver.observe(field);
     }
 
+    const input = anchor.querySelector(".chat-bar__input");
+    const handleFocus = () => {
+      inputFocusedRef.current = true;
+      update();
+    };
+    const handleBlur = () => {
+      inputFocusedRef.current = false;
+      requestAnimationFrame(update);
+    };
+
     window.addEventListener("resize", update);
+    if (input) {
+      input.addEventListener("focus", handleFocus);
+      input.addEventListener("blur", handleBlur);
+    }
     if (viewport) {
       viewport.addEventListener("resize", update);
       viewport.addEventListener("scroll", update);
@@ -94,11 +124,14 @@ export default function ChatBar({
     return () => {
       resizeObserver.disconnect();
       window.removeEventListener("resize", update);
+      if (input) {
+        input.removeEventListener("focus", handleFocus);
+        input.removeEventListener("blur", handleBlur);
+      }
       if (viewport) {
         viewport.removeEventListener("resize", update);
         viewport.removeEventListener("scroll", update);
       }
-      anchor.style.transform = "";
       clearChatBarVars();
     };
   }, [isWide]);
@@ -112,7 +145,9 @@ export default function ChatBar({
   const chatBar = (
     <div ref={anchorRef} className="chat-bar-anchor chat-bar-anchor--detail">
       <div className="chat-bar-stack">
-        {showAlertsToggle ? <ChatAlertsLink /> : null}
+        {showAlertsToggle ? (
+          <ChatAlertsLink gameId={gameId} subscriberId={subscriberId} />
+        ) : null}
         <form className="chat-bar composer-row" onSubmit={handleSubmit}>
           <div className="composer-field chat-bar__field">
             <input

@@ -219,6 +219,8 @@ function AppRoutes() {
           onSend={presence.sendChat}
           connected={presence.connected}
           showAlertsToggle
+          gameId={gameId ?? ""}
+          subscriberId={presence.self?.id ?? ""}
         />
       )}
     </div>
