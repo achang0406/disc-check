@@ -52,7 +52,7 @@ export default function InstallAppLink() {
         }}
         disabled={installing}
       >
-        {installing ? "Adding…" : "Add to home screen"}
+        {installing ? "Adding…" : "Add to Home Screen"}
       </button>
 
       {iosHelpModal && portalTarget ? createPortal(iosHelpModal, portalTarget) : null}

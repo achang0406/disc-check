@@ -430,7 +430,7 @@ export const globalStyles = `
   }
 
   .location-display__tooltip {
-    min-width: max-content;
+    min-width: 0;
     max-width: min(280px, calc(100vw - 24px));
     padding: 6px 10px;
     border-radius: var(--radius-sm);
@@ -441,6 +441,7 @@ export const globalStyles = `
     font-size: var(--font-body);
     line-height: 1.4;
     white-space: normal;
+    overflow-wrap: anywhere;
     box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
     pointer-events: none;
   }
@@ -777,7 +778,7 @@ export const globalStyles = `
 
   .game-detail-panel-block .game-detail-panel__bell-row {
     display: flex;
-    justify-content: stretch;
+    justify-content: flex-end;
     align-items: center;
     padding: var(--space-1) var(--game-card-inset-x) 0;
     margin-top: var(--space-1);
@@ -827,17 +828,20 @@ export const globalStyles = `
   .game-chat-push {
     display: flex;
     align-items: center;
-    justify-content: space-between;
-    gap: var(--space-3);
-    width: 100%;
+    justify-content: flex-end;
+    gap: var(--space-2);
+    width: auto;
+    max-width: 100%;
     min-height: 0;
   }
 
   .game-chat-push__hint {
     margin: 0;
-    flex: 1;
-    min-width: 0;
+    flex: 0 1 auto;
+    max-width: 18rem;
+    text-align: right;
     color: var(--text-faint);
+    font-family: var(--font-mono);
     font-size: var(--font-label);
     line-height: 1.35;
   }
@@ -1273,9 +1277,15 @@ export const globalStyles = `
   .install-app-help {
     margin: 0;
     padding-left: 1.1rem;
-    color: var(--text-subtle);
+    color: var(--text-muted);
+    font-family: var(--font-mono);
     font-size: var(--font-body);
     line-height: 1.5;
+  }
+
+  .install-app-help strong {
+    color: var(--text-subtle);
+    font-weight: 600;
   }
 
   .install-app-help li + li {
