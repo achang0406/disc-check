@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import {
+  canShowChatPushBell,
   getWebPushSupportState,
   isSubscribedToGameChatPush,
   subscribeToGameChatPush,
@@ -10,7 +11,6 @@ const STATUS_LABEL = {
   denied: "Notifications blocked in browser settings",
   "subscribe-failed": "Could not enable chat notifications",
   "missing-identity": "Loading… try again in a moment",
-  "ios-install-required": "Add DiscCheck to Home Screen for push notifications",
   misconfigured: "Push notifications are not configured on this build",
   unsupported: "Push notifications are not supported in this browser",
 };
@@ -35,6 +35,19 @@ function ChatBellIcon({ active = false }) {
       />
     </svg>
   );
+}
+
+function getHintText({ subscribed, errorReason }) {
+  if (errorReason && STATUS_LABEL[errorReason]) {
+    return STATUS_LABEL[errorReason];
+  }
+  if (subscribed === null) {
+    return "Checking chat alerts…";
+  }
+  if (subscribed) {
+    return "Chat alerts on — you'll be notified about new messages.";
+  }
+  return "Chat alerts off — tap the bell to get notified.";
 }
 
 export default function GameChatPushButton({ gameId = "", subscriberId = "" }) {
@@ -66,6 +79,10 @@ export default function GameChatPushButton({ gameId = "", subscriberId = "" }) {
       cancelled = true;
     };
   }, [gameId, subscriberId]);
+
+  if (!canShowChatPushBell()) {
+    return null;
+  }
 
   const handleClick = async () => {
     if (!gameId || busy || subscribed === null) return;
@@ -112,16 +129,16 @@ export default function GameChatPushButton({ gameId = "", subscriberId = "" }) {
         ? "Checking notification status…"
         : "Get chat notifications";
 
+  const hint = getHintText({ subscribed, errorReason });
+
   return (
-    <div className="game-chat-push">
+    <div className={["game-chat-push", subscribed ? "game-chat-push--on" : ""].filter(Boolean).join(" ")}>
+      <p className="game-chat-push__hint">{hint}</p>
       <button
         type="button"
         className={[
           "game-chat-push__icon-btn",
           subscribed ? "game-chat-push__icon-btn--on" : "",
-          !subscribed && (errorReason || pushSupport.reason === "ios-install-required")
-            ? "game-chat-push__icon-btn--blocked"
-            : "",
           busy ? "game-chat-push__icon-btn--loading" : "",
         ]
           .filter(Boolean)

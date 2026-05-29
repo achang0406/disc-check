@@ -59,6 +59,11 @@ export function isWebPushSupported() {
   return getWebPushSupportState().supported;
 }
 
+/** Show the chat bell only in the installed web app (standalone / Home Screen). */
+export function canShowChatPushBell() {
+  return isStandaloneDisplay() && isWebPushSupported();
+}
+
 function urlBase64ToUint8Array(base64String) {
   const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
   const base64 = (base64String + padding).replace(/-/g, "+").replace(/_/g, "/");

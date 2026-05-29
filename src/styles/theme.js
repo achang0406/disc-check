@@ -777,7 +777,7 @@ export const globalStyles = `
 
   .game-detail-panel-block .game-detail-panel__bell-row {
     display: flex;
-    justify-content: flex-end;
+    justify-content: stretch;
     align-items: center;
     padding: var(--space-1) var(--game-card-inset-x) 0;
     margin-top: var(--space-1);
@@ -826,9 +826,24 @@ export const globalStyles = `
 
   .game-chat-push {
     display: flex;
-    justify-content: flex-end;
     align-items: center;
+    justify-content: space-between;
+    gap: var(--space-3);
+    width: 100%;
     min-height: 0;
+  }
+
+  .game-chat-push__hint {
+    margin: 0;
+    flex: 1;
+    min-width: 0;
+    color: var(--text-faint);
+    font-size: var(--font-label);
+    line-height: 1.35;
+  }
+
+  .game-chat-push--on .game-chat-push__hint {
+    color: var(--text-subtle);
   }
 
   .game-chat-push__icon-btn {
@@ -865,11 +880,6 @@ export const globalStyles = `
     color: var(--chip-you-text);
     background: var(--chip-you-bg);
     border-color: var(--chip-you-border);
-  }
-
-  .game-chat-push__icon-btn--blocked {
-    opacity: 0.45;
-    cursor: not-allowed;
   }
 
   .game-chat-push__icon-btn--loading {

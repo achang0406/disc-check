@@ -18,6 +18,7 @@ import {
 } from "../utils/gameSchedule.js";
 import { countHeadcount, countPlayers } from "../utils/format.js";
 import {
+  canShowChatPushBell,
   ensureChatPushRegistration,
   isGamePushOptedOut,
   isSubscribedToGameChatPush,
@@ -282,7 +283,7 @@ export default function GameDetailScreen({
                 <GameDetailActions {...actionProps} isEnded={ended} />
               )}
             </div>
-            {game.status !== "cancelled" && (
+            {game.status !== "cancelled" && canShowChatPushBell() && (
               <div className="game-detail-panel__bell-row">
                 <GameChatPushButton
                   gameId={game.id}
