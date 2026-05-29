@@ -17,6 +17,7 @@ import { usePresence } from "./hooks/usePresence.js";
 import { useBreakpoint } from "./hooks/useBreakpoint.js";
 import { useGameClock } from "./hooks/useGameClock.js";
 import { useTheme } from "./hooks/useTheme.js";
+import { useToast } from "./hooks/useToast.js";
 import { useServiceWorkerNavigation } from "./hooks/useServiceWorkerNavigation.js";
 import GamesLandingScreen from "./screens/GamesLandingScreen.jsx";
 import GameDetailScreen from "./screens/GameDetailScreen.jsx";
