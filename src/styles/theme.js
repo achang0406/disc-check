@@ -826,24 +826,41 @@ export const globalStyles = `
   }
 
   .game-chat-push {
+    position: relative;
     display: flex;
     align-items: center;
     justify-content: flex-end;
-    gap: var(--space-2);
     width: auto;
     max-width: 100%;
-    min-height: 0;
+    min-height: 36px;
+    min-width: 36px;
   }
 
   .game-chat-push__hint {
+    position: absolute;
+    right: calc(36px + var(--space-2));
+    top: 50%;
     margin: 0;
-    flex: 0 1 auto;
-    max-width: 18rem;
+    max-width: min(18rem, calc(100vw - var(--game-card-inset-x) * 2 - 52px));
     text-align: right;
     color: var(--text-faint);
     font-family: var(--font-mono);
     font-size: var(--font-label);
     line-height: 1.35;
+    white-space: nowrap;
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    transform: translateY(-50%);
+    transition:
+      opacity 140ms ease,
+      visibility 140ms ease;
+  }
+
+  .game-chat-push--hint-visible .game-chat-push__hint,
+  .game-chat-push:focus-within .game-chat-push__hint {
+    opacity: 1;
+    visibility: visible;
   }
 
   .game-chat-push--on .game-chat-push__hint {

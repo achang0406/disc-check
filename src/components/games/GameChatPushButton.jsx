@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   canShowChatPushBell,
   getWebPushSupportState,
@@ -6,6 +6,8 @@ import {
   subscribeToGameChatPush,
   unsubscribeFromGameChatPush,
 } from "../../lib/push.js";
+
+const HINT_PEEK_MS = 3000;
 
 const STATUS_LABEL = {
   denied: "Notifications blocked in browser settings",
@@ -42,19 +44,40 @@ function getHintText({ subscribed, errorReason }) {
     return STATUS_LABEL[errorReason];
   }
   if (subscribed === null) {
-    return "Checking chat alerts…";
+    return "Checking…";
   }
   if (subscribed) {
-    return "Chat alerts on — you'll be notified about new messages.";
+    return "Chat alerts on";
   }
-  return "Chat alerts off — tap the bell to get notified.";
+  return "Chat alerts off";
 }
 
 export default function GameChatPushButton({ gameId = "", subscriberId = "" }) {
   const [subscribed, setSubscribed] = useState(null);
   const [busy, setBusy] = useState(false);
   const [errorReason, setErrorReason] = useState(null);
+  const [hovering, setHovering] = useState(false);
+  const [peeking, setPeeking] = useState(false);
+  const peekTimerRef = useRef(null);
   const pushSupport = getWebPushSupportState();
+
+  const clearPeekTimer = useCallback(() => {
+    if (peekTimerRef.current != null) {
+      window.clearTimeout(peekTimerRef.current);
+      peekTimerRef.current = null;
+    }
+  }, []);
+
+  const peekHint = useCallback(() => {
+    clearPeekTimer();
+    setPeeking(true);
+    peekTimerRef.current = window.setTimeout(() => {
+      setPeeking(false);
+      peekTimerRef.current = null;
+    }, HINT_PEEK_MS);
+  }, [clearPeekTimer]);
+
+  useEffect(() => () => clearPeekTimer(), [clearPeekTimer]);
 
   const refresh = useCallback(async () => {
     if (!gameId) {
@@ -93,6 +116,7 @@ export default function GameChatPushButton({ gameId = "", subscriberId = "" }) {
       setErrorReason(null);
       try {
         await unsubscribeFromGameChatPush({ gameId, subscriberId });
+        peekHint();
       } catch {
         await refresh();
       } finally {
@@ -103,6 +127,7 @@ export default function GameChatPushButton({ gameId = "", subscriberId = "" }) {
 
     if (!subscriberId) {
       setErrorReason("missing-identity");
+      peekHint();
       return;
     }
 
@@ -112,9 +137,11 @@ export default function GameChatPushButton({ gameId = "", subscriberId = "" }) {
       const result = await subscribeToGameChatPush({ gameId, subscriberId });
       if (result.ok) {
         setSubscribed(true);
+        peekHint();
       } else {
         setErrorReason(result.reason);
         setSubscribed(false);
+        peekHint();
       }
     } finally {
       setBusy(false);
@@ -130,10 +157,28 @@ export default function GameChatPushButton({ gameId = "", subscriberId = "" }) {
         : "Get chat notifications";
 
   const hint = getHintText({ subscribed, errorReason });
+  const hintVisible = hovering || peeking;
+  const hintId = `game-chat-push-hint-${gameId}`;
 
   return (
-    <div className={["game-chat-push", subscribed ? "game-chat-push--on" : ""].filter(Boolean).join(" ")}>
-      <p className="game-chat-push__hint">{hint}</p>
+    <div
+      className={[
+        "game-chat-push",
+        subscribed ? "game-chat-push--on" : "",
+        hintVisible ? "game-chat-push--hint-visible" : "",
+      ]
+        .filter(Boolean)
+        .join(" ")}
+      onMouseEnter={() => setHovering(true)}
+      onMouseLeave={() => setHovering(false)}
+    >
+      <p
+        id={hintId}
+        className="game-chat-push__hint"
+        aria-hidden={!hintVisible}
+      >
+        {hint}
+      </p>
       <button
         type="button"
         className={[
@@ -147,7 +192,7 @@ export default function GameChatPushButton({ gameId = "", subscriberId = "" }) {
         disabled={busy || subscribed === null}
         aria-label={label}
         aria-pressed={Boolean(subscribed)}
-        title={label}
+        aria-describedby={hintVisible ? hintId : undefined}
       >
         <ChatBellIcon active={Boolean(subscribed)} />
       </button>
