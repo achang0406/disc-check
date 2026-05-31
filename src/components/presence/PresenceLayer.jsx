@@ -242,7 +242,7 @@ export default function PresenceLayer({
   localChat,
   draft,
   connected,
-  isWide,
+  isChatCursor,
   rsvpUserIds,
 }) {
   const [, setTick] = useState(0);
@@ -317,7 +317,7 @@ export default function PresenceLayer({
         }
       `}</style>
 
-      {!connected && isSupabaseConfigured() && isWide && (
+      {!connected && isSupabaseConfigured() && isChatCursor && (
         <div className="presence-connecting">Connecting to presence…</div>
       )}
 
@@ -329,7 +329,7 @@ export default function PresenceLayer({
         />
       ))}
 
-      {connected && isWide && (
+      {connected && isChatCursor && (
         <SelfPresence
           self={self}
           cursor={cursor}

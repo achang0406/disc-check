@@ -7,7 +7,7 @@
  * | compact | (default) | Phone-first base layout |
  * | sm      | 640px     | Typography + layout step (16px gutters/insets) |
  * | md      | 768px     | Wide layout (GameCard vs commit strip) |
- * | lg      | 1024px    | Large layout + typography step |
+ * | lg      | 1024px    | Cursor speech-bubble chat + typography step |
  * | xl      | 1280px    | Reserved for future wide layout tweaks |
  */
 export const BP_SM_MIN = 640;
@@ -25,4 +25,10 @@ export const MQ_XL = `(min-width: ${BP_XL_MIN}px)`;
 
 /** Wide layout threshold — same as md */
 export const MQ_WIDE = MQ_MD;
+
+/** Cursor speech-bubble chat (vs thread) — one step above layout wide */
+export const BP_CHAT_CURSOR_MIN = BP_LG_MIN;
+export const MQ_CHAT_CURSOR = MQ_LG;
+
 export const MQ_COMPACT = `(max-width: ${BP_MD_MIN - 1}px)`;
+export const MQ_CHAT_THREAD = `(max-width: ${BP_CHAT_CURSOR_MIN - 1}px)`;

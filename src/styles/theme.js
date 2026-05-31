@@ -724,7 +724,7 @@ export const globalStyles = `
     padding-bottom: var(--chat-bar-height, 58px);
   }
 
-  @media (min-width: 768px) {
+  @media (min-width: ${BP_LG_MIN}px) {
     .game-detail-layout--responsive {
       padding-bottom: 0;
     }
@@ -949,7 +949,7 @@ export const globalStyles = `
     padding: 0 var(--space-1);
   }
 
-  @media (max-width: 767px) {
+  @media (max-width: ${BP_LG_MIN - 1}px) {
     .games-screen--detail .games-screen__main--detail {
       flex: 1 1 0;
       min-height: 0;
@@ -1237,7 +1237,7 @@ export const globalStyles = `
     display: none;
   }
 
-  @media (min-width: 768px) {
+  @media (min-width: ${BP_LG_MIN}px) {
     .presence-layer--wide-only {
       display: block;
     }
@@ -1755,7 +1755,7 @@ export const globalStyles = `
     padding-top: var(--space-2);
   }
 
-  @media (max-width: 767px) {
+  @media (max-width: ${BP_LG_MIN - 1}px) {
     .chat-bar-anchor {
       padding: var(--space-2) var(--chat-bar-inset-x)
         max(var(--chat-bar-inset-y), var(--safe-area-bottom));
@@ -1809,7 +1809,7 @@ export const globalStyles = `
     pointer-events: auto;
   }
 
-  @media (min-width: 768px) {
+  @media (min-width: ${BP_LG_MIN}px) {
     .chat-bar-anchor {
       left: auto;
       right: 0;

@@ -18,7 +18,7 @@ export default function ChatBar({
   onChange,
   onSend,
   connected,
-  isWide = false,
+  isChatCursor = false,
 }) {
   const anchorRef = useRef(null);
   const inputFocusedRef = useRef(false);
@@ -42,7 +42,7 @@ export default function ChatBar({
 
     if (!anchor) return undefined;
 
-    if (isWide) {
+    if (isChatCursor) {
       clearChatBarVars();
       return undefined;
     }
@@ -130,7 +130,7 @@ export default function ChatBar({
       }
       clearChatBarVars();
     };
-  }, [isWide]);
+  }, [isChatCursor]);
 
   const handleSubmit = (event) => {
     event.preventDefault();
@@ -151,7 +151,7 @@ export default function ChatBar({
               onChange={(event) => onChange(event.target.value)}
               placeholder={
                 connected
-                  ? isWide
+                  ? isChatCursor
                     ? "Type anywhere, or here…"
                     : "Say something…"
                   : "Connecting…"

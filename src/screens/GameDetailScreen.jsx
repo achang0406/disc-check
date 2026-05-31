@@ -46,7 +46,7 @@ export default function GameDetailScreen({
 }) {
   const { gameId } = useParams();
   const navigate = useNavigate();
-  const { isWide, isCompact } = useBreakpoint();
+  const { isWide, isCompact, isChatCursor } = useBreakpoint();
   const now = useGameClock();
   const [plusOnes, setPlusOnes] = useState(0);
   const [bringingKit, setBringingKit] = useState(false);
@@ -266,7 +266,7 @@ export default function GameDetailScreen({
               </div>
             )}
           </div>
-          {!isWide && (
+          {!isChatCursor && (
             <div className="game-detail-layout__thread-wrap">
               {presence && (
                 <GameChatThread

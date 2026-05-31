@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
-import { MQ_WIDE } from "../../constants/breakpoints.js";
+import { MQ_CHAT_THREAD } from "../../constants/breakpoints.js";
 import { suppressMouseFocus } from "../../utils/suppressMouseFocus.js";
 
 function ChatBubble({ message, selfId }) {
@@ -33,7 +33,7 @@ export default function GameChatThread({ messages, selfId, loading = false }) {
   const prevMessageCountRef = useRef(0);
   const [showJumpToBottom, setShowJumpToBottom] = useState(false);
   const [isCompact, setIsCompact] = useState(() =>
-    typeof window !== "undefined" ? !window.matchMedia(MQ_WIDE).matches : false,
+    typeof window !== "undefined" ? window.matchMedia(MQ_CHAT_THREAD).matches : false,
   );
 
   const jumpToLatest = useCallback(() => {
@@ -45,7 +45,7 @@ export default function GameChatThread({ messages, selfId, loading = false }) {
   }, []);
 
   useEffect(() => {
-    const media = window.matchMedia(MQ_WIDE);
+    const media = window.matchMedia(MQ_CHAT_THREAD);
     const update = () => setIsCompact(!media.matches);
     media.addEventListener("change", update);
     update();
@@ -79,7 +79,7 @@ export default function GameChatThread({ messages, selfId, loading = false }) {
   useEffect(() => {
     const thread = scrollRef.current;
     const root = document.documentElement;
-    const media = window.matchMedia(MQ_WIDE);
+    const media = window.matchMedia(MQ_CHAT_THREAD);
 
     const clearThreadPad = () => {
       root.style.removeProperty("--chat-thread-pad-left");

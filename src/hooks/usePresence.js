@@ -79,8 +79,8 @@ function isTouchIgnoredTarget(target) {
   return Boolean(target.closest(".chat-bar-anchor"));
 }
 
-export function usePresence(profile, gameId, isWide, gameName = "") {
-  const mode = getPresenceMode(isWide);
+export function usePresence(profile, gameId, isChatCursor, gameName = "") {
+  const mode = getPresenceMode(isChatCursor);
 
   const [others, setOthers] = useState({});
   const [watchingPeers, setWatchingPeers] = useState({});
@@ -366,7 +366,7 @@ export function usePresence(profile, gameId, isWide, gameName = "") {
   }, [color, connected, displayName, mode, sessionId]);
 
   useEffect(() => {
-    if (!connected || !isWide) return undefined;
+    if (!connected || !isChatCursor) return undefined;
 
     const onMove = (event) => {
       updatePosition(event.clientX, event.clientY);
@@ -374,10 +374,10 @@ export function usePresence(profile, gameId, isWide, gameName = "") {
 
     window.addEventListener("mousemove", onMove);
     return () => window.removeEventListener("mousemove", onMove);
-  }, [connected, isWide, updatePosition]);
+  }, [connected, isChatCursor, updatePosition]);
 
   useEffect(() => {
-    if (!connected || !isWide) return undefined;
+    if (!connected || !isChatCursor) return undefined;
 
     const onTouch = (event) => {
       if (isTouchIgnoredTarget(event.target)) return;
@@ -392,7 +392,7 @@ export function usePresence(profile, gameId, isWide, gameName = "") {
       window.removeEventListener("touchstart", onTouch);
       window.removeEventListener("touchmove", onTouch);
     };
-  }, [connected, isWide, updatePosition]);
+  }, [connected, isChatCursor, updatePosition]);
 
   const broadcastDraft = useCallback(
     (message) => {
@@ -571,7 +571,7 @@ export function usePresence(profile, gameId, isWide, gameName = "") {
       draft,
       cursor,
       connected,
-      isWide,
+      isChatCursor,
       chatInputRef,
       setThreadDraft,
       sendChat,
@@ -586,7 +586,7 @@ export function usePresence(profile, gameId, isWide, gameName = "") {
       draft,
       cursor,
       connected,
-      isWide,
+      isChatCursor,
       setThreadDraft,
       sendChat,
       sessionId,

@@ -29,7 +29,7 @@ function AppRoutes() {
   useServiceWorkerNavigation();
   const { theme, toggleTheme, cssVars } = useTheme();
   const app = useAppData(showToast);
-  const { isWide } = useBreakpoint();
+  const { isWide, isChatCursor } = useBreakpoint();
   const now = useGameClock();
   const isLanding = useMatch({ path: "/", end: true });
   const detailMatch = useMatch("/games/:gameId");
@@ -38,7 +38,7 @@ function AppRoutes() {
     () => (gameId ? app.gamesMeta.find((item) => item.id === gameId) ?? null : null),
     [gameId, app.gamesMeta],
   );
-  const presence = usePresence(app.profile, gameId, isWide, detailGame?.name ?? "");
+  const presence = usePresence(app.profile, gameId, isChatCursor, detailGame?.name ?? "");
   const glowUserIds = useMemo(() => {
     if (!gameId) return new Set();
 
@@ -126,7 +126,7 @@ function AppRoutes() {
           localChat={presence.localChat}
           draft={presence.draft}
           connected={presence.connected}
-          isWide={presence.isWide}
+          isChatCursor={presence.isChatCursor}
           rsvpUserIds={glowUserIds}
         />
       )}
@@ -214,7 +214,7 @@ function AppRoutes() {
 
       {detailMatch && (
         <ChatBar
-          isWide={presence.isWide}
+          isChatCursor={presence.isChatCursor}
           inputRef={presence.chatInputRef}
           value={presence.draft}
           onChange={presence.setThreadDraft}

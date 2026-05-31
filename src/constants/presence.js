@@ -62,8 +62,8 @@ export function getBubblePlacement(
   return { flipX, flipY };
 }
 
-export function getPresenceMode(isWide) {
-  return isWide ? "cursor" : "thread";
+export function getPresenceMode(isChatCursor) {
+  return isChatCursor ? "cursor" : "thread";
 }
 
 export function colorForId(id) {

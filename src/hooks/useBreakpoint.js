@@ -1,27 +1,34 @@
 import { useEffect, useState } from "react";
-import { MQ_WIDE } from "../constants/breakpoints.js";
+import { MQ_CHAT_CURSOR, MQ_WIDE } from "../constants/breakpoints.js";
 
-function readIsWide() {
-  if (typeof window === "undefined") return true;
-  return window.matchMedia(MQ_WIDE).matches;
+function readMatches(query) {
+  if (typeof window === "undefined") return query === MQ_WIDE;
+  return window.matchMedia(query).matches;
 }
 
 export function useBreakpoint() {
-  const [isWide, setIsWide] = useState(readIsWide);
+  const [isWide, setIsWide] = useState(() => readMatches(MQ_WIDE));
+  const [isChatCursor, setIsChatCursor] = useState(() => readMatches(MQ_CHAT_CURSOR));
 
   useEffect(() => {
-    const media = window.matchMedia(MQ_WIDE);
-    const update = () => setIsWide(media.matches);
+    const wideMedia = window.matchMedia(MQ_WIDE);
+    const chatMedia = window.matchMedia(MQ_CHAT_CURSOR);
+    const update = () => {
+      setIsWide(wideMedia.matches);
+      setIsChatCursor(chatMedia.matches);
+    };
 
-    media.addEventListener("change", update);
+    wideMedia.addEventListener("change", update);
+    chatMedia.addEventListener("change", update);
     window.addEventListener("resize", update);
     update();
 
     return () => {
-      media.removeEventListener("change", update);
+      wideMedia.removeEventListener("change", update);
+      chatMedia.removeEventListener("change", update);
       window.removeEventListener("resize", update);
     };
   }, []);
 
-  return { isWide, isCompact: !isWide };
+  return { isWide, isCompact: !isWide, isChatCursor };
 }
