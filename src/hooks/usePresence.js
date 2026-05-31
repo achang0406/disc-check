@@ -12,13 +12,14 @@ import {
   isEditableTarget,
 } from "../constants/presence.js";
 import { getSupabase, isSupabaseConfigured } from "../lib/supabase.js";
+import {
+  fetchGameChatMessages,
+  saveGameChatMessage,
+  subscribeGameChatMessages,
+} from "../lib/chatMessages.js";
 import { appendChatMessage, loadChatCache, saveChatCache } from "../utils/chatCache.js";
 import { notifyChatPush } from "../lib/push.js";
-import {
-  consumePushMessagesForGame,
-  mergePushMessagesIntoCache,
-  mergePushMessageIntoCache,
-} from "../utils/pushMessageStore.js";
+import { mergePushMessageIntoCache } from "../utils/pushMessageStore.js";
 
 function createLocalChat(message, x, y) {
   return {
@@ -174,8 +175,8 @@ export function usePresence(profile, gameId, isWide, gameName = "") {
 
     const hydrateMessages = async () => {
       const cached = loadChatCache(gameId);
-      const pending = await consumePushMessagesForGame(gameId);
-      const merged = mergePushMessagesIntoCache(gameId, cached, pending);
+      const stored = await fetchGameChatMessages(gameId);
+      const merged = stored.length > 0 ? stored : cached;
       if (!cancelled) {
         setMessages(merged);
         if (merged.length > 0) {
@@ -196,6 +197,37 @@ export function usePresence(profile, gameId, isWide, gameName = "") {
     if (messages.length === 0) return;
     saveChatCache(gameId, messages);
   }, [gameId, messages]);
+
+  useEffect(() => {
+    if (!gameId || !isSupabaseConfigured()) return undefined;
+
+    const refreshMessages = async () => {
+      const stored = await fetchGameChatMessages(gameId);
+      if (stored.length === 0) return;
+      setMessages(stored);
+      saveChatCache(gameId, stored);
+    };
+
+    const onVisible = () => {
+      if (document.visibilityState !== "visible") return;
+      void refreshMessages();
+    };
+
+    document.addEventListener("visibilitychange", onVisible);
+    return () => document.removeEventListener("visibilitychange", onVisible);
+  }, [gameId]);
+
+  useEffect(() => {
+    if (!gameId || !isSupabaseConfigured()) return undefined;
+
+    return subscribeGameChatMessages(gameId, (message) => {
+      setMessages((current) => {
+        const next = appendChatMessage(current, message);
+        saveChatCache(gameId, next);
+        return next;
+      });
+    });
+  }, [gameId]);
 
   useEffect(() => {
     if (!gameId) return undefined;
@@ -427,6 +459,16 @@ export function usePresence(profile, gameId, isWide, gameName = "") {
       broadcast("chat", { message: trimmed, messageId, createdAt, ...extras });
 
       if (!gameId) return;
+
+      void saveGameChatMessage({
+        gameId,
+        id: messageId,
+        senderId: sessionId,
+        senderName: displayName,
+        senderColor: color,
+        text: trimmed,
+        createdAt,
+      });
 
       void notifyChatPush({
         gameId,

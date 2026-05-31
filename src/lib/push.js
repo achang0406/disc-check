@@ -1,37 +1,10 @@
 import { getSupabase, isSupabaseConfigured } from "./supabase.js";
 import { isIosDevice, isStandaloneDisplay } from "../utils/pwaInstall.js";
 
-const PUSH_OPTED_OUT_GAMES_KEY = "disc_push_opted_out_games";
 const VAPID_PUBLIC_KEY = import.meta.env.VITE_VAPID_PUBLIC_KEY;
 
 function isVapidConfigured() {
   return Boolean(VAPID_PUBLIC_KEY && !VAPID_PUBLIC_KEY.includes("your-vapid"));
-}
-
-function readOptedOutGames() {
-  try {
-    const raw = localStorage.getItem(PUSH_OPTED_OUT_GAMES_KEY);
-    const parsed = raw ? JSON.parse(raw) : [];
-    return Array.isArray(parsed) ? parsed.filter((id) => typeof id === "string") : [];
-  } catch {
-    return [];
-  }
-}
-
-export function isGamePushOptedOut(gameId) {
-  if (!gameId) return false;
-  return readOptedOutGames().includes(gameId);
-}
-
-function setGamePushOptedOut(gameId, optedOut) {
-  if (!gameId) return;
-  const games = new Set(readOptedOutGames());
-  if (optedOut) {
-    games.add(gameId);
-  } else {
-    games.delete(gameId);
-  }
-  localStorage.setItem(PUSH_OPTED_OUT_GAMES_KEY, JSON.stringify([...games]));
 }
 
 /** @returns {{ supported: boolean, reason: string | null }} */
@@ -89,45 +62,85 @@ async function getBrowserPushEndpoint() {
   }
 }
 
-async function hasDbPushRegistration({ gameId, subscriberId }) {
-  if (!isSupabaseConfigured() || !gameId) return false;
+async function findPushRegistration({ gameId, subscriberId }) {
+  if (!isSupabaseConfigured() || !gameId) return null;
 
   const supabase = getSupabase();
 
   if (subscriberId) {
     const { data } = await supabase
       .from("push_subscriptions")
-      .select("id")
+      .select("id, notifications_enabled")
       .eq("game_id", gameId)
       .eq("subscriber_id", subscriberId)
       .maybeSingle();
-    if (data) return true;
+    if (data) return data;
   }
 
   const endpoint = await getBrowserPushEndpoint();
-  if (!endpoint) return false;
+  if (!endpoint) return null;
 
   const { data } = await supabase
     .from("push_subscriptions")
-    .select("id")
+    .select("id, notifications_enabled")
     .eq("game_id", gameId)
     .eq("endpoint", endpoint)
     .maybeSingle();
 
-  return Boolean(data);
+  return data ?? null;
 }
 
-/** Whether this user is subscribed to chat push for a game (DB is source of truth). */
+/** Whether visible chat alerts (bell) are on for this game. */
 export async function isSubscribedToGameChatPush({ gameId, subscriberId }) {
   if (!gameId) return false;
-  return hasDbPushRegistration({ gameId, subscriberId });
+  const row = await findPushRegistration({ gameId, subscriberId });
+  return row?.notifications_enabled === true;
 }
 
-async function savePushSubscription({ gameId, subscriberId, subscription }) {
+async function setNotificationsEnabled({ gameId, subscriberId, enabled }) {
+  if (!isSupabaseConfigured() || !gameId) return false;
+
+  const supabase = getSupabase();
+  const endpoint = await getBrowserPushEndpoint();
+  let updated = false;
+
+  if (subscriberId) {
+    const { data, error } = await supabase
+      .from("push_subscriptions")
+      .update({ notifications_enabled: enabled, updated_at: new Date().toISOString() })
+      .eq("game_id", gameId)
+      .eq("subscriber_id", subscriberId)
+      .select("id");
+    if (!error && data?.length > 0) {
+      updated = true;
+    }
+  }
+
+  if (!updated && endpoint) {
+    const { data, error } = await supabase
+      .from("push_subscriptions")
+      .update({ notifications_enabled: enabled, updated_at: new Date().toISOString() })
+      .eq("game_id", gameId)
+      .eq("endpoint", endpoint)
+      .select("id");
+    if (!error && data?.length > 0) {
+      updated = true;
+    }
+  }
+
+  return updated;
+}
+
+async function savePushSubscription({ gameId, subscriberId, subscription, notificationsEnabled }) {
   if (!isSupabaseConfigured()) return false;
 
   const supabase = getSupabase();
   const json = subscription.toJSON();
+  const existing = await findPushRegistration({ gameId, subscriberId });
+  const enabled =
+    typeof notificationsEnabled === "boolean"
+      ? notificationsEnabled
+      : (existing?.notifications_enabled ?? false);
 
   const { error } = await supabase.from("push_subscriptions").upsert(
     {
@@ -135,6 +148,7 @@ async function savePushSubscription({ gameId, subscriberId, subscription }) {
       subscriber_id: subscriberId,
       endpoint: json.endpoint,
       subscription: json,
+      notifications_enabled: enabled,
       updated_at: new Date().toISOString(),
     },
     { onConflict: "endpoint" },
@@ -143,54 +157,17 @@ async function savePushSubscription({ gameId, subscriberId, subscription }) {
   return !error;
 }
 
-async function deletePushRegistration({ gameId, subscriberId }) {
-  if (!isSupabaseConfigured() || !gameId) return false;
-
-  const supabase = getSupabase();
-  const endpoint = await getBrowserPushEndpoint();
-  let deleted = false;
-
-  if (subscriberId) {
-    const { error, count } = await supabase
-      .from("push_subscriptions")
-      .delete({ count: "exact" })
-      .eq("game_id", gameId)
-      .eq("subscriber_id", subscriberId);
-    if (error) {
-      console.warn("Push unsubscribe failed (subscriber)", error.message ?? error);
-    } else if ((count ?? 0) > 0) {
-      deleted = true;
-    }
-  }
-
-  if (endpoint) {
-    const { error, count } = await supabase
-      .from("push_subscriptions")
-      .delete({ count: "exact" })
-      .eq("game_id", gameId)
-      .eq("endpoint", endpoint);
-    if (error) {
-      console.warn("Push unsubscribe failed (endpoint)", error.message ?? error);
-    } else if ((count ?? 0) > 0) {
-      deleted = true;
-    }
-  }
-
-  return deleted;
-}
-
-export async function ensureChatPushRegistration({ gameId, subscriberId }) {
-  if (!gameId || !subscriberId || isGamePushOptedOut(gameId) || !isWebPushSupported()) {
-    return false;
-  }
+async function ensureBrowserPushSubscription(requestPermission = false) {
+  if (!isWebPushSupported()) return null;
 
   if (typeof Notification !== "undefined" && Notification.permission === "default") {
+    if (!requestPermission) return null;
     const permission = await Notification.requestPermission();
-    if (permission !== "granted") return false;
+    if (permission !== "granted") return null;
   }
 
   if (typeof Notification !== "undefined" && Notification.permission !== "granted") {
-    return false;
+    return null;
   }
 
   try {
@@ -204,11 +181,39 @@ export async function ensureChatPushRegistration({ gameId, subscriberId }) {
       });
     }
 
-    return savePushSubscription({ gameId, subscriberId, subscription });
+    return subscription;
   } catch (error) {
     console.warn("Chat push registration failed", error);
+    return null;
+  }
+}
+
+/** Register for silent background chat sync (no visible alerts unless bell is on). */
+export async function ensureBackgroundChatPushSync({ gameId, subscriberId }) {
+  if (!gameId || !subscriberId || !isWebPushSupported()) {
     return false;
   }
+
+  const subscription = await ensureBrowserPushSubscription(false);
+  if (!subscription) return false;
+
+  return savePushSubscription({ gameId, subscriberId, subscription });
+}
+
+export async function ensureChatPushRegistration({ gameId, subscriberId }) {
+  if (!gameId || !subscriberId || !isWebPushSupported()) {
+    return false;
+  }
+
+  const subscription = await ensureBrowserPushSubscription(true);
+  if (!subscription) return false;
+
+  return savePushSubscription({
+    gameId,
+    subscriberId,
+    subscription,
+    notificationsEnabled: true,
+  });
 }
 
 export async function subscribeToGameChatPush({ gameId, subscriberId }) {
@@ -221,7 +226,6 @@ export async function subscribeToGameChatPush({ gameId, subscriberId }) {
     return { ok: false, reason: "missing-identity" };
   }
 
-  setGamePushOptedOut(gameId, false);
   const saved = await ensureChatPushRegistration({ gameId, subscriberId });
   return { ok: saved, reason: saved ? null : "subscribe-failed" };
 }
@@ -231,8 +235,7 @@ export async function unsubscribeFromGameChatPush({ gameId, subscriberId }) {
     return { ok: false, reason: "missing-identity" };
   }
 
-  setGamePushOptedOut(gameId, true);
-  await deletePushRegistration({ gameId, subscriberId });
+  await setNotificationsEnabled({ gameId, subscriberId, enabled: false });
   return { ok: true, reason: null };
 }
 

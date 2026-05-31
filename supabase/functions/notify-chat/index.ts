@@ -48,7 +48,7 @@ Deno.serve(async (req) => {
 
     const { data: subscriptions, error: subsError } = await supabase
       .from("push_subscriptions")
-      .select("id, endpoint, subscription")
+      .select("id, endpoint, subscription, notifications_enabled")
       .eq("game_id", gameId)
       .neq("subscriber_id", senderId);
 
@@ -62,26 +62,28 @@ Deno.serve(async (req) => {
     const title = `${senderName || "Someone"} · ${context}`;
     const resolvedMessageId = messageId || `${senderId}-${Date.now()}`;
     const resolvedCreatedAt = Number.isFinite(Number(createdAt)) ? Number(createdAt) : Date.now();
-    const payload = JSON.stringify({
-      title,
-      body: text,
-      tag: `disc-check-chat-${gameId}-${resolvedMessageId}`,
-      url: `/games/${gameId}`,
-      gameId,
-      message: {
-        id: resolvedMessageId,
-        senderId,
-        name: senderName || "Someone",
-        color: typeof senderColor === "string" && senderColor ? senderColor : "#888888",
-        text,
-        createdAt: resolvedCreatedAt,
-      },
-    });
-
     let sent = 0;
     const staleEndpoints: string[] = [];
 
     for (const row of subscriptions ?? []) {
+      const showNotification = row.notifications_enabled !== false;
+      const payload = JSON.stringify({
+        title,
+        body: text,
+        tag: `disc-check-chat-${gameId}-${resolvedMessageId}`,
+        url: `/games/${gameId}`,
+        gameId,
+        showNotification,
+        message: {
+          id: resolvedMessageId,
+          senderId,
+          name: senderName || "Someone",
+          color: typeof senderColor === "string" && senderColor ? senderColor : "#888888",
+          text,
+          createdAt: resolvedCreatedAt,
+        },
+      });
+
       try {
         await webpush.sendNotification(row.subscription, payload);
         sent += 1;

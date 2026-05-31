@@ -134,6 +134,7 @@ self.addEventListener("push", (event) => {
   const url = payload.url || "/";
   const gameId = payload.gameId || null;
   const message = payload.message || null;
+  const showNotification = payload.showNotification !== false;
 
   event.waitUntil(
     (async () => {
@@ -142,14 +143,16 @@ self.addEventListener("push", (event) => {
         await notifyOpenClients({ gameId, message });
       }
 
-      await self.registration.showNotification(title, {
-        body,
-        tag,
-        icon: "/pwa-192x192.png",
-        badge: "/pwa-192x192.png",
-        data: { url, gameId, message },
-      });
-      await incrementBadgeCount();
+      if (showNotification) {
+        await self.registration.showNotification(title, {
+          body,
+          tag,
+          icon: "/pwa-192x192.png",
+          badge: "/pwa-192x192.png",
+          data: { url, gameId, message },
+        });
+        await incrementBadgeCount();
+      }
     })(),
   );
 });

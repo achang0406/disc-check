@@ -19,9 +19,7 @@ import {
 import { countHeadcount, countPlayers } from "../utils/format.js";
 import {
   canShowChatPushBell,
-  ensureChatPushRegistration,
-  isGamePushOptedOut,
-  isSubscribedToGameChatPush,
+  ensureBackgroundChatPushSync,
   isWebPushSupported,
 } from "../lib/push.js";
 import GameChatPushButton from "../components/games/GameChatPushButton.jsx";
@@ -107,11 +105,7 @@ export default function GameDetailScreen({
     }
 
     const syncPushRegistration = () => {
-      if (isGamePushOptedOut(gameId)) return;
-      void (async () => {
-        if (!(await isSubscribedToGameChatPush({ gameId, subscriberId }))) return;
-        void ensureChatPushRegistration({ gameId, subscriberId });
-      })();
+      void ensureBackgroundChatPushSync({ gameId, subscriberId });
     };
 
     syncPushRegistration();
