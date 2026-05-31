@@ -2,7 +2,6 @@ import { cleanupOutdatedCaches, precacheAndRoute } from "workbox-precaching";
 
 const BADGE_CACHE = "disc-check-badge-v1";
 const BADGE_COUNT_KEY = "/count";
-const PUSH_MESSAGE_PATH = "/__push-message__";
 
 cleanupOutdatedCaches();
 precacheAndRoute(self.__WB_MANIFEST);
@@ -52,32 +51,7 @@ async function clearBadgeCount() {
   }
 }
 
-async function stashPushMessage(gameId, message) {
-  if (!gameId || !message?.id) return;
-
-  try {
-    const cache = await caches.open("disc-check-push-v1");
-    await cache.put(
-      new Request(`${self.location.origin}${PUSH_MESSAGE_PATH}/${gameId}/${message.id}`),
-      new Response(JSON.stringify(message)),
-    );
-  } catch {
-    // Ignore cache write failures.
-  }
-}
-
-async function notifyOpenClients(payload) {
-  const clients = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
-  for (const client of clients) {
-    client.postMessage({
-      type: "push-message",
-      gameId: payload.gameId,
-      message: payload.message,
-    });
-  }
-}
-
-async function openNotificationTarget(targetUrl, payload) {
+async function openNotificationTarget(targetUrl) {
   const clients = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
 
   for (const client of clients) {
@@ -96,8 +70,6 @@ async function openNotificationTarget(targetUrl, payload) {
     client.postMessage({
       type: "notification-open",
       url: targetUrl,
-      gameId: payload.gameId,
-      message: payload.message,
     });
     return;
   }
@@ -133,26 +105,17 @@ self.addEventListener("push", (event) => {
   const tag = payload.tag || "disc-check-chat";
   const url = payload.url || "/";
   const gameId = payload.gameId || null;
-  const message = payload.message || null;
-  const showNotification = payload.showNotification !== false;
 
   event.waitUntil(
     (async () => {
-      if (gameId && message) {
-        await stashPushMessage(gameId, message);
-        await notifyOpenClients({ gameId, message });
-      }
-
-      if (showNotification) {
-        await self.registration.showNotification(title, {
-          body,
-          tag,
-          icon: "/pwa-192x192.png",
-          badge: "/pwa-192x192.png",
-          data: { url, gameId, message },
-        });
-        await incrementBadgeCount();
-      }
+      await self.registration.showNotification(title, {
+        body,
+        tag,
+        icon: "/pwa-192x192.png",
+        badge: "/pwa-192x192.png",
+        data: { url, gameId },
+      });
+      await incrementBadgeCount();
     })(),
   );
 });
@@ -162,18 +125,11 @@ self.addEventListener("notificationclick", (event) => {
 
   const data = event.notification.data || {};
   const targetUrl = new URL(data.url || "/", self.location.origin).href;
-  const payload = {
-    gameId: data.gameId || null,
-    message: data.message || null,
-  };
 
   event.waitUntil(
     (async () => {
       await clearBadgeCount();
-      if (payload.gameId && payload.message) {
-        await stashPushMessage(payload.gameId, payload.message);
-      }
-      await openNotificationTarget(targetUrl, payload);
+      await openNotificationTarget(targetUrl);
     })(),
   );
 });

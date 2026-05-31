@@ -157,11 +157,10 @@ async function savePushSubscription({ gameId, subscriberId, subscription, notifi
   return !error;
 }
 
-async function ensureBrowserPushSubscription(requestPermission = false) {
+async function ensureBrowserPushSubscription() {
   if (!isWebPushSupported()) return null;
 
   if (typeof Notification !== "undefined" && Notification.permission === "default") {
-    if (!requestPermission) return null;
     const permission = await Notification.requestPermission();
     if (permission !== "granted") return null;
   }
@@ -188,24 +187,12 @@ async function ensureBrowserPushSubscription(requestPermission = false) {
   }
 }
 
-/** Register for silent background chat sync (no visible alerts unless bell is on). */
-export async function ensureBackgroundChatPushSync({ gameId, subscriberId }) {
-  if (!gameId || !subscriberId || !isWebPushSupported()) {
-    return false;
-  }
-
-  const subscription = await ensureBrowserPushSubscription(false);
-  if (!subscription) return false;
-
-  return savePushSubscription({ gameId, subscriberId, subscription });
-}
-
 export async function ensureChatPushRegistration({ gameId, subscriberId }) {
   if (!gameId || !subscriberId || !isWebPushSupported()) {
     return false;
   }
 
-  const subscription = await ensureBrowserPushSubscription(true);
+  const subscription = await ensureBrowserPushSubscription();
   if (!subscription) return false;
 
   return savePushSubscription({

@@ -17,11 +17,7 @@ import {
   STARTING_SOON_MS,
 } from "../utils/gameSchedule.js";
 import { countHeadcount, countPlayers } from "../utils/format.js";
-import {
-  canShowChatPushBell,
-  ensureBackgroundChatPushSync,
-  isWebPushSupported,
-} from "../lib/push.js";
+import { canShowChatPushBell } from "../lib/push.js";
 import GameChatPushButton from "../components/games/GameChatPushButton.jsx";
 import { getPresenceUsers } from "../utils/presenceUsers.js";
 
@@ -96,22 +92,6 @@ export default function GameDetailScreen({
     selfId: presence?.self?.id,
     enabled: Boolean(game && presence?.connected),
   });
-
-  useEffect(() => {
-    const subscriberId = presence?.self?.id;
-    if (!gameId || !subscriberId || !isWebPushSupported()) return undefined;
-    if (typeof Notification === "undefined" || Notification.permission !== "granted") {
-      return undefined;
-    }
-
-    const syncPushRegistration = () => {
-      void ensureBackgroundChatPushSync({ gameId, subscriberId });
-    };
-
-    syncPushRegistration();
-    document.addEventListener("visibilitychange", syncPushRegistration);
-    return () => document.removeEventListener("visibilitychange", syncPushRegistration);
-  }, [gameId, presence?.self?.id]);
 
   const cardProps = {
     profile,
@@ -289,7 +269,11 @@ export default function GameDetailScreen({
           {!isWide && (
             <div className="game-detail-layout__thread-wrap">
               {presence && (
-                <GameChatThread messages={presence.messages} selfId={presence.self.id} />
+                <GameChatThread
+                  messages={presence.messages}
+                  selfId={presence.self.id}
+                  loading={presence.messagesLoading}
+                />
               )}
             </div>
           )}

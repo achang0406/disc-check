@@ -13,13 +13,12 @@ import {
 } from "../constants/presence.js";
 import { getSupabase, isSupabaseConfigured } from "../lib/supabase.js";
 import {
+  appendChatMessage,
   fetchGameChatMessages,
   saveGameChatMessage,
   subscribeGameChatMessages,
 } from "../lib/chatMessages.js";
-import { appendChatMessage, loadChatCache, saveChatCache } from "../utils/chatCache.js";
 import { notifyChatPush } from "../lib/push.js";
-import { mergePushMessageIntoCache } from "../utils/pushMessageStore.js";
 
 function createLocalChat(message, x, y) {
   return {
@@ -86,7 +85,8 @@ export function usePresence(profile, gameId, isWide, gameName = "") {
   const [others, setOthers] = useState({});
   const [watchingPeers, setWatchingPeers] = useState({});
   const [localChat, setLocalChat] = useState(null);
-  const [messages, setMessages] = useState(() => (gameId ? loadChatCache(gameId) : []));
+  const [messages, setMessages] = useState([]);
+  const [messagesLoading, setMessagesLoading] = useState(false);
   const [draft, setDraft] = useState("");
   const [connected, setConnected] = useState(false);
   const [cursor, setCursor] = useState({ x: 0.5, y: 0.5 });
@@ -168,19 +168,23 @@ export function usePresence(profile, gameId, isWide, gameName = "") {
 
     if (!gameId) {
       setMessages([]);
+      setMessagesLoading(false);
       return;
     }
 
     let cancelled = false;
+    setMessages([]);
+    setMessagesLoading(true);
 
     const hydrateMessages = async () => {
-      const cached = loadChatCache(gameId);
-      const stored = await fetchGameChatMessages(gameId);
-      const merged = stored.length > 0 ? stored : cached;
-      if (!cancelled) {
-        setMessages(merged);
-        if (merged.length > 0) {
-          saveChatCache(gameId, merged);
+      try {
+        const stored = await fetchGameChatMessages(gameId);
+        if (!cancelled) {
+          setMessages(stored);
+        }
+      } finally {
+        if (!cancelled) {
+          setMessagesLoading(false);
         }
       }
     };
@@ -193,19 +197,12 @@ export function usePresence(profile, gameId, isWide, gameName = "") {
   }, [gameId]);
 
   useEffect(() => {
-    if (!gameId) return;
-    if (messages.length === 0) return;
-    saveChatCache(gameId, messages);
-  }, [gameId, messages]);
-
-  useEffect(() => {
     if (!gameId || !isSupabaseConfigured()) return undefined;
 
     const refreshMessages = async () => {
       const stored = await fetchGameChatMessages(gameId);
       if (stored.length === 0) return;
       setMessages(stored);
-      saveChatCache(gameId, stored);
     };
 
     const onVisible = () => {
@@ -221,36 +218,8 @@ export function usePresence(profile, gameId, isWide, gameName = "") {
     if (!gameId || !isSupabaseConfigured()) return undefined;
 
     return subscribeGameChatMessages(gameId, (message) => {
-      setMessages((current) => {
-        const next = appendChatMessage(current, message);
-        saveChatCache(gameId, next);
-        return next;
-      });
+      setMessages((current) => appendChatMessage(current, message));
     });
-  }, [gameId]);
-
-  useEffect(() => {
-    if (!gameId) return undefined;
-
-    const onServiceWorkerMessage = (event) => {
-      const data = event.data;
-      if (!data || typeof data !== "object" || !data.message) return;
-      if (data.type !== "push-message" && data.type !== "notification-open") return;
-
-      const targetGameId = data.gameId;
-      if (targetGameId !== gameId) return;
-
-      setMessages((current) => {
-        const next = mergePushMessageIntoCache(gameId, current, data.message);
-        saveChatCache(gameId, next);
-        return next;
-      });
-    };
-
-    navigator.serviceWorker?.addEventListener("message", onServiceWorkerMessage);
-    return () => {
-      navigator.serviceWorker?.removeEventListener("message", onServiceWorkerMessage);
-    };
   }, [gameId]);
 
   useEffect(() => {
@@ -598,6 +567,7 @@ export function usePresence(profile, gameId, isWide, gameName = "") {
       watchingPeers: Object.values(watchingPeers),
       localChat,
       messages,
+      messagesLoading,
       draft,
       cursor,
       connected,
@@ -612,6 +582,7 @@ export function usePresence(profile, gameId, isWide, gameName = "") {
       watchingPeers,
       localChat,
       messages,
+      messagesLoading,
       draft,
       cursor,
       connected,

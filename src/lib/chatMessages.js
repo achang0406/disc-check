@@ -1,6 +1,19 @@
 import { CHAT_CACHE_MAX_MESSAGES, MAX_CHAT_LENGTH } from "../constants/presence.js";
 import { getSupabase, isSupabaseConfigured } from "./supabase.js";
 
+export function trimChatMessages(messages, max = CHAT_CACHE_MAX_MESSAGES) {
+  if (messages.length <= max) return messages;
+  return messages.slice(messages.length - max);
+}
+
+export function appendChatMessage(messages, message, max = CHAT_CACHE_MAX_MESSAGES) {
+  if (messages.some((entry) => entry.id === message.id)) {
+    return messages;
+  }
+
+  return trimChatMessages([...messages, message], max);
+}
+
 function rowToMessage(row) {
   if (!row || typeof row !== "object") return null;
 

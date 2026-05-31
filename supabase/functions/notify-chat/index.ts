@@ -34,8 +34,7 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const { gameId, senderId, senderName, senderColor, text, messageId, gameName, createdAt } =
-      await req.json();
+    const { gameId, senderId, senderName, text, messageId, gameName } = await req.json();
 
     if (!gameId || !senderId || !text) {
       return jsonResponse({ error: "Missing required fields" }, 400);
@@ -48,8 +47,9 @@ Deno.serve(async (req) => {
 
     const { data: subscriptions, error: subsError } = await supabase
       .from("push_subscriptions")
-      .select("id, endpoint, subscription, notifications_enabled")
+      .select("id, endpoint, subscription")
       .eq("game_id", gameId)
+      .eq("notifications_enabled", true)
       .neq("subscriber_id", senderId);
 
     if (subsError) {
@@ -61,27 +61,16 @@ Deno.serve(async (req) => {
     const context = typeof gameName === "string" && gameName.trim() ? gameName.trim() : "game chat";
     const title = `${senderName || "Someone"} · ${context}`;
     const resolvedMessageId = messageId || `${senderId}-${Date.now()}`;
-    const resolvedCreatedAt = Number.isFinite(Number(createdAt)) ? Number(createdAt) : Date.now();
     let sent = 0;
     const staleEndpoints: string[] = [];
 
     for (const row of subscriptions ?? []) {
-      const showNotification = row.notifications_enabled !== false;
       const payload = JSON.stringify({
         title,
         body: text,
         tag: `disc-check-chat-${gameId}-${resolvedMessageId}`,
         url: `/games/${gameId}`,
         gameId,
-        showNotification,
-        message: {
-          id: resolvedMessageId,
-          senderId,
-          name: senderName || "Someone",
-          color: typeof senderColor === "string" && senderColor ? senderColor : "#888888",
-          text,
-          createdAt: resolvedCreatedAt,
-        },
       });
 
       try {

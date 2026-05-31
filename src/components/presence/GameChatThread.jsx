@@ -27,7 +27,7 @@ function scrollToLatest(node) {
   node.scrollTop = 0;
 }
 
-export default function GameChatThread({ messages, selfId }) {
+export default function GameChatThread({ messages, selfId, loading = false }) {
   const scrollRef = useRef(null);
   const stickToBottomRef = useRef(true);
   const prevMessageCountRef = useRef(0);
@@ -94,7 +94,7 @@ export default function GameChatThread({ messages, selfId }) {
         return;
       }
 
-      if (thread.querySelector(".game-chat-thread__empty")) {
+      if (thread.querySelector(".game-chat-thread__empty") || thread.querySelector(".game-chat-thread__loading")) {
         clearThreadPad();
         return;
       }
@@ -168,7 +168,9 @@ export default function GameChatThread({ messages, selfId }) {
         aria-live="polite"
         aria-relevant="additions"
       >
-        {messages.length === 0 ? (
+        {loading ? (
+          <p className="game-chat-thread__loading">Loading chat…</p>
+        ) : messages.length === 0 ? (
           <p className="game-chat-thread__empty">Say hi — chat helps get a game going.</p>
         ) : (
           [...messages].reverse().map((message) => (

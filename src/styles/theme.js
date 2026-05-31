@@ -1004,7 +1004,8 @@ export const globalStyles = `
       gap: var(--space-2);
     }
 
-    .game-detail-layout__thread:has(.game-chat-thread__empty) {
+    .game-detail-layout__thread:has(.game-chat-thread__empty),
+    .game-detail-layout__thread:has(.game-chat-thread__loading) {
       flex-direction: column;
       justify-content: center;
       align-items: center;
@@ -1064,7 +1065,8 @@ export const globalStyles = `
     display: none;
   }
 
-  .game-chat-thread__empty {
+  .game-chat-thread__empty,
+  .game-chat-thread__loading {
     margin: 0;
     padding: var(--space-5) var(--space-3);
     text-align: center;

@@ -1,4 +1,4 @@
--- Bell controls visible notifications; background chat sync keeps the push row.
+-- Bell controls whether chat push notifications are sent for a subscription.
 
 ALTER TABLE push_subscriptions
   ADD COLUMN IF NOT EXISTS notifications_enabled BOOLEAN NOT NULL DEFAULT false;
