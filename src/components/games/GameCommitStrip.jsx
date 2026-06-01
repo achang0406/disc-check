@@ -1,6 +1,7 @@
 import LivePickupPanel from "./LivePickupPanel.jsx";
 import GameDetailPlayersSection from "./GameDetailPlayersSection.jsx";
 import GameDetailHeader from "./GameDetailHeader.jsx";
+import CallPanel from "./CallPanel.jsx";
 import ProgressBar from "./ProgressBar.jsx";
 
 export default function GameCommitStrip({
@@ -27,7 +28,7 @@ export default function GameCommitStrip({
 
   return (
     <section
-      className={`game-commit-strip${expanded ? " game-commit-strip--expanded" : ""}`}
+      className={`game-commit-strip${expanded ? " game-commit-strip--expanded" : ""}${isLive ? " game-commit-strip--live" : ""}`}
       aria-label="Game status and RSVP"
     >
       <GameDetailHeader
@@ -43,6 +44,34 @@ export default function GameCommitStrip({
         onToggle={onToggleExpanded}
         onAddressCopy={onAddressCopy}
       />
+
+      {!cancelled && (
+        <CallPanel
+          count={count}
+          target={game.target}
+          cancelled={cancelled}
+          isLive={isLive}
+          isEnded={isEnded}
+          rsvpd={rsvpd}
+          checkedIn={checkedIn}
+          compact={isLive}
+        />
+      )}
+
+      {!cancelled && isLive && (
+        <LivePickupPanel
+          profile={profile}
+          hereCount={count}
+          rsvpCount={rsvpCount}
+          rsvpEntries={rsvpEntries}
+          checkInEntries={checkInEntries}
+          walkInEntries={walkInEntries}
+          disabled={!profile || saving}
+          showWalkInInput={expanded}
+          onAddWalkIn={(name) => onAddWalkIn?.(game.id, name)}
+          onRemoveWalkIn={(guestId) => onRemoveWalkIn?.(game.id, guestId)}
+        />
+      )}
 
       <div className="game-detail-body">
         <ProgressBar
@@ -60,10 +89,12 @@ export default function GameCommitStrip({
               />
             )}
 
-            {!cancelled && inPickupWindow && (
+            {!cancelled && isEnded && (
               <LivePickupPanel
                 profile={profile}
-                isEnded={isEnded}
+                isEnded
+                hereCount={count}
+                rsvpCount={rsvpCount}
                 rsvpEntries={rsvpEntries}
                 checkInEntries={checkInEntries}
                 walkInEntries={walkInEntries}

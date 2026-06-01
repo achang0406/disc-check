@@ -27,7 +27,7 @@ function scrollToLatest(node) {
   node.scrollTop = 0;
 }
 
-export default function GameChatThread({ messages, selfId, loading = false }) {
+export default function GameChatThread({ messages, selfId, loading = false, isLive = false }) {
   const scrollRef = useRef(null);
   const stickToBottomRef = useRef(true);
   const prevMessageCountRef = useRef(0);
@@ -171,7 +171,11 @@ export default function GameChatThread({ messages, selfId, loading = false }) {
         {loading ? (
           <p className="game-chat-thread__loading">Loading chat…</p>
         ) : messages.length === 0 ? (
-          <p className="game-chat-thread__empty">Say hi — chat helps get a game going.</p>
+          <p className="game-chat-thread__empty">
+            {isLive
+              ? "In your car? Tap I'm here, then say hi."
+              : "Who's in tonight? First time? Ask anything."}
+          </p>
         ) : (
           [...messages].reverse().map((message) => (
             <ChatBubble key={message.id} message={message} selfId={selfId} />

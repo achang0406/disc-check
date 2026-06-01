@@ -78,8 +78,8 @@ export default function SignUpModal({ saving, onSubmit, onClose, onLookupPhone }
 
   return (
     <ModalShell
-      title="Join this game"
-      description="We'll remember your name on this device. Add a phone to pick up RSVPs on another device."
+      title="Join the game"
+      description="Pickup frisbee — all levels welcome. Just your first name."
       onClose={onClose}
       footer={
         <>

@@ -81,6 +81,9 @@ export default function GameDetailActions({
       >
         {ctaLabel}
       </Button>
+      {isLive && !checkedIn && !saving ? (
+        <p className="game-detail-panel__cta-subline">Let others know you&apos;ve arrived</p>
+      ) : null}
     </div>
   );
 }

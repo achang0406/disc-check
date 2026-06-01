@@ -103,10 +103,10 @@ Prefer these over one-off markup:
 | Layout | Viewport | Detail page |
 |--------|----------|-------------|
 | **Compact** | `< 768px` | Pinned `GameCommitStrip` + scrollable `GameChatThread` + `ChatBar` |
-| **Wide** | `≥ 768px` | Full `GameCard` + cursor speech bubbles (`PresenceLayer`) |
+| **Wide** | `≥ 768px` | Full `GameCard` + same thread chat + `ChatBar` |
 
-- **CSS-first:** Both layout shells can exist in the DOM; `@media` toggles `.game-detail-layout--wide` vs `--compact`, `.presence-layer--wide-only`, `.chat-bar--compact-only`.
-- **JS for behavior only:** `useBreakpoint()` reads `MQ_WIDE` (768px) for presence mode (`cursor` vs `thread`) and global keyboard capture.
+- **CSS-first:** Both layout shells can exist in the DOM; `@media` toggles `.game-detail-layout--wide` vs `--compact`.
+- **JS for behavior only:** `useBreakpoint()` reads `MQ_WIDE` (768px) for layout mode only.
 - **Container queries:** Use `@container` for component-level density (e.g. wide card metadata), not for choosing layout mode.
 
 ### Checklist for new features
@@ -118,17 +118,37 @@ Prefer these over one-off markup:
 
 ## Game-specific layout
 
-- **Landing:** `GameListItem` = `.surface` + location row + `MetaRow` + footer stats
-- **Detail (wide):** `GameCard` = `.surface.game-card--detail` + phase stack (RSVP ↔ live)
-- **Detail (compact):** collapsible `GameCommitStrip` + `GameChatThread` — expand for location, schedule, players, plus-ones
+- **Landing:** group intro strip + `GameListItem` with `CallPanel` (plain-language call) + location + `MetaRow` + footer stats
+- **Detail (wide):** `GameCard` = `.surface.game-card--detail` + `CallPanel` + phase stack (RSVP ↔ live)
+- **Detail (compact):** collapsible `GameCommitStrip` + `CallPanel` + `GameChatThread` — expand for location, schedule, players, plus-ones; live phase elevates `LivePickupPanel` outside the collapsible
 - **Responsive (wide card):** `@container game-detail` hides secondary metadata below 380px container width
+
+### CallPanel (`src/components/games/CallPanel.jsx`)
+
+This week’s go/no-go in plain language, derived from RSVP/check-in headcount vs target. Uses `--status-go-*`, `--status-almost-*`, `--status-not-*` tokens. Pair with `StatusBadge` on detail views; use `compact` on list rows and during live phase.
+
+Copy logic lives in `src/utils/gameCall.js` (`getCallHeadline`, `getCallSubline`).
 
 ## Chat patterns
 
-| Layout | UI | Persistence |
-|--------|-----|-------------|
-| Wide | Ephemeral cursor speech bubbles; type anywhere (global keyboard) | 3s TTL |
-| Compact | Pinned `ChatBar` + scrollable `GameChatThread` | Realtime via Supabase |
+One pattern on every viewport — scrollable `GameChatThread` + pinned `ChatBar`. No cursor speech bubbles or global keyboard capture.
+
+| Surface | UI | Persistence |
+|---------|-----|-------------|
+| All viewports | Pinned `ChatBar` + scrollable `GameChatThread` | Supabase Realtime + local cache |
+
+Phase-specific empty states: pre-game (“Who’s in tonight?”) vs live (“In your car? Tap I'm here, then say hi.”).
+
+## Intent & inclusivity checklist
+
+Before shipping player-facing UI, verify:
+
+1. **Plain language first** — headline explains go/no-go without decoding badge jargon (`CallPanel` before badges)
+2. **One primary action** — single `Button` `primary` + `block` per screen phase
+3. **Phase-aware hierarchy** — pre-game emphasizes call + RSVP; live emphasizes who’s here + I'm here + chat
+4. **Accessible status** — text + color for go/almost/not (not color alone)
+5. **Welcoming copy** — sign-up, empty chat, and live check-in sublines assume zero app literacy
+6. **Design tokens only** — no one-off hex; reuse `.surface`, `MetaRow`, `ProgressBar`, `ModalShell`
 
 ## Conventions
 
@@ -136,4 +156,4 @@ Prefer these over one-off markup:
 - **Type:** `--font-*` tokens; responsive steps at sm/lg
 - **Layout gaps:** `--layout-inline-gap` (row), `--layout-stack-gap` (column)
 - **Colors:** semantic theme roles from `themes.js`
-- **Components:** reuse `Button`, `ModalShell`, `Field`, `MetaRow`, `ChipList` before inventing new patterns
+- **Components:** reuse `Button`, `ModalShell`, `Field`, `MetaRow`, `ChipList`, `CallPanel` before inventing new patterns

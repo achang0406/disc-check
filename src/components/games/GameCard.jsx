@@ -1,5 +1,6 @@
 import GameCardBody from "./GameCardBody.jsx";
 import GameDetailHeader from "./GameDetailHeader.jsx";
+import CallPanel from "./CallPanel.jsx";
 
 export default function GameCard({
   profile,
@@ -59,6 +60,18 @@ export default function GameCard({
         checkedIn={checkedIn}
         onAddressCopy={onAddressCopy}
       />
+      {!cancelled && (
+        <CallPanel
+          count={activeCount}
+          target={game.target}
+          cancelled={cancelled}
+          isLive={isLive}
+          isEnded={isEnded}
+          rsvpd={rsvpd}
+          checkedIn={checkedIn}
+          compact={isLive}
+        />
+      )}
       {!cancelled && <GameCardBody {...bodyProps} />}
     </div>
   );

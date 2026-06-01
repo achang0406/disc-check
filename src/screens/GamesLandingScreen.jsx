@@ -1,8 +1,8 @@
-import { useEffect, useMemo } from "react";
-import { useNavigate } from "react-router-dom";
+import { useMemo } from "react";
 import AppHeader from "../components/layout/AppHeader.jsx";
 import GameListItem from "../components/games/GameListItem.jsx";
 import EmptyState from "../components/ui/EmptyState.jsx";
+import { Link } from "react-router-dom";
 import { useGameClock } from "../hooks/useGameClock.js";
 import { isGameEnded, isGameLive, sortGamesForLanding } from "../utils/gameSchedule.js";
 import { countHeadcount, countPlayers } from "../utils/format.js";
@@ -25,19 +25,9 @@ export default function GamesLandingScreen({
   onAddGame,
   onEditGame,
 }) {
-  const navigate = useNavigate();
   const now = useGameClock();
   const sortedGames = useMemo(() => sortGamesForLanding(games, now), [games, now]);
-
-  useEffect(() => {
-    if (sortedGames.length === 1) {
-      navigate(`/games/${sortedGames[0].id}`, { replace: true });
-    }
-  }, [sortedGames, navigate]);
-
-  if (sortedGames.length === 1) {
-    return null;
-  }
+  const singleGame = sortedGames.length === 1 ? sortedGames[0] : null;
 
   return (
     <div className="games-screen">
@@ -56,6 +46,20 @@ export default function GamesLandingScreen({
       />
 
       <main className="games-screen__main games-screen__main--landing">
+        {sortedGames.length > 0 && (
+          <div className="landing-intro surface">
+            <p className="landing-intro__text">
+              DiscCheck helps your pickup group decide if this week&apos;s game is on — sign up,
+              watch the count, and chat when you arrive. All skill levels welcome.
+            </p>
+            {singleGame ? (
+              <Link to={`/games/${singleGame.id}`} className="landing-intro__link">
+                Go to {singleGame.name} →
+              </Link>
+            ) : null}
+          </div>
+        )}
+
         {sortedGames.length === 0 ? (
           <EmptyState
             text="No games yet"

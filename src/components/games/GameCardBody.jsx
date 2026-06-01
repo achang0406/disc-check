@@ -36,6 +36,8 @@ export default function GameCardBody({
           <LivePickupPanel
             profile={profile}
             isEnded={isEnded}
+            hereCount={checkInCount}
+            rsvpCount={rsvpCount}
             rsvpEntries={rsvpEntries}
             checkInEntries={checkInEntries}
             walkInEntries={walkInEntries}

@@ -1,8 +1,9 @@
-import EditIcon from "../ui/EditIcon.jsx";
 import { Link } from "react-router-dom";
+import EditIcon from "../ui/EditIcon.jsx";
 import Button from "../ui/Button.jsx";
 import MetaRow from "../ui/MetaRow.jsx";
 import CommitStatusPill from "./CommitStatusPill.jsx";
+import CallPanel from "./CallPanel.jsx";
 import GameStartStatus from "./GameStartStatus.jsx";
 import StatusBadge from "./StatusBadge.jsx";
 import { suppressMouseFocus } from "../../utils/suppressMouseFocus.js";
@@ -34,6 +35,21 @@ export default function GameListItem({
       className={itemClass}
       onMouseDown={suppressMouseFocus}
     >
+      {!cancelled && (
+        <CallPanel
+          count={count}
+          target={game.target}
+          cancelled={cancelled}
+          isLive={isLive}
+          isEnded={isEnded}
+          rsvpd={rsvpd}
+          checkedIn={checkedIn}
+          compact
+          showBadge={false}
+          className="game-list-item__call"
+        />
+      )}
+
       <div className="game-list-item__top">
         <div className="game-list-item__title-wrap">
           <h2 className="game-list-item__title">{game.name}</h2>

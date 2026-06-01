@@ -52,7 +52,7 @@ export default defineConfig(({ mode }) => {
         manifest: {
         name: "DiscCheck",
         short_name: "DiscCheck",
-        description: "Weekly pickup disc golf RSVPs, check-ins, and chat.",
+        description: "Weekly pickup ultimate RSVPs, go/no-go calls, and game chat.",
         theme_color: "#0a0a0a",
         background_color: "#0a0a0a",
         display: "standalone",

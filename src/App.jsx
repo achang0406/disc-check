@@ -6,7 +6,6 @@ import Toast from "./components/layout/Toast.jsx";
 import SignUpModal from "./components/auth/SignUpModal.jsx";
 import EditProfileModal from "./components/auth/EditProfileModal.jsx";
 import AdminLoginModal from "./components/auth/AdminLoginModal.jsx";
-import PresenceLayer from "./components/presence/PresenceLayer.jsx";
 import ChatBar from "./components/presence/ChatBar.jsx";
 import GameFormModal from "./components/games/GameFormModal.jsx";
 import DeleteGameModal from "./components/games/DeleteGameModal.jsx";
@@ -14,23 +13,17 @@ import { useAppData } from "./hooks/useAppData.js";
 import { useAdminActions } from "./hooks/useAdmin.js";
 import { useAdminSession } from "./hooks/useAdminSession.js";
 import { usePresence } from "./hooks/usePresence.js";
-import { useBreakpoint } from "./hooks/useBreakpoint.js";
-import { useGameClock } from "./hooks/useGameClock.js";
 import { useTheme } from "./hooks/useTheme.js";
 import { useToast } from "./hooks/useToast.js";
 import { useServiceWorkerNavigation } from "./hooks/useServiceWorkerNavigation.js";
 import GamesLandingScreen from "./screens/GamesLandingScreen.jsx";
 import GameDetailScreen from "./screens/GameDetailScreen.jsx";
 import { globalStyles } from "./styles/theme.js";
-import { isGameLive } from "./utils/gameSchedule.js";
-
 function AppRoutes() {
   const { toast, showToast } = useToast();
   useServiceWorkerNavigation();
   const { theme, toggleTheme, cssVars } = useTheme();
   const app = useAppData(showToast);
-  const { isWide, isChatCursor } = useBreakpoint();
-  const now = useGameClock();
   const isLanding = useMatch({ path: "/", end: true });
   const detailMatch = useMatch("/games/:gameId");
   const gameId = detailMatch?.params?.gameId ?? null;
@@ -38,21 +31,7 @@ function AppRoutes() {
     () => (gameId ? app.gamesMeta.find((item) => item.id === gameId) ?? null : null),
     [gameId, app.gamesMeta],
   );
-  const presence = usePresence(app.profile, gameId, isChatCursor, detailGame?.name ?? "");
-  const glowUserIds = useMemo(() => {
-    if (!gameId) return new Set();
-
-    const ids = new Set((app.rsvps[gameId] || []).map((entry) => entry.userId));
-    const game = app.gamesMeta.find((item) => item.id === gameId);
-
-    if (game && isGameLive(game, now)) {
-      for (const entry of app.checkIns[gameId] || []) {
-        ids.add(entry.userId);
-      }
-    }
-
-    return ids;
-  }, [gameId, app.rsvps, app.checkIns, app.gamesMeta, now]);
+  const presence = usePresence(app.profile, gameId, detailGame?.name ?? "");
   const adminSession = useAdminSession();
   const admin = useAdminActions({ showToast, refresh: app.refresh });
   const [loadingOverlay, setLoadingOverlay] = useState(true);
@@ -118,18 +97,6 @@ function AppRoutes() {
       }}
     >
       <FieldBackground />
-      {detailMatch && (
-        <PresenceLayer
-          others={presence.others}
-          self={presence.self}
-          cursor={presence.cursor}
-          localChat={presence.localChat}
-          draft={presence.draft}
-          connected={presence.connected}
-          isChatCursor={presence.isChatCursor}
-          rsvpUserIds={glowUserIds}
-        />
-      )}
       <Toast toast={toast} />
 
       {app.showSignUp && (
@@ -214,7 +181,6 @@ function AppRoutes() {
 
       {detailMatch && (
         <ChatBar
-          isChatCursor={presence.isChatCursor}
           inputRef={presence.chatInputRef}
           value={presence.draft}
           onChange={presence.setThreadDraft}
