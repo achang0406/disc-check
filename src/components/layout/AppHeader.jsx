@@ -171,13 +171,13 @@ export default function AppHeader({
         </div>
       </div>
 
-      {(watching?.length > 0 || showInstallLink) ? (
+      {watching?.length > 0 ? (
         <div className="app-header__center">
-          {watching?.length > 0 ? (
-            <WatchingCluster watchers={watching} />
-          ) : (
-            <InstallAppLink />
-          )}
+          <WatchingCluster watchers={watching} />
+        </div>
+      ) : showInstallLink ? (
+        <div className="app-header__center app-header__center--install">
+          <InstallAppLink />
         </div>
       ) : null}
 

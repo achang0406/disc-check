@@ -102,6 +102,14 @@ export default function GroupGamesScreen({
         <div className="group-games-screen__intro">
           <div className="group-games-screen__title-row">
             <h1 className="group-games-screen__title">{group.name}</h1>
+            {canShowChatPushBell() && (
+              <div className="group-games-screen__bell">
+                <GroupChatPushButton
+                  groupId={group.id}
+                  subscriberId={presence?.self?.id ?? ""}
+                />
+              </div>
+            )}
             {isAdmin && (
               <Button
                 variant="icon"
@@ -117,14 +125,6 @@ export default function GroupGamesScreen({
           {group.description ? (
             <p className="group-games-screen__description">{group.description}</p>
           ) : null}
-          {canShowChatPushBell() && (
-            <div className="group-games-screen__bell">
-              <GroupChatPushButton
-                groupId={group.id}
-                subscriberId={presence?.self?.id ?? ""}
-              />
-            </div>
-          )}
         </div>
 
         <div className="game-detail-layout game-detail-layout--responsive group-games-screen__layout">

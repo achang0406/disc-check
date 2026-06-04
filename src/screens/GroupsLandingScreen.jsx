@@ -33,7 +33,7 @@ export default function GroupsLandingScreen({
   );
 
   return (
-    <div className="games-screen">
+    <div className="games-screen games-screen--landing">
       <AppHeader
         profile={profile}
         theme={theme}

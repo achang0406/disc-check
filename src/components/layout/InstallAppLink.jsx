@@ -1,4 +1,3 @@
-import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { usePwaInstall } from "../../hooks/usePwaInstall.js";
 import { getPortalTarget } from "../../utils/portalTarget.js";
@@ -7,11 +6,7 @@ import ModalShell from "../ui/ModalShell.jsx";
 
 export default function InstallAppLink() {
   const { canInstall, installing, showIosHelp, promptInstall, closeIosHelp, usesNativePrompt } = usePwaInstall();
-  const [portalTarget, setPortalTarget] = useState(null);
-
-  useEffect(() => {
-    setPortalTarget(getPortalTarget());
-  }, []);
+  const portalTarget = getPortalTarget();
 
   if (!canInstall) {
     return null;

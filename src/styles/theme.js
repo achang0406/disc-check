@@ -686,6 +686,15 @@ export const globalStyles = `
     box-sizing: border-box;
   }
 
+  .games-screen--landing {
+    overflow: hidden;
+  }
+
+  .games-screen--landing .games-screen__main--landing {
+    flex: 1;
+    min-height: 0;
+  }
+
   .games-screen--detail {
     min-height: max(var(--min-viewport-height), 100dvh);
     height: auto;
@@ -1267,6 +1276,10 @@ export const globalStyles = `
     margin-bottom: var(--space-3);
   }
 
+  .group-games-screen__intro:has(+ .group-games-screen__layout .game-cards-carousel__dots) {
+    margin-bottom: 0;
+  }
+
   .group-games-screen__title-row {
     display: flex;
     align-items: center;
@@ -1293,7 +1306,8 @@ export const globalStyles = `
 
   .group-games-screen__bell {
     display: flex;
-    justify-content: flex-start;
+    flex-shrink: 0;
+    align-items: center;
   }
 
   .group-games-screen__cards {
@@ -1513,15 +1527,28 @@ export const globalStyles = `
   }
 
   .app-header__center {
-    flex: 1;
+    flex: 1 1 auto;
     min-width: 0;
     display: flex;
     justify-content: center;
     pointer-events: none;
   }
 
+  .app-header__center:empty {
+    display: none;
+  }
+
+  .app-header__center--install:not(:has(.install-app-link)) {
+    display: none;
+  }
+
   .app-header__center .install-app-link {
     pointer-events: auto;
+    flex-shrink: 0;
+    white-space: nowrap;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 
   .app-header__leading {
@@ -1529,6 +1556,7 @@ export const globalStyles = `
     align-items: center;
     gap: var(--layout-inline-gap);
     min-width: 0;
+    flex: 0 1 auto;
   }
 
   .app-header__brand {
@@ -1573,7 +1601,7 @@ export const globalStyles = `
     display: flex;
     align-items: center;
     gap: var(--space-3);
-    flex-shrink: 0;
+    flex: 0 0 auto;
     margin-left: auto;
   }
 
