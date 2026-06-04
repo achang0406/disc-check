@@ -1,16 +1,12 @@
 import { useState } from "react";
 import Button from "../ui/Button.jsx";
-import AdminPasscodeInput from "../ui/AdminPasscodeInput.jsx";
 import Field from "../ui/Field.jsx";
 import ModalShell from "../ui/ModalShell.jsx";
-import { isValidAdminPasscode } from "../../utils/adminPasscode.js";
 
 function buildForm(initial) {
   return {
     name: initial?.name ?? "",
     description: initial?.description ?? "",
-    adminPasscode: "",
-    adminPasscodeConfirm: "",
   };
 }
 
@@ -26,22 +22,10 @@ export default function GroupFormModal({ group, saving, onSave, onClose }) {
       return;
     }
 
-    if (form.adminPasscode || form.adminPasscodeConfirm) {
-      if (!isValidAdminPasscode(form.adminPasscode)) {
-        setError("Passcode must be 4 digits");
-        return;
-      }
-      if (form.adminPasscode !== form.adminPasscodeConfirm) {
-        setError("Passcodes do not match");
-        return;
-      }
-    }
-
     setError("");
     onSave({
       name: form.name.trim(),
       description: form.description.trim(),
-      adminPasscode: form.adminPasscode.trim() || undefined,
     });
   };
 
@@ -77,26 +61,6 @@ export default function GroupFormModal({ group, saving, onSave, onClose }) {
           value={form.description}
           rows={3}
           onChange={(event) => setField("description", event.target.value)}
-        />
-      </Field>
-      <Field label="New admin passcode" hint="4 digits. Leave blank to keep the current passcode.">
-        <AdminPasscodeInput
-          value={form.adminPasscode}
-          onChange={(next) => {
-            setField("adminPasscode", next);
-            setError("");
-          }}
-          autoComplete="new-password"
-        />
-      </Field>
-      <Field label="Confirm passcode">
-        <AdminPasscodeInput
-          value={form.adminPasscodeConfirm}
-          onChange={(next) => {
-            setField("adminPasscodeConfirm", next);
-            setError("");
-          }}
-          autoComplete="new-password"
         />
       </Field>
       {error && form.name.trim() ? <p className="field__error">{error}</p> : null}

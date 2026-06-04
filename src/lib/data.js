@@ -216,7 +216,6 @@ export async function updateGroup(secret, group) {
       id: group.id,
       name: group.name?.trim(),
       description: group.description?.trim() || null,
-      admin_passcode: group.adminPasscode?.trim() || null,
     },
   });
   if (error) throw error;
