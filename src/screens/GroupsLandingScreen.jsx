@@ -1,4 +1,5 @@
 import { useMemo } from "react";
+import { Navigate } from "react-router-dom";
 import AppHeader from "../components/layout/AppHeader.jsx";
 import GroupListItem from "../components/groups/GroupListItem.jsx";
 import EmptyState from "../components/ui/EmptyState.jsx";
@@ -31,6 +32,10 @@ export default function GroupsLandingScreen({
     () => sortGroupsForLanding(groups, games, now),
     [groups, games, now],
   );
+
+  if (sortedGroups.length === 1) {
+    return <Navigate to={`/groups/${sortedGroups[0].id}`} replace />;
+  }
 
   return (
     <div className="games-screen games-screen--landing">
