@@ -728,8 +728,8 @@ export const globalStyles = `
   .game-detail-layout {
     min-height: 0;
     width: 100%;
-    max-width: min(var(--max-list), 100%);
-    margin: 0 auto;
+    max-width: var(--content-rail-width);
+    margin-inline: auto;
   }
 
   .game-detail-layout--responsive {
@@ -973,6 +973,10 @@ export const globalStyles = `
     z-index: 1;
   }
 
+  .group-games-screen__layout .game-detail-layout__thread-wrap {
+    z-index: 2;
+  }
+
   .game-detail-layout__thread-wrap::after {
     content: "";
     position: absolute;
@@ -1158,6 +1162,10 @@ export const globalStyles = `
     outline: none;
   }
 
+  .game-detail-header:not(.game-detail-header--collapsible) .game-detail-header__caret-slot {
+    display: none;
+  }
+
   .game-detail-header__caret-slot {
     flex-shrink: 0;
     display: flex;
@@ -1182,13 +1190,19 @@ export const globalStyles = `
     transform: rotate(180deg);
   }
 
-  .game-commit-strip {
+  .game-commit-card .game-detail-header {
     flex-shrink: 0;
+  }
+
+  .game-commit-strip {
+    flex: 1;
+    min-height: 0;
     padding: var(--game-card-inset-y) var(--game-card-inset-x);
     display: flex;
     flex-direction: column;
     gap: var(--layout-stack-gap);
     font-size: var(--font-body);
+    overflow: hidden;
   }
 
   .game-commit-strip .game-detail-header__title-row .status-badge {
@@ -1196,22 +1210,73 @@ export const globalStyles = `
     font-size: var(--font-label);
   }
 
-  .game-commit-strip__expandable {
-    display: grid;
-    grid-template-rows: 0fr;
-    transition: grid-template-rows 0.25s ease;
-  }
-
-  .game-commit-strip--expanded .game-commit-strip__expandable {
-    grid-template-rows: 1fr;
-  }
-
-  .game-commit-strip__expandable-inner {
+  .game-commit-card .game-detail-body {
+    flex: 1;
+    min-height: 0;
     overflow: hidden;
     display: flex;
     flex-direction: column;
-    gap: var(--layout-stack-gap);
+  }
+
+  .game-commit-strip__players {
+    flex: 1;
     min-height: 0;
+    display: flex;
+    flex-direction: column;
+    gap: var(--layout-stack-gap);
+    overflow: hidden;
+  }
+
+  .game-commit-card .live-pickup {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    gap: var(--layout-stack-gap);
+    overflow: hidden;
+  }
+
+  .game-commit-card .game-detail-players {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+  }
+
+  .game-commit-card .chip-list {
+    flex-wrap: nowrap;
+    align-items: center;
+    height: var(--game-commit-chip-row-height);
+    max-height: var(--game-commit-chip-row-height);
+    overflow-x: auto;
+    overflow-y: hidden;
+    max-width: 100%;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior-x: contain;
+    scrollbar-width: none;
+  }
+
+  .game-commit-card .chip-list::-webkit-scrollbar {
+    display: none;
+  }
+
+  .game-commit-card .chip-list__empty {
+    height: var(--game-commit-chip-row-height);
+    max-height: var(--game-commit-chip-row-height);
+    display: flex;
+    align-items: center;
+    line-height: 1.3;
+    overflow: hidden;
+  }
+
+  .game-commit-card .chip-list .chip,
+  .game-commit-card .chip-list .walk-in-chip {
+    flex-shrink: 0;
+  }
+
+  .game-commit-card .walk-in-chip {
+    display: inline-flex;
+    align-items: center;
+    height: var(--game-commit-chip-row-height);
   }
 
   .presence-layer {
@@ -1271,7 +1336,8 @@ export const globalStyles = `
 
   .group-games-screen__intro {
     width: 100%;
-    max-width: var(--layout-max);
+    max-width: var(--content-rail-width);
+    margin-inline: auto;
     margin-bottom: var(--space-3);
   }
 
@@ -1313,6 +1379,9 @@ export const globalStyles = `
     flex-shrink: 0;
     width: 100%;
     overflow: visible;
+    position: relative;
+    z-index: 0;
+    isolation: isolate;
   }
 
   .game-cards-carousel {
@@ -1327,12 +1396,14 @@ export const globalStyles = `
   .game-cards-carousel__track {
     display: flex;
     flex-direction: row;
-    align-items: flex-start;
+    align-items: stretch;
     width: 100%;
+    height: var(--game-carousel-slot-height);
     overflow-x: auto;
-    overflow-y: visible;
+    overflow-y: hidden;
     overscroll-behavior-x: contain;
     -webkit-overflow-scrolling: touch;
+    scroll-behavior: smooth;
     scroll-snap-type: x mandatory;
     scroll-padding-inline: var(--game-carousel-edge-pad);
     padding-inline: var(--game-carousel-edge-pad);
@@ -1347,13 +1418,28 @@ export const globalStyles = `
 
   .game-cards-carousel__slide {
     position: relative;
+    display: flex;
+    flex-direction: column;
     flex: 0 0 var(--game-carousel-slide-width);
-    scroll-snap-align: center;
     min-width: 0;
-    align-self: flex-start;
+    min-height: 0;
+    scroll-snap-align: center;
     padding-block: 1px;
     margin-right: var(--game-carousel-gap);
     box-sizing: border-box;
+  }
+
+  .game-cards-carousel__slide .game-detail-panel {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-height: 0;
+    height: 100%;
+    width: 100%;
+  }
+
+  .game-cards-carousel .game-detail-panel {
+    z-index: auto;
   }
 
   .game-cards-carousel__slide:last-child {
@@ -1362,7 +1448,7 @@ export const globalStyles = `
 
   .game-cards-carousel__slide--peek .game-commit-card {
     pointer-events: none;
-    transition: opacity 0.15s ease;
+    opacity: 0.92;
   }
 
   .game-cards-carousel__focus-hit {
@@ -1438,8 +1524,8 @@ export const globalStyles = `
     font-size: 15px;
   }
 
-  .game-commit-card {
-    position: relative;
+  .game-commit-card .game-detail-panel__actions {
+    flex-shrink: 0;
   }
 
   .game-commit-card__admin {
@@ -1497,7 +1583,9 @@ export const globalStyles = `
     align-items: stretch;
     justify-content: flex-start;
     flex-direction: column;
-    padding: var(--layout-gutter-detail);
+    padding-top: var(--layout-gutter-detail);
+    padding-bottom: var(--layout-gutter-detail);
+    padding-inline: var(--game-carousel-edge-pad);
     overflow: hidden;
   }
 

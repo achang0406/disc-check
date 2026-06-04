@@ -23,7 +23,7 @@ import GroupGamesScreen from "./screens/GroupGamesScreen.jsx";
 import { globalStyles } from "./styles/theme.js";
 
 function AppRoutes() {
-  const { toast, showToast } = useToast();
+  const { toast, exiting, showToast, dismissToast } = useToast();
   useServiceWorkerNavigation();
   const { theme, toggleTheme, cssVars } = useTheme();
   const app = useAppData(showToast);
@@ -118,7 +118,7 @@ function AppRoutes() {
           }}
         >
           <FieldBackground />
-          <Toast toast={toast} />
+          <Toast toast={toast} exiting={exiting} onDismiss={dismissToast} />
 
           {app.showSignUp && (
             <SignUpModal

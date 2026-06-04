@@ -1,5 +1,5 @@
 import { Navigate, useNavigate, useParams } from "react-router-dom";
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import AppHeader from "../components/layout/AppHeader.jsx";
 import GameCommitCard from "../components/games/GameCommitCard.jsx";
 import GameCardsCarousel from "../components/games/GameCardsCarousel.jsx";
@@ -46,12 +46,19 @@ export default function GroupGamesScreen({
   const { groupId } = useParams();
   const navigate = useNavigate();
   const now = useGameClock();
+  const [focusedGameIndex, setFocusedGameIndex] = useState(0);
 
   const group = groups.find((item) => item.id === groupId) ?? null;
   const groupGames = useMemo(
     () => sortGamesForLanding(gamesForGroup(games, groupId), now),
     [games, groupId, now],
   );
+
+  useEffect(() => {
+    if (focusedGameIndex >= groupGames.length) {
+      setFocusedGameIndex(0);
+    }
+  }, [focusedGameIndex, groupGames.length]);
 
   const watching = useMemo(
     () =>
@@ -136,6 +143,7 @@ export default function GroupGamesScreen({
             ) : (
               <GameCardsCarousel
                 games={groupGames}
+                onFocusedIndexChange={setFocusedGameIndex}
                 renderSlide={(game) => (
                   <GameCommitCard
                     profile={profile}

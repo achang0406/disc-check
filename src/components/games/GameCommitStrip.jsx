@@ -15,8 +15,6 @@ export default function GameCommitStrip({
   rsvpEntries,
   checkInEntries,
   walkInEntries = [],
-  expanded,
-  onToggleExpanded,
   onAddressCopy,
   onAddWalkIn,
   onRemoveWalkIn,
@@ -26,10 +24,7 @@ export default function GameCommitStrip({
   const inPickupWindow = isLive || isEnded;
 
   return (
-    <section
-      className={`game-commit-strip${expanded ? " game-commit-strip--expanded" : ""}`}
-      aria-label="Game status and RSVP"
-    >
+    <section className="game-commit-strip" aria-label="Game status and RSVP">
       <GameDetailHeader
         game={game}
         count={count}
@@ -38,9 +33,6 @@ export default function GameCommitStrip({
         isEnded={isEnded}
         rsvpd={rsvpd}
         checkedIn={checkedIn}
-        collapsible
-        expanded={expanded}
-        onToggle={onToggleExpanded}
         onAddressCopy={onAddressCopy}
       />
 
@@ -51,29 +43,27 @@ export default function GameCommitStrip({
           label={isLive ? "Here now" : isEnded ? "Attended" : "Rsvp"}
         />
 
-        <div className="game-commit-strip__expandable" aria-hidden={!expanded}>
-          <div className="game-commit-strip__expandable-inner">
-            {!cancelled && !inPickupWindow && (
-              <GameDetailPlayersSection
-                entries={rsvpEntries}
-                profileId={profile?.id}
-              />
-            )}
+        <div className="game-commit-strip__players">
+          {!cancelled && !inPickupWindow && (
+            <GameDetailPlayersSection
+              entries={rsvpEntries}
+              profileId={profile?.id}
+            />
+          )}
 
-            {!cancelled && inPickupWindow && (
-              <LivePickupPanel
-                profile={profile}
-                isEnded={isEnded}
-                rsvpEntries={rsvpEntries}
-                checkInEntries={checkInEntries}
-                walkInEntries={walkInEntries}
-                disabled={!profile || saving}
-                showWalkInInput={expanded}
-                onAddWalkIn={(name) => onAddWalkIn?.(game.id, name)}
-                onRemoveWalkIn={(guestId) => onRemoveWalkIn?.(game.id, guestId)}
-              />
-            )}
-          </div>
+          {!cancelled && inPickupWindow && (
+            <LivePickupPanel
+              profile={profile}
+              isEnded={isEnded}
+              rsvpEntries={rsvpEntries}
+              checkInEntries={checkInEntries}
+              walkInEntries={walkInEntries}
+              disabled={!profile || saving}
+              showWalkInInput={!isEnded}
+              onAddWalkIn={(name) => onAddWalkIn?.(game.id, name)}
+              onRemoveWalkIn={(guestId) => onRemoveWalkIn?.(game.id, guestId)}
+            />
+          )}
         </div>
       </div>
     </section>

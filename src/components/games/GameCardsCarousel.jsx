@@ -1,41 +1,43 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
-function getScrollLeftForSlide(track, slide) {
-  const maxScroll = Math.max(0, track.scrollWidth - track.clientWidth);
-  const target = slide.offsetLeft - (track.clientWidth - slide.offsetWidth) / 2;
-  return Math.max(0, Math.min(target, maxScroll));
+function getFocusedIndexFromScroll(track, slides) {
+  const trackCenter = track.scrollLeft + track.clientWidth / 2;
+  let bestIndex = 0;
+  let bestDistance = Number.POSITIVE_INFINITY;
+
+  slides.forEach((slide, index) => {
+    const slideCenter = slide.offsetLeft + slide.offsetWidth / 2;
+    const distance = Math.abs(slideCenter - trackCenter);
+    if (distance < bestDistance) {
+      bestDistance = distance;
+      bestIndex = index;
+    }
+  });
+
+  return bestIndex;
 }
 
-export default function GameCardsCarousel({ games, renderSlide }) {
+export default function GameCardsCarousel({ games, renderSlide, onFocusedIndexChange }) {
   const trackRef = useRef(null);
   const slideRefs = useRef([]);
+  const programmaticScrollIndexRef = useRef(null);
   const scrollEndTimerRef = useRef(null);
-  const scrollingToIndexRef = useRef(null);
   const [focusedIndex, setFocusedIndex] = useState(0);
+
+  useEffect(() => {
+    onFocusedIndexChange?.(focusedIndex);
+  }, [focusedIndex, onFocusedIndexChange]);
 
   useEffect(() => {
     slideRefs.current = slideRefs.current.slice(0, games.length);
   }, [games.length]);
 
-  const updateFocusedFromScroll = useCallback(() => {
+  const syncFocusedFromScroll = useCallback(() => {
     const track = trackRef.current;
     const slides = slideRefs.current.filter(Boolean);
     if (!track || slides.length === 0) return;
 
-    const trackCenter = track.scrollLeft + track.clientWidth / 2;
-    let bestIndex = 0;
-    let bestDistance = Number.POSITIVE_INFINITY;
-
-    slides.forEach((slide, index) => {
-      const slideCenter = slide.offsetLeft + slide.offsetWidth / 2;
-      const distance = Math.abs(slideCenter - trackCenter);
-      if (distance < bestDistance) {
-        bestDistance = distance;
-        bestIndex = index;
-      }
-    });
-
-    setFocusedIndex(bestIndex);
+    setFocusedIndex(getFocusedIndexFromScroll(track, slides));
   }, []);
 
   useEffect(() => {
@@ -43,87 +45,68 @@ export default function GameCardsCarousel({ games, renderSlide }) {
     if (!track || games.length === 0) return undefined;
 
     const handleScroll = () => {
+      if (programmaticScrollIndexRef.current !== null) return;
+
       if (scrollEndTimerRef.current) {
         window.clearTimeout(scrollEndTimerRef.current);
       }
-      updateFocusedFromScroll();
+
+      syncFocusedFromScroll();
+
       scrollEndTimerRef.current = window.setTimeout(() => {
-        const slides = slideRefs.current.filter(Boolean);
-        if (!track || slides.length === 0) return;
+        scrollEndTimerRef.current = null;
+        if (programmaticScrollIndexRef.current !== null) return;
+        syncFocusedFromScroll();
+      }, 100);
+    };
 
-        if (scrollingToIndexRef.current !== null) {
-          setFocusedIndex(scrollingToIndexRef.current);
-          return;
-        }
-
-        const trackCenter = track.scrollLeft + track.clientWidth / 2;
-        let bestIndex = 0;
-        let bestDistance = Number.POSITIVE_INFINITY;
-
-        slides.forEach((slide, index) => {
-          const slideCenter = slide.offsetLeft + slide.offsetWidth / 2;
-          const distance = Math.abs(slideCenter - trackCenter);
-          if (distance < bestDistance) {
-            bestDistance = distance;
-            bestIndex = index;
-          }
-        });
-
-        const slide = slides[bestIndex];
-        const corrected = getScrollLeftForSlide(track, slide);
-        if (Math.abs(track.scrollLeft - corrected) > 2) {
-          track.style.scrollSnapType = "none";
-          track.scrollLeft = corrected;
-          track.style.scrollSnapType = "";
-        }
-        setFocusedIndex(bestIndex);
-      }, 80);
+    const handleScrollEnd = () => {
+      if (programmaticScrollIndexRef.current !== null) {
+        const index = programmaticScrollIndexRef.current;
+        programmaticScrollIndexRef.current = null;
+        setFocusedIndex(index);
+        return;
+      }
+      syncFocusedFromScroll();
     };
 
     track.addEventListener("scroll", handleScroll, { passive: true });
-    updateFocusedFromScroll();
+    track.addEventListener("scrollend", handleScrollEnd);
+    syncFocusedFromScroll();
 
     return () => {
       track.removeEventListener("scroll", handleScroll);
+      track.removeEventListener("scrollend", handleScrollEnd);
       if (scrollEndTimerRef.current) {
         window.clearTimeout(scrollEndTimerRef.current);
       }
     };
-  }, [games, updateFocusedFromScroll]);
+  }, [games, syncFocusedFromScroll]);
 
   const scrollToSlide = useCallback((index, behavior = "smooth") => {
     const track = trackRef.current;
     const slide = slideRefs.current[index];
     if (!track || !slide) return;
 
-    const targetLeft = getScrollLeftForSlide(track, slide);
+    programmaticScrollIndexRef.current = index;
 
-    scrollingToIndexRef.current = index;
-    track.style.scrollSnapType = "none";
-    track.scrollTo({ left: targetLeft, behavior });
+    slide.scrollIntoView({
+      behavior,
+      inline: "center",
+      block: "nearest",
+    });
 
-    const finish = () => {
-      track.style.scrollSnapType = "";
-      const corrected = getScrollLeftForSlide(track, slide);
-      if (Math.abs(track.scrollLeft - corrected) > 1) {
-        track.scrollLeft = corrected;
-      }
-      scrollingToIndexRef.current = null;
+    if (behavior !== "smooth") {
+      programmaticScrollIndexRef.current = null;
       setFocusedIndex(index);
-    };
-
-    if (behavior === "smooth") {
-      let finished = false;
-      const runFinish = () => {
-        if (finished) return;
-        finished = true;
-        finish();
-      };
-      track.addEventListener("scrollend", runFinish, { once: true });
-      window.setTimeout(runFinish, 450);
-    } else {
-      finish();
+      return;
     }
+
+    window.setTimeout(() => {
+      if (programmaticScrollIndexRef.current !== index) return;
+      programmaticScrollIndexRef.current = null;
+      setFocusedIndex(index);
+    }, 500);
   }, []);
 
   const showDots = games.length > 1;
@@ -159,7 +142,6 @@ export default function GameCardsCarousel({ games, renderSlide }) {
                 slideRefs.current[index] = node;
               }}
               className={`game-cards-carousel__slide${isPeek ? " game-cards-carousel__slide--peek" : ""}`}
-              style={{ animation: `fadeUp ${0.15 + index * 0.04}s ease` }}
             >
               {renderSlide(game, index)}
               {isPeek && (

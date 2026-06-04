@@ -29,7 +29,6 @@ export default function GameCommitCard({
   onEditGame,
 }) {
   const now = useGameClock();
-  const [stripExpanded, setStripExpanded] = useState(false);
   const [plusOnes, setPlusOnes] = useState(0);
   const [bringingKit, setBringingKit] = useState(false);
   const [herePlusOnes, setHerePlusOnes] = useState(0);
@@ -90,6 +89,7 @@ export default function GameCommitCard({
     "surface",
     "game-commit-card",
     live ? "game-detail-panel--live" : "",
+    ended ? "game-detail-panel--ended" : "",
     !live && rsvpd && !cancelled ? "game-detail-panel--rsvpd" : "",
     live && checkedIn && !cancelled ? "game-detail-panel--here" : "",
     cancelled ? "game-detail-panel--cancelled" : "",
@@ -139,12 +139,9 @@ export default function GameCommitCard({
         rsvpd={rsvpd}
         checkedIn={checkedIn}
         count={activeCount}
-        rsvpCount={rsvpCount}
         rsvpEntries={rsvpEntries}
         checkInEntries={checkInEntries}
         walkInEntries={walkInEntries}
-        expanded={stripExpanded}
-        onToggleExpanded={() => setStripExpanded((value) => !value)}
         onAddressCopy={() => showToast?.("Address copied")}
         onAddWalkIn={onAddWalkIn}
         onRemoveWalkIn={onRemoveWalkIn}

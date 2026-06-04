@@ -841,28 +841,44 @@ export const uiStyles = `
     color: var(--text-muted);
   }
 
+  @keyframes toast-enter {
+    from {
+      opacity: 0;
+      transform: translateX(-50%) translateY(calc(-1 * var(--space-5)));
+    }
+    to {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+    }
+  }
+
+  @keyframes toast-exit {
+    from {
+      opacity: 1;
+    }
+    to {
+      opacity: 0;
+    }
+  }
+
   .toast {
     position: fixed;
-    bottom: var(--space-5);
-    left: var(--space-5);
+    top: calc(var(--safe-area-top) + var(--space-5));
+    left: 50%;
+    transform: translateX(-50%);
     z-index: var(--z-toast);
+    max-width: min(var(--max-list), calc(100vw - 2 * var(--space-5)));
     padding: var(--chat-bar-inset-y) var(--chat-bar-inset-x);
     border-radius: var(--radius-sm);
     font-size: var(--font-body);
     font-family: var(--font-mono);
     box-shadow: 0 0 0 1px var(--card-ring);
+    cursor: pointer;
+    animation: toast-enter 0.28s ease-out both;
   }
 
-  @media (max-width: 767px) {
-    .toast {
-      bottom: calc(
-        var(--chat-bar-height, 0px) + var(--chat-bar-lift, 0px) + var(--chat-bar-inset-y)
-      );
-      left: var(--chat-bar-offset-left);
-      max-width: calc(
-        100vw - var(--chat-bar-offset-left) - var(--chat-bar-offset-right)
-      );
-    }
+  .toast--exit {
+    animation: toast-exit 0.2s ease-in forwards;
   }
 
   .toast--success {
