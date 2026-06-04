@@ -1,5 +1,4 @@
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
-import { MQ_CHAT_THREAD } from "../../constants/breakpoints.js";
+import { useCallback, useLayoutEffect, useRef, useState } from "react";
 import { suppressMouseFocus } from "../../utils/suppressMouseFocus.js";
 
 function ChatBubble({ message, selfId }) {
@@ -32,9 +31,6 @@ export default function GameChatThread({ messages, selfId, loading = false }) {
   const stickToBottomRef = useRef(true);
   const prevMessageCountRef = useRef(0);
   const [showJumpToBottom, setShowJumpToBottom] = useState(false);
-  const [isCompact, setIsCompact] = useState(() =>
-    typeof window !== "undefined" ? window.matchMedia(MQ_CHAT_THREAD).matches : false,
-  );
 
   const jumpToLatest = useCallback(() => {
     const node = scrollRef.current;
@@ -42,14 +38,6 @@ export default function GameChatThread({ messages, selfId, loading = false }) {
     scrollToLatest(node);
     stickToBottomRef.current = true;
     setShowJumpToBottom(false);
-  }, []);
-
-  useEffect(() => {
-    const media = window.matchMedia(MQ_CHAT_THREAD);
-    const update = () => setIsCompact(!media.matches);
-    media.addEventListener("change", update);
-    update();
-    return () => media.removeEventListener("change", update);
   }, []);
 
   useLayoutEffect(() => {
@@ -69,17 +57,16 @@ export default function GameChatThread({ messages, selfId, loading = false }) {
       requestAnimationFrame(() => scrollToLatest(node));
       stickToBottomRef.current = true;
       setShowJumpToBottom(false);
-    } else if (hasNewMessages && isCompact) {
+    } else if (hasNewMessages) {
       setShowJumpToBottom(true);
     }
 
     prevMessageCountRef.current = messages.length;
-  }, [messages, selfId, isCompact]);
+  }, [messages, selfId]);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     const thread = scrollRef.current;
     const root = document.documentElement;
-    const media = window.matchMedia(MQ_CHAT_THREAD);
 
     const clearThreadPad = () => {
       root.style.removeProperty("--chat-thread-pad-left");
@@ -89,11 +76,6 @@ export default function GameChatThread({ messages, selfId, loading = false }) {
     if (!thread) return undefined;
 
     const syncThreadPadding = () => {
-      if (media.matches) {
-        clearThreadPad();
-        return;
-      }
-
       if (thread.querySelector(".game-chat-thread__empty") || thread.querySelector(".game-chat-thread__loading")) {
         clearThreadPad();
         return;
@@ -124,7 +106,6 @@ export default function GameChatThread({ messages, selfId, loading = false }) {
     }
 
     window.addEventListener("resize", syncThreadPadding);
-    media.addEventListener("change", syncThreadPadding);
 
     const viewport = window.visualViewport;
     if (viewport) {
@@ -137,7 +118,6 @@ export default function GameChatThread({ messages, selfId, loading = false }) {
     return () => {
       resizeObserver.disconnect();
       window.removeEventListener("resize", syncThreadPadding);
-      media.removeEventListener("change", syncThreadPadding);
       if (viewport) {
         viewport.removeEventListener("resize", syncThreadPadding);
         viewport.removeEventListener("scroll", syncThreadPadding);
@@ -179,7 +159,7 @@ export default function GameChatThread({ messages, selfId, loading = false }) {
         )}
       </div>
 
-      {isCompact && showJumpToBottom && (
+      {showJumpToBottom && (
         <button
           type="button"
           className="game-chat-thread__jump"

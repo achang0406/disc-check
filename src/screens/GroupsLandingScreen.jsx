@@ -1,5 +1,4 @@
-import { useEffect, useMemo } from "react";
-import { useNavigate } from "react-router-dom";
+import { useMemo } from "react";
 import AppHeader from "../components/layout/AppHeader.jsx";
 import GroupListItem from "../components/groups/GroupListItem.jsx";
 import EmptyState from "../components/ui/EmptyState.jsx";
@@ -26,22 +25,11 @@ export default function GroupsLandingScreen({
   theme,
   onToggleTheme,
 }) {
-  const navigate = useNavigate();
   const now = useGameClock();
   const sortedGroups = useMemo(
     () => sortGroupsForLanding(groups, games, now),
     [groups, games, now],
   );
-
-  useEffect(() => {
-    if (sortedGroups.length === 1) {
-      navigate(`/groups/${sortedGroups[0].id}`, { replace: true });
-    }
-  }, [sortedGroups, navigate]);
-
-  if (sortedGroups.length === 1) {
-    return null;
-  }
 
   return (
     <div className="games-screen">

@@ -719,15 +719,19 @@ export const globalStyles = `
     flex-direction: column;
     flex: 1;
     min-height: 0;
-    gap: var(--layout-stack-gap);
+    gap: 0;
     justify-content: flex-start;
     padding-bottom: var(--chat-bar-height, 58px);
   }
 
-  @media (min-width: ${BP_LG_MIN}px) {
-    .game-detail-layout--responsive {
-      padding-bottom: 0;
-    }
+  .games-screen--detail .games-screen__main--detail {
+    flex: 1 1 0;
+    min-height: 0;
+  }
+
+  .games-screen--detail .game-detail-layout--responsive {
+    flex: 1 1 0;
+    min-height: 0;
   }
 
   .detail-height-shell {
@@ -761,6 +765,8 @@ export const globalStyles = `
   }
 
   .game-detail-panel {
+    position: relative;
+    z-index: 2;
     width: 100%;
     flex-shrink: 0;
     overflow: hidden;
@@ -818,6 +824,9 @@ export const globalStyles = `
   }
 
   .game-detail-panel__actions {
+    position: relative;
+    z-index: 2;
+    background: var(--card-bg);
     padding: var(--space-3) var(--game-card-inset-x) var(--game-card-inset-y);
     border-top: 1px solid var(--card-divider);
     display: flex;
@@ -938,127 +947,89 @@ export const globalStyles = `
     gap: var(--layout-stack-gap);
   }
 
-  .game-detail-layout__thread {
-    display: flex;
-    flex-direction: column;
-    flex: 1;
-    min-height: 0;
-    overflow-y: auto;
-    -webkit-overflow-scrolling: touch;
-    overscroll-behavior: contain;
-    padding: 0 var(--space-1);
-  }
-
-  @media (max-width: ${BP_LG_MIN - 1}px) {
-    .games-screen--detail .games-screen__main--detail {
-      flex: 1 1 0;
-      min-height: 0;
-    }
-
-    .games-screen--detail .game-detail-layout--responsive {
-      flex: 1 1 0;
-      min-height: 0;
-    }
-
-    .game-detail-layout--responsive {
-      gap: 0;
-    }
-
-    .game-detail-panel {
-      position: relative;
-      z-index: 2;
-      flex-shrink: 0;
-    }
-
-    .game-detail-panel__actions {
-      position: relative;
-      z-index: 2;
-      background: var(--card-bg);
-    }
-
-    .game-detail-layout__thread-wrap {
-      flex: 1;
-      min-height: 0;
-      position: relative;
-      z-index: 1;
-    }
-
-    .game-detail-layout__thread-wrap::after {
-      content: "";
-      position: absolute;
-      top: 0;
-      left: 0;
-      right: 0;
-      height: var(--chat-underlap);
-      background: linear-gradient(to bottom, var(--bg), transparent);
-      pointer-events: none;
-      z-index: 2;
-    }
-
-    .game-detail-layout__thread {
-      padding-left: var(--chat-thread-pad-left, var(--chat-bar-inset-x));
-      padding-right: var(--chat-thread-pad-right, var(--chat-bar-inset-x));
-      padding-bottom: var(--chat-thread-gap);
-      scroll-padding-bottom: var(--chat-thread-gap);
-      flex-direction: column-reverse;
-      gap: var(--space-2);
-    }
-
-    .game-detail-layout__thread:has(.game-chat-thread__empty),
-    .game-detail-layout__thread:has(.game-chat-thread__loading) {
-      flex-direction: column;
-      justify-content: center;
-      align-items: center;
-      padding-left: var(--chat-bar-inset-x);
-      padding-right: var(--chat-bar-inset-x);
-      padding-bottom: var(--chat-thread-gap);
-    }
-
-    .game-detail-layout__thread .chat-message {
-      margin-bottom: 0;
-      flex-shrink: 0;
-    }
-
-    .game-chat-thread-shell {
-      position: relative;
-      display: flex;
-      flex-direction: column;
-      flex: 1;
-      min-height: 0;
-    }
-
-    .game-chat-thread__jump {
-      position: absolute;
-      left: 50%;
-      bottom: var(--space-2);
-      transform: translateX(-50%);
-      z-index: 3;
-      padding: 6px 12px;
-      border-radius: var(--radius-pill);
-      border: 1px solid var(--card-ring);
-      background: var(--card-bg);
-      color: var(--text-muted);
-      font-family: var(--font-mono);
-      font-size: 10px;
-      font-weight: 600;
-      letter-spacing: 0.04em;
-      text-transform: uppercase;
-      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
-      cursor: pointer;
-      -webkit-tap-highlight-color: transparent;
-    }
-
-    .game-chat-thread__jump:active {
-      color: var(--text);
-      border-color: var(--text-faint);
-    }
-  }
-
   .game-detail-layout__thread-wrap {
     display: flex;
     flex-direction: column;
     flex: 1;
     min-height: 0;
+    position: relative;
+    z-index: 1;
+  }
+
+  .game-detail-layout__thread-wrap::after {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: var(--chat-underlap);
+    background: linear-gradient(to bottom, var(--bg), transparent);
+    pointer-events: none;
+    z-index: 2;
+  }
+
+  .game-detail-layout__thread {
+    display: flex;
+    flex-direction: column-reverse;
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+    gap: var(--space-2);
+    padding-left: var(--chat-thread-pad-left, var(--chat-bar-inset-x));
+    padding-right: var(--chat-thread-pad-right, var(--chat-bar-inset-x));
+    padding-bottom: var(--chat-thread-gap);
+    scroll-padding-bottom: var(--chat-thread-gap);
+  }
+
+  .game-detail-layout__thread:has(.game-chat-thread__empty),
+  .game-detail-layout__thread:has(.game-chat-thread__loading) {
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    padding-left: var(--chat-bar-inset-x);
+    padding-right: var(--chat-bar-inset-x);
+    padding-bottom: var(--chat-thread-gap);
+  }
+
+  .game-detail-layout__thread .chat-message {
+    margin-bottom: 0;
+    flex-shrink: 0;
+  }
+
+  .game-chat-thread-shell {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-height: 0;
+  }
+
+  .game-chat-thread__jump {
+    position: absolute;
+    left: 50%;
+    bottom: var(--space-2);
+    transform: translateX(-50%);
+    z-index: 3;
+    padding: 6px 12px;
+    border-radius: var(--radius-pill);
+    border: 1px solid var(--card-ring);
+    background: var(--card-bg);
+    color: var(--text-muted);
+    font-family: var(--font-mono);
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .game-chat-thread__jump:active {
+    color: var(--text);
+    border-color: var(--text-faint);
   }
 
   .game-detail-layout__thread-wrap--hidden {
@@ -1826,17 +1797,15 @@ export const globalStyles = `
     transition: none;
   }
 
-  .chat-bar-anchor--detail {
-    padding-top: var(--space-2);
+  .chat-bar-anchor {
+    padding: var(--space-2) var(--chat-bar-inset-x)
+      max(var(--chat-bar-inset-y), var(--safe-area-bottom));
+    padding-left: max(var(--chat-bar-inset-x), var(--safe-area-left));
+    padding-right: max(var(--chat-bar-inset-x), var(--safe-area-right));
   }
 
-  @media (max-width: ${BP_LG_MIN - 1}px) {
-    .chat-bar-anchor {
-      padding: var(--space-2) var(--chat-bar-inset-x)
-        max(var(--chat-bar-inset-y), var(--safe-area-bottom));
-      padding-left: max(var(--chat-bar-inset-x), var(--safe-area-left));
-      padding-right: max(var(--chat-bar-inset-x), var(--safe-area-right));
-    }
+  .chat-bar-anchor--detail {
+    padding-top: var(--space-2);
   }
 
   .chat-bar-stack {
@@ -1882,31 +1851,6 @@ export const globalStyles = `
 
   .chat-bar {
     pointer-events: auto;
-  }
-
-  @media (min-width: ${BP_LG_MIN}px) {
-    .chat-bar-anchor {
-      left: auto;
-      right: 0;
-      justify-content: flex-end;
-      padding: var(--chat-bar-anchor-inset);
-      padding-bottom: calc(var(--chat-bar-anchor-inset) + var(--safe-area-bottom));
-      pointer-events: auto;
-    }
-
-    .chat-bar-anchor--detail {
-      padding-left: var(--chat-bar-anchor-inset);
-      padding-right: max(var(--chat-bar-anchor-inset), env(safe-area-inset-right, 0px));
-    }
-
-    .chat-bar-stack {
-      width: min(var(--chat-bar-width-wide), calc(100vw - 2 * var(--chat-bar-anchor-inset)));
-      align-items: flex-end;
-    }
-
-    .chat-bar {
-      width: 100%;
-    }
   }
 
   .presence-connecting {
