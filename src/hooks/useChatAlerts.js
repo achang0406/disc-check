@@ -1,5 +1,6 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { clearAppBadge, incrementAppBadge, notifyServiceWorkerClearBadge } from "../lib/appBadge.js";
+import { isSubscribedToGroupChatPush } from "../lib/push.js";
 
 const BASE_TITLE = "DiscCheck";
 
@@ -13,6 +14,7 @@ export function useChatAlerts({ gameId, gameName, messages, selfId, enabled = tr
   const contextId = gameId;
   const unreadRef = useRef(0);
   const seenCountRef = useRef(0);
+  const [chatPushEnabled, setChatPushEnabled] = useState(false);
 
   useEffect(() => {
     unreadRef.current = 0;
@@ -23,6 +25,36 @@ export function useChatAlerts({ gameId, gameName, messages, selfId, enabled = tr
       document.title = BASE_TITLE;
     };
   }, [contextId]);
+
+  useEffect(() => {
+    if (!enabled || !contextId || !selfId) {
+      setChatPushEnabled(false);
+      return undefined;
+    }
+
+    let cancelled = false;
+
+    const syncPushPreference = async () => {
+      const active = await isSubscribedToGroupChatPush({ groupId: contextId, subscriberId: selfId });
+      if (!cancelled) {
+        setChatPushEnabled(active);
+      }
+    };
+
+    void syncPushPreference();
+
+    const onPreferenceChange = (event) => {
+      if (event.detail?.groupId !== contextId) return;
+      void syncPushPreference();
+    };
+
+    window.addEventListener("disc-check-chat-push-changed", onPreferenceChange);
+
+    return () => {
+      cancelled = true;
+      window.removeEventListener("disc-check-chat-push-changed", onPreferenceChange);
+    };
+  }, [contextId, enabled, selfId]);
 
   useEffect(() => {
     if (!enabled) return undefined;
@@ -45,7 +77,7 @@ export function useChatAlerts({ gameId, gameName, messages, selfId, enabled = tr
   }, [enabled, contextId]);
 
   useEffect(() => {
-    if (!enabled || !selfId) return;
+    if (!enabled || !selfId || !chatPushEnabled) return;
 
     if (messages.length < seenCountRef.current) {
       seenCountRef.current = messages.length;
@@ -84,7 +116,7 @@ export function useChatAlerts({ gameId, gameName, messages, selfId, enabled = tr
         }
       }
     }
-  }, [enabled, contextId, gameName, messages, selfId]);
+  }, [chatPushEnabled, enabled, contextId, gameName, messages, selfId]);
 }
 
 export async function requestChatNotificationPermission() {

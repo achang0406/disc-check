@@ -67,10 +67,10 @@ async function findPushRegistration({ groupId, subscriberId }) {
 
   const supabase = getSupabase();
 
-  if (subscriberId) {
+  if (subscriberId && groupId) {
     const { data } = await supabase
       .from("push_subscriptions")
-      .select("id, notifications_enabled")
+      .select("id, group_id, notifications_enabled")
       .eq("group_id", groupId)
       .eq("subscriber_id", subscriberId)
       .maybeSingle();
@@ -82,8 +82,7 @@ async function findPushRegistration({ groupId, subscriberId }) {
 
   const { data } = await supabase
     .from("push_subscriptions")
-    .select("id, notifications_enabled")
-    .eq("group_id", groupId)
+    .select("id, group_id, notifications_enabled")
     .eq("endpoint", endpoint)
     .maybeSingle();
 
@@ -94,41 +93,36 @@ async function findPushRegistration({ groupId, subscriberId }) {
 export async function isSubscribedToGroupChatPush({ groupId, subscriberId }) {
   if (!groupId) return false;
   const row = await findPushRegistration({ groupId, subscriberId });
-  return row?.notifications_enabled === true;
+  return row?.notifications_enabled === true && row?.group_id === groupId;
 }
 
 async function setNotificationsEnabled({ groupId, subscriberId, enabled }) {
-  if (!isSupabaseConfigured() || !groupId) return false;
+  if (!isSupabaseConfigured()) return false;
 
   const supabase = getSupabase();
   const endpoint = await getBrowserPushEndpoint();
-  let updated = false;
+  if (!endpoint) return false;
 
-  if (subscriberId) {
-    const { data, error } = await supabase
-      .from("push_subscriptions")
-      .update({ notifications_enabled: enabled, updated_at: new Date().toISOString() })
-      .eq("group_id", groupId)
-      .eq("subscriber_id", subscriberId)
-      .select("id");
-    if (!error && data?.length > 0) {
-      updated = true;
+  const patch = {
+    notifications_enabled: enabled,
+    updated_at: new Date().toISOString(),
+  };
+
+  if (enabled) {
+    if (!groupId) return false;
+    patch.group_id = groupId;
+    if (subscriberId) {
+      patch.subscriber_id = subscriberId;
     }
   }
 
-  if (!updated && endpoint) {
-    const { data, error } = await supabase
-      .from("push_subscriptions")
-      .update({ notifications_enabled: enabled, updated_at: new Date().toISOString() })
-      .eq("group_id", groupId)
-      .eq("endpoint", endpoint)
-      .select("id");
-    if (!error && data?.length > 0) {
-      updated = true;
-    }
-  }
+  const { data, error } = await supabase
+    .from("push_subscriptions")
+    .update(patch)
+    .eq("endpoint", endpoint)
+    .select("id");
 
-  return updated;
+  return !error && (data?.length ?? 0) > 0;
 }
 
 async function savePushSubscription({ groupId, subscriberId, subscription, notificationsEnabled }) {
@@ -222,8 +216,8 @@ export async function unsubscribeFromGroupChatPush({ groupId, subscriberId }) {
     return { ok: false, reason: "missing-identity" };
   }
 
-  await setNotificationsEnabled({ groupId, subscriberId, enabled: false });
-  return { ok: true, reason: null };
+  const updated = await setNotificationsEnabled({ groupId, subscriberId, enabled: false });
+  return { ok: updated, reason: updated ? null : "subscribe-failed" };
 }
 
 export async function notifyChatPush({

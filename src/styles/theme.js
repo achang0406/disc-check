@@ -884,8 +884,7 @@ export const globalStyles = `
       visibility 140ms ease;
   }
 
-  .game-chat-push--hint-visible .game-chat-push__hint,
-  .game-chat-push:focus-within .game-chat-push__hint {
+  .game-chat-push--hint-visible .game-chat-push__hint {
     opacity: 1;
     visibility: visible;
   }

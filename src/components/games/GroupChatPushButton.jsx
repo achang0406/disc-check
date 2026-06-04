@@ -9,6 +9,12 @@ import {
 
 const HINT_PEEK_MS = 3000;
 
+function notifyChatPushPreferenceChanged(groupId) {
+  window.dispatchEvent(
+    new CustomEvent("disc-check-chat-push-changed", { detail: { groupId } }),
+  );
+}
+
 const STATUS_LABEL = {
   denied: "Notifications blocked in browser settings",
   "subscribe-failed": "Could not enable chat notifications",
@@ -59,6 +65,7 @@ export default function GroupChatPushButton({ groupId = "", subscriberId = "" })
   const [hovering, setHovering] = useState(false);
   const [peeking, setPeeking] = useState(false);
   const peekTimerRef = useRef(null);
+  const buttonRef = useRef(null);
   const pushSupport = getWebPushSupportState();
 
   const clearPeekTimer = useCallback(() => {
@@ -107,18 +114,31 @@ export default function GroupChatPushButton({ groupId = "", subscriberId = "" })
     return null;
   }
 
+  const finishInteraction = useCallback(() => {
+    buttonRef.current?.blur();
+    peekHint();
+  }, [peekHint]);
+
   const handleClick = async () => {
     if (!groupId || busy || subscribed === null) return;
 
     if (subscribed) {
       setBusy(true);
-      setSubscribed(false);
       setErrorReason(null);
       try {
-        await unsubscribeFromGroupChatPush({ groupId, subscriberId });
-        peekHint();
+        const result = await unsubscribeFromGroupChatPush({ groupId, subscriberId });
+        if (result.ok) {
+          setSubscribed(false);
+          notifyChatPushPreferenceChanged(groupId);
+          finishInteraction();
+        } else {
+          setErrorReason(result.reason);
+          await refresh();
+          finishInteraction();
+        }
       } catch {
         await refresh();
+        finishInteraction();
       } finally {
         setBusy(false);
       }
@@ -127,7 +147,7 @@ export default function GroupChatPushButton({ groupId = "", subscriberId = "" })
 
     if (!subscriberId) {
       setErrorReason("missing-identity");
-      peekHint();
+      finishInteraction();
       return;
     }
 
@@ -137,11 +157,12 @@ export default function GroupChatPushButton({ groupId = "", subscriberId = "" })
       const result = await subscribeToGroupChatPush({ groupId, subscriberId });
       if (result.ok) {
         setSubscribed(true);
-        peekHint();
+        notifyChatPushPreferenceChanged(groupId);
+        finishInteraction();
       } else {
         setErrorReason(result.reason);
         setSubscribed(false);
-        peekHint();
+        finishInteraction();
       }
     } finally {
       setBusy(false);
@@ -176,6 +197,7 @@ export default function GroupChatPushButton({ groupId = "", subscriberId = "" })
         {hint}
       </p>
       <button
+        ref={buttonRef}
         type="button"
         className={[
           "game-chat-push__icon-btn",
