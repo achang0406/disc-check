@@ -19,6 +19,7 @@ export default function GameCommitStrip({
   onAddWalkIn,
   onRemoveWalkIn,
   saving = false,
+  adminAction = null,
 }) {
   const cancelled = game.status === "cancelled";
   const inPickupWindow = isLive || isEnded;
@@ -34,6 +35,7 @@ export default function GameCommitStrip({
         rsvpd={rsvpd}
         checkedIn={checkedIn}
         onAddressCopy={onAddressCopy}
+        adminAction={adminAction}
       />
 
       <div className="game-detail-body">

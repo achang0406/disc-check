@@ -1104,6 +1104,12 @@ export const globalStyles = `
     flex-shrink: 0;
   }
 
+  .game-detail-header__admin-action {
+    flex-shrink: 0;
+    display: inline-flex;
+    align-items: center;
+  }
+
   .game-detail-header__meta,
   .game-list-item__meta {
     margin: var(--space-1) 0 0;
@@ -1526,13 +1532,6 @@ export const globalStyles = `
 
   .game-commit-card .game-detail-panel__actions {
     flex-shrink: 0;
-  }
-
-  .game-commit-card__admin {
-    position: absolute;
-    top: var(--space-2);
-    right: var(--space-2);
-    z-index: 2;
   }
 
   .install-app-link {

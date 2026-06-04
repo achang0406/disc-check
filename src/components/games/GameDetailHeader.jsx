@@ -35,6 +35,7 @@ export default function GameDetailHeader({
   expanded = false,
   onToggle,
   onAddressCopy,
+  adminAction = null,
 }) {
   const headerClass = [
     "game-detail-header",
@@ -55,6 +56,9 @@ export default function GameDetailHeader({
           reserveSpace
         />
         <StatusBadge count={count} target={game.target} cancelled={cancelled} />
+        {adminAction ? (
+          <span className="game-detail-header__admin-action">{adminAction}</span>
+        ) : null}
       </div>
       <span className="game-detail-header__caret-slot">
         {collapsible ? <HeaderCaret expanded={expanded} /> : null}

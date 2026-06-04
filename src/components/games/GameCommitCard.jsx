@@ -117,20 +117,20 @@ export default function GameCommitCard({
     onCheckOut,
   };
 
+  const adminAction =
+    isAdmin && onEditGame ? (
+      <Button
+        variant="icon"
+        className="game-card__edit-btn"
+        onClick={() => onEditGame(game)}
+        aria-label={`Edit ${game.name}`}
+      >
+        <EditIcon />
+      </Button>
+    ) : null;
+
   return (
     <div className={panelClass}>
-      {isAdmin && (
-        <div className="game-commit-card__admin">
-          <Button
-            variant="icon"
-            className="game-card__edit-btn"
-            onClick={() => onEditGame(game)}
-            aria-label={`Edit ${game.name}`}
-          >
-            <EditIcon />
-          </Button>
-        </div>
-      )}
       <GameCommitStrip
         profile={profile}
         game={game}
@@ -143,6 +143,7 @@ export default function GameCommitCard({
         checkInEntries={checkInEntries}
         walkInEntries={walkInEntries}
         onAddressCopy={() => showToast?.("Address copied")}
+        adminAction={adminAction}
         onAddWalkIn={onAddWalkIn}
         onRemoveWalkIn={onRemoveWalkIn}
         saving={saving}
