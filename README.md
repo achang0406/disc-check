@@ -52,7 +52,7 @@ Open `http://localhost:5173`. Supabase env vars are required for game and RSVP d
 
 Each group has its own admin passcode (seeded via `scripts/seed-data.mjs` or `GROUP_ADMIN_PASSCODE`). After applying migrations, run `npm run db:seed`.
 
-On a **group page**, tap the DiscCheck title five times and enter that group's passcode. Admins can **Edit group**, **+ Add game**, and edit/delete games in that group only.
+On a **group page**, tap the DiscCheck title five times and enter that group's 4-digit passcode. Admins can **Edit group**, **+ Add game**, and edit/delete games in that group only.
 
 Passcodes are verified server-side via Supabase RPCs — suitable for a trusted pickup community, not multi-tenant security.
 

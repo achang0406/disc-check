@@ -1,7 +1,9 @@
 import { useState } from "react";
 import Button from "../ui/Button.jsx";
+import AdminPasscodeInput from "../ui/AdminPasscodeInput.jsx";
 import Field from "../ui/Field.jsx";
 import ModalShell from "../ui/ModalShell.jsx";
+import { isValidAdminPasscode } from "../../utils/adminPasscode.js";
 
 function buildForm(initial) {
   return {
@@ -25,6 +27,10 @@ export default function GroupFormModal({ group, saving, onSave, onClose }) {
     }
 
     if (form.adminPasscode || form.adminPasscodeConfirm) {
+      if (!isValidAdminPasscode(form.adminPasscode)) {
+        setError("Passcode must be 4 digits");
+        return;
+      }
       if (form.adminPasscode !== form.adminPasscodeConfirm) {
         setError("Passcodes do not match");
         return;
@@ -73,21 +79,23 @@ export default function GroupFormModal({ group, saving, onSave, onClose }) {
           onChange={(event) => setField("description", event.target.value)}
         />
       </Field>
-      <Field label="New admin passcode" hint="Leave blank to keep the current passcode">
-        <input
-          className="field__input"
-          type="password"
+      <Field label="New admin passcode" hint="4 digits. Leave blank to keep the current passcode.">
+        <AdminPasscodeInput
           value={form.adminPasscode}
-          onChange={(event) => setField("adminPasscode", event.target.value)}
+          onChange={(next) => {
+            setField("adminPasscode", next);
+            setError("");
+          }}
           autoComplete="new-password"
         />
       </Field>
       <Field label="Confirm passcode">
-        <input
-          className="field__input"
-          type="password"
+        <AdminPasscodeInput
           value={form.adminPasscodeConfirm}
-          onChange={(event) => setField("adminPasscodeConfirm", event.target.value)}
+          onChange={(next) => {
+            setField("adminPasscodeConfirm", next);
+            setError("");
+          }}
           autoComplete="new-password"
         />
       </Field>

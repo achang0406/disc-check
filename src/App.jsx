@@ -145,7 +145,7 @@ function AppRoutes() {
             <AdminLoginModal
               saving={false}
               title="Group admin"
-              description="Enter this group's admin passcode."
+              description="Enter this group's 4-digit admin passcode."
               onSubmit={async (passcode) => {
                 const ok = await groupAdminSession.login(passcode);
                 if (ok) groupAdmin.setShowLogin(false);

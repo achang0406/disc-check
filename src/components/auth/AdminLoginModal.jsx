@@ -1,25 +1,27 @@
 import { useState } from "react";
 import Button from "../ui/Button.jsx";
+import AdminPasscodeInput from "../ui/AdminPasscodeInput.jsx";
 import Field from "../ui/Field.jsx";
 import ModalShell from "../ui/ModalShell.jsx";
+import { isValidAdminPasscode } from "../../utils/adminPasscode.js";
 
 export default function AdminLoginModal({
   saving,
   onSubmit,
   onClose,
   title = "Admin access",
-  description = "Enter the passcode to manage games",
+  description = "Enter the 4-digit passcode to manage games",
 }) {
   const [passcode, setPasscode] = useState("");
   const [error, setError] = useState("");
 
   const handleSubmit = async () => {
-    if (!passcode.trim()) {
-      setError("Enter the admin passcode");
+    if (!isValidAdminPasscode(passcode)) {
+      setError("Enter a 4-digit passcode");
       return;
     }
     setError("");
-    const ok = await onSubmit(passcode.trim());
+    const ok = await onSubmit(passcode);
     if (!ok) {
       setError("Incorrect passcode");
     }
@@ -32,7 +34,12 @@ export default function AdminLoginModal({
       onClose={onClose}
       footer={
         <>
-          <Button variant="primary" block disabled={saving} onClick={handleSubmit}>
+          <Button
+            variant="primary"
+            block
+            disabled={saving || !isValidAdminPasscode(passcode)}
+            onClick={handleSubmit}
+          >
             Unlock admin
           </Button>
           <Button variant="secondary" disabled={saving} onClick={onClose}>
@@ -42,16 +49,19 @@ export default function AdminLoginModal({
       }
     >
       <Field label="Passcode" error={error}>
-        <input
-          className="field__input"
-          type="password"
+        <AdminPasscodeInput
           value={passcode}
-          onChange={(event) => {
-            setPasscode(event.target.value);
+          onChange={(next) => {
+            setPasscode(next);
             setError("");
           }}
           autoFocus
-          onKeyDown={(event) => event.key === "Enter" && handleSubmit()}
+          disabled={saving}
+          onKeyDown={(event) => {
+            if (event.key !== "Enter" || !isValidAdminPasscode(passcode)) return;
+            event.preventDefault();
+            void handleSubmit();
+          }}
         />
       </Field>
     </ModalShell>

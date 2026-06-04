@@ -186,6 +186,40 @@ export const uiStyles = `
     font-family: var(--font-mono);
   }
 
+  .passcode-input {
+    display: flex;
+    justify-content: center;
+    gap: var(--space-2);
+    width: 100%;
+  }
+
+  .passcode-input__digit {
+    width: 3rem;
+    height: 3.25rem;
+    margin: 0;
+    padding: 0;
+    border: 1px solid var(--input-border);
+    border-radius: var(--radius-sm);
+    background: var(--input-bg);
+    color: var(--text);
+    font-family: var(--font-mono);
+    font-size: 1.35rem;
+    font-weight: 600;
+    line-height: 1;
+    text-align: center;
+    outline: none;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .passcode-input__digit:focus {
+    border-color: #22c55e;
+  }
+
+  .passcode-input__digit:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+  }
+
   .phone-field {
     position: relative;
   }
