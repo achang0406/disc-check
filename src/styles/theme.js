@@ -1258,11 +1258,20 @@ export const globalStyles = `
     margin-bottom: var(--space-3);
   }
 
+  .group-games-screen__title-row {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    min-width: 0;
+  }
+
   .group-games-screen__title {
-    margin: 0 0 var(--space-1);
+    margin: 0;
     font-size: 22px;
     font-weight: 700;
     letter-spacing: -0.02em;
+    min-width: 0;
+    flex: 1;
   }
 
   .group-games-screen__description {
@@ -1300,17 +1309,6 @@ export const globalStyles = `
     top: var(--space-2);
     right: var(--space-2);
     z-index: 2;
-  }
-
-  .games-screen__admin-menu-actions {
-    display: flex;
-    align-items: center;
-    gap: var(--space-1);
-  }
-
-  .games-screen__admin-menu-btn {
-    font-size: 12px;
-    padding: 4px 8px;
   }
 
   .install-app-link {
@@ -1756,15 +1754,9 @@ export const globalStyles = `
     }
   }
 
-  @media (max-width: 480px) {
-    .app-header__title {
-      display: none;
-    }
-
-    .app-header__profile-name {
-      display: none;
-    }
-
+  @media (max-width: ${BP_SM_MIN - 1}px) {
+    .app-header__title,
+    .app-header__profile-name,
     .games-screen__add-game-label {
       display: none;
     }
@@ -1775,7 +1767,9 @@ export const globalStyles = `
       padding: 0;
       font-size: 16px;
     }
+  }
 
+  @media (max-width: 480px) {
     .meta-row__period-text {
       display: none;
     }

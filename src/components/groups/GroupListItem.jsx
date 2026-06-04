@@ -10,14 +10,14 @@ export default function GroupListItem({ group, summary }) {
     >
       <div className="game-list-item__top">
         <h2 className="game-list-item__title">{group.name}</h2>
+        <span className="game-list-item__cta" aria-hidden="true">
+          →
+        </span>
       </div>
       {group.description ? (
         <p className="group-list-item__description">{group.description}</p>
       ) : null}
       {summary ? <p className="group-list-item__summary">{summary}</p> : null}
-      <div className="game-list-item__footer">
-        <span className="game-list-item__cta">View games →</span>
-      </div>
     </Link>
   );
 }

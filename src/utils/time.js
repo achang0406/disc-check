@@ -71,6 +71,28 @@ export function fromTimeInputValue(value) {
   return `${String(clock.hour).padStart(2, "0")}:${String(clock.minute).padStart(2, "0")}:00`;
 }
 
+/** Compact slot for group landing cards, e.g. "Wed at 6:00PM". */
+export function formatGameScheduleSlot(game) {
+  const schedule = getGameSchedule(game);
+  if (!schedule) return "";
+
+  const weekday = WEEKDAY_SHORT[schedule.weekday];
+  const clock = parseStartTime(schedule.startTime);
+  if (!weekday || !clock) return weekday ?? "";
+
+  const date = new Date(Date.UTC(2026, 0, 1, clock.hour, clock.minute));
+  const time = new Intl.DateTimeFormat("en-US", {
+    hour: "numeric",
+    minute: clock.minute === 0 ? undefined : "2-digit",
+    hour12: true,
+    timeZone: "UTC",
+  })
+    .format(date)
+    .replace(/\s/g, "");
+
+  return `${weekday} at ${time}`;
+}
+
 export function formatSchedulePreview(game) {
   const schedule = getGameSchedule(game);
   if (!schedule) return "";

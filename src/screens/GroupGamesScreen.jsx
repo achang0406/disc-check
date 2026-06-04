@@ -4,6 +4,7 @@ import AppHeader from "../components/layout/AppHeader.jsx";
 import GameCommitCard from "../components/games/GameCommitCard.jsx";
 import GameChatThread from "../components/presence/GameChatThread.jsx";
 import GroupChatPushButton from "../components/games/GroupChatPushButton.jsx";
+import EditIcon from "../components/ui/EditIcon.jsx";
 import Button from "../components/ui/Button.jsx";
 import { gamesForGroup } from "../lib/data.js";
 import { useGameClock } from "../hooks/useGameClock.js";
@@ -81,7 +82,6 @@ export default function GroupGamesScreen({
         onAdminLoginClick={onAdminLoginClick}
         onAdminLogout={onAdminLogout}
         onAddGame={onAddGame}
-        onEditGroup={onEditGroup}
         showInstallLink
         leading={
           showBack ? (
@@ -99,7 +99,20 @@ export default function GroupGamesScreen({
 
       <main className="games-screen__main games-screen__main--detail">
         <div className="group-games-screen__intro">
-          <h1 className="group-games-screen__title">{group.name}</h1>
+          <div className="group-games-screen__title-row">
+            <h1 className="group-games-screen__title">{group.name}</h1>
+            {isAdmin && (
+              <Button
+                variant="icon"
+                className="game-card__edit-btn"
+                onClick={onEditGroup}
+                aria-label={`Edit ${group.name}`}
+                title={`Edit ${group.name}`}
+              >
+                <EditIcon />
+              </Button>
+            )}
+          </div>
           {group.description ? (
             <p className="group-games-screen__description">{group.description}</p>
           ) : null}
