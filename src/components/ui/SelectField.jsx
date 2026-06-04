@@ -10,6 +10,21 @@ export function formatSelectOptionLabel(option) {
   return option.label;
 }
 
+function SelectOptionLabel({ option, responsive = false }) {
+  const fullLabel = formatSelectOptionLabel(option);
+
+  if (!responsive || !option.shortLabel) {
+    return <span className="select-field__option-label">{fullLabel}</span>;
+  }
+
+  return (
+    <span className="select-field__option-label select-field__option-label--responsive">
+      <span className="select-field__label-full">{fullLabel}</span>
+      <span className="select-field__label-short">{option.shortLabel}</span>
+    </span>
+  );
+}
+
 function Chevron() {
   return (
     <svg
@@ -145,7 +160,11 @@ export default function SelectField({
         onClick={() => (open ? close() : openMenu())}
       >
         <span className={cx("select-field__value", !selected && "select-field__value--placeholder")}>
-          {selected ? formatSelectOptionLabel(selected) : placeholder}
+          {selected ? (
+            <SelectOptionLabel option={selected} responsive />
+          ) : (
+            placeholder
+          )}
         </span>
         <Chevron />
       </button>
@@ -172,7 +191,7 @@ export default function SelectField({
                   onMouseEnter={() => setHighlightIndex(index)}
                   onClick={() => selectOption(option)}
                 >
-                  <span className="select-field__option-label">{formatSelectOptionLabel(option)}</span>
+                  <SelectOptionLabel option={option} />
                   {isSelected ? (
                     <span className="select-field__check" aria-hidden="true">
                       ✓

@@ -1,16 +1,22 @@
 export const DEFAULT_GAME_TIMEZONE = "America/Los_Angeles";
 
-export const WEEKDAY_OPTIONS = [
-  { value: 0, label: "Sunday" },
-  { value: 1, label: "Monday" },
-  { value: 2, label: "Tuesday" },
-  { value: 3, label: "Wednesday" },
-  { value: 4, label: "Thursday" },
-  { value: 5, label: "Friday" },
-  { value: 6, label: "Saturday" },
+export const WEEKDAY_SHORT = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+
+export const WEEKDAY_FULL = [
+  "Sunday",
+  "Monday",
+  "Tuesday",
+  "Wednesday",
+  "Thursday",
+  "Friday",
+  "Saturday",
 ];
 
-export const WEEKDAY_SHORT = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+export const WEEKDAY_OPTIONS = WEEKDAY_FULL.map((label, value) => ({
+  value,
+  label,
+  shortLabel: WEEKDAY_SHORT[value],
+}));
 
 export const GAME_TIMEZONE_OPTIONS = [
   { value: "America/Los_Angeles", label: "Pacific (PT)" },

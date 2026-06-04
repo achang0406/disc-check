@@ -60,7 +60,7 @@ export default function GameFormModal({ mode, initial, saving, onSave, onClose, 
       return;
     }
     if (!form.location.trim()) {
-      setError("Location label is required");
+      setError("Location is required");
       return;
     }
     if (form.weekday == null || form.weekday === "") {
@@ -128,7 +128,7 @@ export default function GameFormModal({ mode, initial, saving, onSave, onClose, 
       </Field>
 
       <div className="field-grid">
-        <Field label="Location label">
+        <Field label="Location">
           <input
             className="field__input"
             value={form.location}

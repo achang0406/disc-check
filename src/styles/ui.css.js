@@ -161,6 +161,7 @@ export const uiStyles = `
 
   .field__input,
   .input {
+    box-sizing: border-box;
     background: var(--input-bg);
     border: 1px solid var(--input-border);
     border-radius: var(--radius-sm);
@@ -168,8 +169,36 @@ export const uiStyles = `
     color: var(--text);
     font-size: var(--font-body);
     font-family: var(--font-sans);
+    line-height: 1.3;
+    min-height: 42px;
     width: 100%;
     outline: none;
+  }
+
+  .field__input[type="time"],
+  .field__input[type="number"],
+  .field__input[type="date"] {
+    font-family: var(--font-sans);
+    font-size: var(--font-body);
+    line-height: 1.3;
+    appearance: none;
+    -webkit-appearance: none;
+  }
+
+  .field__input[type="number"] {
+    appearance: textfield;
+    -moz-appearance: textfield;
+  }
+
+  .field__input[type="time"]::-webkit-datetime-edit,
+  .field__input[type="time"]::-webkit-datetime-edit-fields-wrapper {
+    font-family: inherit;
+    font-size: inherit;
+    line-height: inherit;
+  }
+
+  .field__input[type="time"]::-webkit-calendar-picker-indicator {
+    opacity: 0.7;
   }
 
   .field__error {
@@ -368,6 +397,8 @@ export const uiStyles = `
   .select-field {
     position: relative;
     width: 100%;
+    container-type: inline-size;
+    container-name: select-field;
   }
 
   .select-field__trigger {
@@ -375,6 +406,7 @@ export const uiStyles = `
     align-items: center;
     justify-content: space-between;
     gap: var(--space-2);
+    box-sizing: border-box;
     width: 100%;
     min-height: 42px;
     padding: var(--space-2) var(--space-3);
@@ -384,7 +416,7 @@ export const uiStyles = `
     color: var(--text);
     font-family: var(--font-sans);
     font-size: var(--font-body);
-    line-height: 1.2;
+    line-height: 1.3;
     text-align: left;
     cursor: pointer;
     appearance: none;
@@ -454,6 +486,11 @@ export const uiStyles = `
     overflow-y: auto;
   }
 
+  .field__input--textarea {
+    min-height: auto;
+    line-height: 1.5;
+  }
+
   .select-field__option {
     display: flex;
     align-items: center;
@@ -467,7 +504,7 @@ export const uiStyles = `
     color: var(--text);
     font-family: var(--font-sans);
     font-size: var(--font-body);
-    line-height: 1.2;
+    line-height: 1.3;
     text-align: left;
     cursor: pointer;
     appearance: none;
@@ -481,6 +518,24 @@ export const uiStyles = `
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+  }
+
+  .select-field__option-label--responsive .select-field__label-full {
+    display: inline;
+  }
+
+  .select-field__option-label--responsive .select-field__label-short {
+    display: none;
+  }
+
+  @container select-field (max-width: 8.75rem) {
+    .select-field__option-label--responsive .select-field__label-full {
+      display: none;
+    }
+
+    .select-field__option-label--responsive .select-field__label-short {
+      display: inline;
+    }
   }
 
   .select-field__option:hover,
@@ -997,14 +1052,21 @@ export const uiStyles = `
   @media (max-width: 767px) {
     .field__input,
     .input,
-    .phone-field__input {
-      font-size: max(16px, 1rem);
+    .phone-field__input,
+    .select-field__trigger,
+    .select-field__option {
+      font-size: max(16px, var(--font-body));
     }
 
     .field__input::placeholder,
     .input::placeholder,
     .phone-field__input::placeholder {
-      font-size: max(16px, 1rem);
+      font-size: max(16px, var(--font-body));
+    }
+
+    .field__input[type="time"]::-webkit-datetime-edit,
+    .field__input[type="time"]::-webkit-datetime-edit-fields-wrapper {
+      font-size: max(16px, var(--font-body));
     }
   }
 `;
