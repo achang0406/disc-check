@@ -1,62 +1,55 @@
 import { useEffect, useMemo, useState } from "react";
-import { BrowserRouter, Route, Routes, useMatch } from "react-router-dom";
+import { BrowserRouter, Navigate, Route, Routes, useMatch } from "react-router-dom";
 import FieldBackground from "./components/layout/FieldBackground.jsx";
 import LoadingScreen from "./components/layout/LoadingScreen.jsx";
 import Toast from "./components/layout/Toast.jsx";
 import SignUpModal from "./components/auth/SignUpModal.jsx";
 import EditProfileModal from "./components/auth/EditProfileModal.jsx";
 import AdminLoginModal from "./components/auth/AdminLoginModal.jsx";
-import PresenceLayer from "./components/presence/PresenceLayer.jsx";
 import ChatBar from "./components/presence/ChatBar.jsx";
 import GameFormModal from "./components/games/GameFormModal.jsx";
 import DeleteGameModal from "./components/games/DeleteGameModal.jsx";
+import GroupFormModal from "./components/groups/GroupFormModal.jsx";
 import { useAppData } from "./hooks/useAppData.js";
-import { useAdminActions } from "./hooks/useAdmin.js";
-import { useAdminSession } from "./hooks/useAdminSession.js";
+import { useGroupAdminActions } from "./hooks/useGroupAdmin.js";
+import { useGroupAdminSession } from "./hooks/useGroupAdminSession.js";
 import { usePresence } from "./hooks/usePresence.js";
-import { useBreakpoint } from "./hooks/useBreakpoint.js";
-import { useGameClock } from "./hooks/useGameClock.js";
 import { useTheme } from "./hooks/useTheme.js";
 import { useToast } from "./hooks/useToast.js";
 import { useServiceWorkerNavigation } from "./hooks/useServiceWorkerNavigation.js";
-import GamesLandingScreen from "./screens/GamesLandingScreen.jsx";
-import GameDetailScreen from "./screens/GameDetailScreen.jsx";
+import { useChatAlerts } from "./hooks/useChatAlerts.js";
+import GroupsLandingScreen from "./screens/GroupsLandingScreen.jsx";
+import GroupGamesScreen from "./screens/GroupGamesScreen.jsx";
 import { globalStyles } from "./styles/theme.js";
-import { isGameLive } from "./utils/gameSchedule.js";
 
 function AppRoutes() {
   const { toast, showToast } = useToast();
   useServiceWorkerNavigation();
   const { theme, toggleTheme, cssVars } = useTheme();
   const app = useAppData(showToast);
-  const { isWide, isChatCursor } = useBreakpoint();
-  const now = useGameClock();
-  const isLanding = useMatch({ path: "/", end: true });
-  const detailMatch = useMatch("/games/:gameId");
-  const gameId = detailMatch?.params?.gameId ?? null;
-  const detailGame = useMemo(
-    () => (gameId ? app.gamesMeta.find((item) => item.id === gameId) ?? null : null),
-    [gameId, app.gamesMeta],
+  const groupMatch = useMatch("/groups/:groupId");
+  const groupId = groupMatch?.params?.groupId ?? null;
+  const detailGroup = useMemo(
+    () => (groupId ? app.groupsMeta.find((item) => item.id === groupId) ?? null : null),
+    [groupId, app.groupsMeta],
   );
-  const presence = usePresence(app.profile, gameId, isChatCursor, detailGame?.name ?? "");
-  const glowUserIds = useMemo(() => {
-    if (!gameId) return new Set();
-
-    const ids = new Set((app.rsvps[gameId] || []).map((entry) => entry.userId));
-    const game = app.gamesMeta.find((item) => item.id === gameId);
-
-    if (game && isGameLive(game, now)) {
-      for (const entry of app.checkIns[gameId] || []) {
-        ids.add(entry.userId);
-      }
-    }
-
-    return ids;
-  }, [gameId, app.rsvps, app.checkIns, app.gamesMeta, now]);
-  const adminSession = useAdminSession();
-  const admin = useAdminActions({ showToast, refresh: app.refresh });
+  const presence = usePresence(app.profile, groupId, detailGroup?.name ?? "");
+  const groupAdminSession = useGroupAdminSession(groupId ?? "");
+  const groupAdmin = useGroupAdminActions({
+    groupId: groupId ?? "",
+    showToast,
+    refresh: app.refresh,
+  });
   const [loadingOverlay, setLoadingOverlay] = useState(true);
   const [loadingExiting, setLoadingExiting] = useState(false);
+
+  useChatAlerts({
+    gameId: groupId ?? "",
+    gameName: detailGroup?.name ?? "",
+    messages: presence?.messages ?? [],
+    selfId: presence?.self?.id,
+    enabled: Boolean(groupId && presence?.connected),
+  });
 
   useEffect(() => {
     if (app.loading) {
@@ -78,8 +71,9 @@ function AppRoutes() {
     setLoadingExiting(false);
   };
 
-  const detailProps = {
+  const groupScreenProps = {
     profile: app.profile,
+    groups: app.groupsMeta,
     games: app.gamesMeta,
     rsvps: app.rsvps,
     checkIns: app.checkIns,
@@ -100,129 +94,126 @@ function AppRoutes() {
     onToggleTheme: toggleTheme,
     presence,
     showToast,
+    isAdmin: groupAdminSession.isAdmin,
+    onAdminLoginClick: () => groupAdmin.setShowLogin(true),
+    onAdminLogout: groupAdminSession.logout,
+    onAddGame: groupAdmin.openCreate,
+    onEditGame: groupAdmin.openEdit,
+    onEditGroup: groupAdmin.openGroupSettings,
   };
 
   return (
     <>
       <style>{globalStyles}</style>
       {!app.loading && (
-    <div
-      className="app-shell"
-      style={{
-        ...cssVars,
-        background: "var(--bg)",
-        width: "100%",
-        fontFamily: "'DM Sans',sans-serif",
-        color: "var(--text)",
-        position: "relative",
-      }}
-    >
-      <FieldBackground />
-      {detailMatch && (
-        <PresenceLayer
-          others={presence.others}
-          self={presence.self}
-          cursor={presence.cursor}
-          localChat={presence.localChat}
-          draft={presence.draft}
-          connected={presence.connected}
-          isChatCursor={presence.isChatCursor}
-          rsvpUserIds={glowUserIds}
-        />
-      )}
-      <Toast toast={toast} />
-
-      {app.showSignUp && (
-        <SignUpModal
-          saving={!!app.savingGameId}
-          onSubmit={app.handleSignUp}
-          onClose={app.closeSignUp}
-          onLookupPhone={app.lookupProfileByPhone}
-        />
-      )}
-
-      {app.showEditProfile && app.profile && (
-        <EditProfileModal
-          profile={app.profile}
-          saving={app.savingGameId === "profile"}
-          onSubmit={app.handleUpdateProfile}
-          onClose={app.closeEditProfile}
-          onValidatePhone={app.validatePhoneForProfile}
-          onLookupPhone={app.lookupProfileByPhone}
-          onRecoverProfile={app.handleRecoverProfile}
-        />
-      )}
-
-      {isLanding && admin.showLogin && (
-        <AdminLoginModal
-          saving={false}
-          onSubmit={async (passcode) => {
-            const ok = await adminSession.login(passcode);
-            if (ok) admin.setShowLogin(false);
-            return ok;
+        <div
+          className="app-shell"
+          style={{
+            ...cssVars,
+            background: "var(--bg)",
+            width: "100%",
+            fontFamily: "'DM Sans',sans-serif",
+            color: "var(--text)",
+            position: "relative",
           }}
-          onClose={() => admin.setShowLogin(false)}
-        />
-      )}
+        >
+          <FieldBackground />
+          <Toast toast={toast} />
 
-      {isLanding && admin.modal && (
-        <GameFormModal
-          mode={admin.modal.mode}
-          initial={admin.modal.mode === "edit" ? admin.modal.game : null}
-          saving={admin.saving}
-          onSave={admin.saveGame}
-          onClose={admin.closeModal}
-          onDelete={admin.modal.mode === "edit" ? admin.requestDelete : undefined}
-        />
-      )}
-
-      {isLanding && admin.deleteTarget && (
-        <DeleteGameModal
-          game={admin.deleteTarget}
-          saving={admin.saving}
-          onConfirm={admin.executeDelete}
-          onClose={admin.closeDelete}
-        />
-      )}
-
-      <Routes>
-        <Route
-          path="/"
-          element={
-            <GamesLandingScreen
-              profile={app.profile}
-              games={app.gamesMeta}
-              rsvps={app.rsvps}
-              checkIns={app.checkIns}
-              guests={app.guests}
-              isRsvpd={app.isRsvpd}
-              isCheckedIn={app.isCheckedIn}
-              onProfileClick={app.openEditProfile}
-              theme={theme}
-              onToggleTheme={toggleTheme}
-              adminAvailable={adminSession.adminAvailable}
-              isAdmin={adminSession.isAdmin}
-              onAdminLoginClick={() => admin.setShowLogin(true)}
-              onAdminLogout={adminSession.logout}
-              onAddGame={admin.openCreate}
-              onEditGame={admin.openEdit}
+          {app.showSignUp && (
+            <SignUpModal
+              saving={!!app.savingGameId}
+              onSubmit={app.handleSignUp}
+              onClose={app.closeSignUp}
+              onLookupPhone={app.lookupProfileByPhone}
             />
-          }
-        />
-        <Route path="/games/:gameId" element={<GameDetailScreen {...detailProps} />} />
-      </Routes>
+          )}
 
-      {detailMatch && (
-        <ChatBar
-          isChatCursor={presence.isChatCursor}
-          inputRef={presence.chatInputRef}
-          value={presence.draft}
-          onChange={presence.setThreadDraft}
-          onSend={presence.sendChat}
-          connected={presence.connected}
-        />
-      )}
-    </div>
+          {app.showEditProfile && app.profile && (
+            <EditProfileModal
+              profile={app.profile}
+              saving={app.savingGameId === "profile"}
+              onSubmit={app.handleUpdateProfile}
+              onClose={app.closeEditProfile}
+              onValidatePhone={app.validatePhoneForProfile}
+              onLookupPhone={app.lookupProfileByPhone}
+              onRecoverProfile={app.handleRecoverProfile}
+            />
+          )}
+
+          {groupMatch && groupAdmin.showLogin && (
+            <AdminLoginModal
+              saving={false}
+              title="Group admin"
+              description="Enter this group's admin passcode."
+              onSubmit={async (passcode) => {
+                const ok = await groupAdminSession.login(passcode);
+                if (ok) groupAdmin.setShowLogin(false);
+                return ok;
+              }}
+              onClose={() => groupAdmin.setShowLogin(false)}
+            />
+          )}
+
+          {groupMatch && groupAdmin.groupModal && detailGroup && (
+            <GroupFormModal
+              group={detailGroup}
+              saving={groupAdmin.saving}
+              onSave={groupAdmin.saveGroup}
+              onClose={groupAdmin.closeGroupModal}
+            />
+          )}
+
+          {groupMatch && groupAdmin.gameModal && (
+            <GameFormModal
+              mode={groupAdmin.gameModal.mode}
+              initial={groupAdmin.gameModal.mode === "edit" ? groupAdmin.gameModal.game : null}
+              saving={groupAdmin.saving}
+              onSave={groupAdmin.saveGame}
+              onClose={groupAdmin.closeGameModal}
+              onDelete={
+                groupAdmin.gameModal.mode === "edit" ? groupAdmin.requestDelete : undefined
+              }
+            />
+          )}
+
+          {groupMatch && groupAdmin.deleteTarget && (
+            <DeleteGameModal
+              game={groupAdmin.deleteTarget}
+              saving={groupAdmin.saving}
+              onConfirm={groupAdmin.executeDelete}
+              onClose={groupAdmin.closeDelete}
+            />
+          )}
+
+          <Routes>
+            <Route
+              path="/"
+              element={
+                <GroupsLandingScreen
+                  profile={app.profile}
+                  groups={app.groupsMeta}
+                  games={app.gamesMeta}
+                  onProfileClick={app.openEditProfile}
+                  theme={theme}
+                  onToggleTheme={toggleTheme}
+                />
+              }
+            />
+            <Route path="/groups/:groupId" element={<GroupGamesScreen {...groupScreenProps} />} />
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
+
+          {groupMatch && (
+            <ChatBar
+              inputRef={presence.chatInputRef}
+              value={presence.draft}
+              onChange={presence.setThreadDraft}
+              onSend={presence.sendChat}
+              connected={presence.connected}
+            />
+          )}
+        </div>
       )}
       {loadingOverlay && (
         <LoadingScreen

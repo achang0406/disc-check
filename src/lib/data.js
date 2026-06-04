@@ -7,9 +7,18 @@ import {
   parseStartTime,
 } from "../utils/gameSchedule.js";
 
+function formatGroup(row) {
+  return {
+    id: row.id,
+    name: row.name,
+    description: row.description ?? null,
+  };
+}
+
 function formatGame(row) {
   return {
     id: row.id,
+    groupId: row.group_id,
     name: row.name,
     location: row.location,
     address: row.address ?? null,
@@ -79,6 +88,7 @@ function toRpcGame(game) {
 
   return {
     id: game.id,
+    group_id: game.groupId ?? game.group_id,
     name: game.name?.trim(),
     location: game.location?.trim(),
     address: game.address?.trim() || null,
@@ -198,6 +208,21 @@ export async function syncProfileToServer(profile, { previousPhone } = {}) {
   };
 }
 
+export async function updateGroup(secret, group) {
+  const supabase = getSupabase();
+  const { error } = await supabase.rpc("admin_upsert_group", {
+    p_secret: secret,
+    p_group: {
+      id: group.id,
+      name: group.name?.trim(),
+      description: group.description?.trim() || null,
+      admin_passcode: group.adminPasscode?.trim() || null,
+    },
+  });
+  if (error) throw error;
+  return fetchAppData();
+}
+
 export async function createGame(secret, payload) {
   const supabase = getSupabase();
   const game = { ...payload, id: newGameId() };
@@ -234,6 +259,14 @@ let appDataFetchSeq = 0;
 export async function fetchAppData() {
   const fetchSeq = ++appDataFetchSeq;
   const supabase = getSupabase();
+
+  const groupsResult = await supabase
+    .from("groups")
+    .select("id, name, description, created_at")
+    .order("created_at", { ascending: true })
+    .order("id", { ascending: true });
+
+  if (groupsResult.error) throw groupsResult.error;
 
   const gamesResult = await supabase
     .from("games")
@@ -286,12 +319,17 @@ export async function fetchAppData() {
   });
 
   return {
+    groups: (groupsResult.data || []).map(formatGroup),
     games,
     rsvps: groupRsvps(activeRsvpRows),
     checkIns: groupCheckIns(activeCheckIns),
     guests: groupGuests(activeGuests),
     fetchSeq,
   };
+}
+
+export function gamesForGroup(games, groupId) {
+  return games.filter((game) => game.groupId === groupId);
 }
 
 export async function upsertRsvp({ gameId, userId, name, plusOnes, bringingKit = false }) {
@@ -489,6 +527,24 @@ function createDebouncedAppDataRefresh(onChange, delayMs = 250) {
           // Keep last known data if a refresh fails temporarily.
         });
     }, delayMs);
+  };
+}
+
+export function subscribeToGroups(onChange) {
+  const supabase = getSupabase();
+  const refresh = createDebouncedAppDataRefresh(onChange);
+
+  const channel = supabase
+    .channel("disc-check:groups")
+    .on(
+      "postgres_changes",
+      { event: "*", schema: "public", table: "groups" },
+      refresh,
+    )
+    .subscribe();
+
+  return () => {
+    supabase.removeChannel(channel);
   };
 }
 

@@ -1267,6 +1267,81 @@ export const globalStyles = `
     padding-top: var(--space-3);
   }
 
+  .group-list-item__description {
+    margin: 0 0 var(--space-2);
+    color: var(--text-subtle);
+    font-size: 14px;
+    line-height: 1.45;
+  }
+
+  .group-list-item__summary {
+    margin: 0;
+    color: var(--text-faint);
+    font-size: 13px;
+    font-family: var(--font-mono);
+  }
+
+  .group-games-screen__intro {
+    width: 100%;
+    max-width: var(--layout-max);
+    margin-bottom: var(--space-3);
+  }
+
+  .group-games-screen__title {
+    margin: 0 0 var(--space-1);
+    font-size: 22px;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+  }
+
+  .group-games-screen__description {
+    margin: 0 0 var(--space-2);
+    color: var(--text-subtle);
+    font-size: 15px;
+    line-height: 1.5;
+    max-width: 60ch;
+  }
+
+  .group-games-screen__bell {
+    display: flex;
+    justify-content: flex-start;
+  }
+
+  .group-games-screen__cards {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+    width: 100%;
+  }
+
+  .group-games-screen__empty {
+    margin: 0;
+    color: var(--text-subtle);
+    font-size: 15px;
+  }
+
+  .game-commit-card {
+    position: relative;
+  }
+
+  .game-commit-card__admin {
+    position: absolute;
+    top: var(--space-2);
+    right: var(--space-2);
+    z-index: 2;
+  }
+
+  .games-screen__admin-menu-actions {
+    display: flex;
+    align-items: center;
+    gap: var(--space-1);
+  }
+
+  .games-screen__admin-menu-btn {
+    font-size: 12px;
+    padding: 4px 8px;
+  }
+
   .install-app-link {
     margin: 0;
     padding: 0;

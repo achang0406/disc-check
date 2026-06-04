@@ -62,8 +62,8 @@ async function getBrowserPushEndpoint() {
   }
 }
 
-async function findPushRegistration({ gameId, subscriberId }) {
-  if (!isSupabaseConfigured() || !gameId) return null;
+async function findPushRegistration({ groupId, subscriberId }) {
+  if (!isSupabaseConfigured() || !groupId) return null;
 
   const supabase = getSupabase();
 
@@ -71,7 +71,7 @@ async function findPushRegistration({ gameId, subscriberId }) {
     const { data } = await supabase
       .from("push_subscriptions")
       .select("id, notifications_enabled")
-      .eq("game_id", gameId)
+      .eq("group_id", groupId)
       .eq("subscriber_id", subscriberId)
       .maybeSingle();
     if (data) return data;
@@ -83,22 +83,22 @@ async function findPushRegistration({ gameId, subscriberId }) {
   const { data } = await supabase
     .from("push_subscriptions")
     .select("id, notifications_enabled")
-    .eq("game_id", gameId)
+    .eq("group_id", groupId)
     .eq("endpoint", endpoint)
     .maybeSingle();
 
   return data ?? null;
 }
 
-/** Whether visible chat alerts (bell) are on for this game. */
-export async function isSubscribedToGameChatPush({ gameId, subscriberId }) {
-  if (!gameId) return false;
-  const row = await findPushRegistration({ gameId, subscriberId });
+/** Whether visible chat alerts (bell) are on for this group. */
+export async function isSubscribedToGroupChatPush({ groupId, subscriberId }) {
+  if (!groupId) return false;
+  const row = await findPushRegistration({ groupId, subscriberId });
   return row?.notifications_enabled === true;
 }
 
-async function setNotificationsEnabled({ gameId, subscriberId, enabled }) {
-  if (!isSupabaseConfigured() || !gameId) return false;
+async function setNotificationsEnabled({ groupId, subscriberId, enabled }) {
+  if (!isSupabaseConfigured() || !groupId) return false;
 
   const supabase = getSupabase();
   const endpoint = await getBrowserPushEndpoint();
@@ -108,7 +108,7 @@ async function setNotificationsEnabled({ gameId, subscriberId, enabled }) {
     const { data, error } = await supabase
       .from("push_subscriptions")
       .update({ notifications_enabled: enabled, updated_at: new Date().toISOString() })
-      .eq("game_id", gameId)
+      .eq("group_id", groupId)
       .eq("subscriber_id", subscriberId)
       .select("id");
     if (!error && data?.length > 0) {
@@ -120,7 +120,7 @@ async function setNotificationsEnabled({ gameId, subscriberId, enabled }) {
     const { data, error } = await supabase
       .from("push_subscriptions")
       .update({ notifications_enabled: enabled, updated_at: new Date().toISOString() })
-      .eq("game_id", gameId)
+      .eq("group_id", groupId)
       .eq("endpoint", endpoint)
       .select("id");
     if (!error && data?.length > 0) {
@@ -131,12 +131,12 @@ async function setNotificationsEnabled({ gameId, subscriberId, enabled }) {
   return updated;
 }
 
-async function savePushSubscription({ gameId, subscriberId, subscription, notificationsEnabled }) {
+async function savePushSubscription({ groupId, subscriberId, subscription, notificationsEnabled }) {
   if (!isSupabaseConfigured()) return false;
 
   const supabase = getSupabase();
   const json = subscription.toJSON();
-  const existing = await findPushRegistration({ gameId, subscriberId });
+  const existing = await findPushRegistration({ groupId, subscriberId });
   const enabled =
     typeof notificationsEnabled === "boolean"
       ? notificationsEnabled
@@ -144,7 +144,7 @@ async function savePushSubscription({ gameId, subscriberId, subscription, notifi
 
   const { error } = await supabase.from("push_subscriptions").upsert(
     {
-      game_id: gameId,
+      group_id: groupId,
       subscriber_id: subscriberId,
       endpoint: json.endpoint,
       subscription: json,
@@ -187,8 +187,8 @@ async function ensureBrowserPushSubscription() {
   }
 }
 
-export async function ensureChatPushRegistration({ gameId, subscriberId }) {
-  if (!gameId || !subscriberId || !isWebPushSupported()) {
+export async function ensureChatPushRegistration({ groupId, subscriberId }) {
+  if (!groupId || !subscriberId || !isWebPushSupported()) {
     return false;
   }
 
@@ -196,58 +196,58 @@ export async function ensureChatPushRegistration({ gameId, subscriberId }) {
   if (!subscription) return false;
 
   return savePushSubscription({
-    gameId,
+    groupId,
     subscriberId,
     subscription,
     notificationsEnabled: true,
   });
 }
 
-export async function subscribeToGameChatPush({ gameId, subscriberId }) {
+export async function subscribeToGroupChatPush({ groupId, subscriberId }) {
   const support = getWebPushSupportState();
   if (!support.supported) {
     return { ok: false, reason: support.reason };
   }
 
-  if (!gameId || !subscriberId) {
+  if (!groupId || !subscriberId) {
     return { ok: false, reason: "missing-identity" };
   }
 
-  const saved = await ensureChatPushRegistration({ gameId, subscriberId });
+  const saved = await ensureChatPushRegistration({ groupId, subscriberId });
   return { ok: saved, reason: saved ? null : "subscribe-failed" };
 }
 
-export async function unsubscribeFromGameChatPush({ gameId, subscriberId }) {
-  if (!gameId) {
+export async function unsubscribeFromGroupChatPush({ groupId, subscriberId }) {
+  if (!groupId) {
     return { ok: false, reason: "missing-identity" };
   }
 
-  await setNotificationsEnabled({ gameId, subscriberId, enabled: false });
+  await setNotificationsEnabled({ groupId, subscriberId, enabled: false });
   return { ok: true, reason: null };
 }
 
 export async function notifyChatPush({
-  gameId,
+  groupId,
   senderId,
   senderName,
   senderColor,
   text,
   messageId,
-  gameName,
+  groupName,
   createdAt,
 }) {
-  if (!isSupabaseConfigured() || !gameId || !senderId || !text) return;
+  if (!isSupabaseConfigured() || !groupId || !senderId || !text) return;
 
   const supabase = getSupabase();
   const { error } = await supabase.functions.invoke("notify-chat", {
     body: {
-      gameId,
+      groupId,
       senderId,
       senderName,
       senderColor,
       text,
       messageId,
-      gameName,
+      groupName,
       createdAt,
     },
   });

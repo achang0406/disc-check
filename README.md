@@ -1,6 +1,6 @@
 # DiscCheck
 
-DiscCheck is a lightweight web app for tracking ultimate frisbee pickup games. Browse games, RSVP with plus-ones, and see at a glance whether a game has enough signups to run.
+DiscCheck is a lightweight web app for tracking ultimate frisbee pickup games. Browse **groups**, RSVP to weekly games with plus-ones, and chat with your pickup community in one thread per group.
 
 Game and RSVP data live in **Supabase Postgres**. Live cursors, chat, and RSVP updates use **Supabase Realtime** (free tier). Player profiles stay in the browser.
 
@@ -30,10 +30,10 @@ From Supabase **Settings → API**, copy into `.env.local`:
 |----------|--------|
 | `VITE_SUPABASE_URL` | Project URL |
 | `VITE_SUPABASE_ANON_KEY` | anon public key |
-| `VITE_ADMIN_PASSCODE` | shared admin passcode (optional) |
+| `GROUP_ADMIN_PASSCODE` | override default group passcode when seeding (optional) |
 | `SUPABASE_SERVICE_ROLE_KEY` | service_role key (seed only) |
 
-### 3. Seed games
+### 3. Seed groups and games
 
 ```bash
 npm install
@@ -50,11 +50,11 @@ Open `http://localhost:5173`. Supabase env vars are required for game and RSVP d
 
 ## Admin
 
-Set `VITE_ADMIN_PASSCODE` in `.env.local` and on Vercel. Run `npm run db:seed` to sync the passcode into Supabase `app_config` (required for game create/edit/delete RPCs).
+Each group has its own admin passcode (seeded via `scripts/seed-data.mjs` or `GROUP_ADMIN_PASSCODE`). After applying migrations, run `npm run db:seed`.
 
-On the games screen, tap the lock icon in the header and enter the passcode. Admins see **+ Add game**, **Edit**, and **Delete** controls on each card. Changes sync live to all viewers via Supabase Realtime.
+On a **group page**, tap the DiscCheck title five times and enter that group's passcode. Admins can **Edit group**, **+ Add game**, and edit/delete games in that group only.
 
-The passcode is included in the client bundle (`VITE_*`) — suitable for a trusted pickup group, not multi-tenant security.
+Passcodes are verified server-side via Supabase RPCs — suitable for a trusted pickup community, not multi-tenant security.
 
 ## Deploy to Vercel
 

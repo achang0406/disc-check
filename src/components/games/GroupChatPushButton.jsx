@@ -2,9 +2,9 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import {
   canShowChatPushBell,
   getWebPushSupportState,
-  isSubscribedToGameChatPush,
-  subscribeToGameChatPush,
-  unsubscribeFromGameChatPush,
+  isSubscribedToGroupChatPush,
+  subscribeToGroupChatPush,
+  unsubscribeFromGroupChatPush,
 } from "../../lib/push.js";
 
 const HINT_PEEK_MS = 3000;
@@ -52,7 +52,7 @@ function getHintText({ subscribed, errorReason }) {
   return "Chat alerts off";
 }
 
-export default function GameChatPushButton({ gameId = "", subscriberId = "" }) {
+export default function GroupChatPushButton({ groupId = "", subscriberId = "" }) {
   const [subscribed, setSubscribed] = useState(null);
   const [busy, setBusy] = useState(false);
   const [errorReason, setErrorReason] = useState(null);
@@ -80,42 +80,42 @@ export default function GameChatPushButton({ gameId = "", subscriberId = "" }) {
   useEffect(() => () => clearPeekTimer(), [clearPeekTimer]);
 
   const refresh = useCallback(async () => {
-    if (!gameId) {
+    if (!groupId) {
       setSubscribed(false);
       return;
     }
-    const active = await isSubscribedToGameChatPush({ gameId, subscriberId });
+    const active = await isSubscribedToGroupChatPush({ groupId, subscriberId });
     setSubscribed(active);
-  }, [gameId, subscriberId]);
+  }, [groupId, subscriberId]);
 
   useEffect(() => {
     let cancelled = false;
     void (async () => {
-      if (!gameId) {
+      if (!groupId) {
         if (!cancelled) setSubscribed(false);
         return;
       }
-      const active = await isSubscribedToGameChatPush({ gameId, subscriberId });
+      const active = await isSubscribedToGroupChatPush({ groupId, subscriberId });
       if (!cancelled) setSubscribed(active);
     })();
     return () => {
       cancelled = true;
     };
-  }, [gameId, subscriberId]);
+  }, [groupId, subscriberId]);
 
   if (!canShowChatPushBell()) {
     return null;
   }
 
   const handleClick = async () => {
-    if (!gameId || busy || subscribed === null) return;
+    if (!groupId || busy || subscribed === null) return;
 
     if (subscribed) {
       setBusy(true);
       setSubscribed(false);
       setErrorReason(null);
       try {
-        await unsubscribeFromGameChatPush({ gameId, subscriberId });
+        await unsubscribeFromGroupChatPush({ groupId, subscriberId });
         peekHint();
       } catch {
         await refresh();
@@ -134,7 +134,7 @@ export default function GameChatPushButton({ gameId = "", subscriberId = "" }) {
     setBusy(true);
     setErrorReason(null);
     try {
-      const result = await subscribeToGameChatPush({ gameId, subscriberId });
+      const result = await subscribeToGroupChatPush({ groupId, subscriberId });
       if (result.ok) {
         setSubscribed(true);
         peekHint();
@@ -158,7 +158,7 @@ export default function GameChatPushButton({ gameId = "", subscriberId = "" }) {
 
   const hint = getHintText({ subscribed, errorReason });
   const hintVisible = hovering || peeking;
-  const hintId = `game-chat-push-hint-${gameId}`;
+  const hintId = `group-chat-push-hint-${groupId}`;
 
   return (
     <div
@@ -172,11 +172,7 @@ export default function GameChatPushButton({ gameId = "", subscriberId = "" }) {
       onMouseEnter={() => setHovering(true)}
       onMouseLeave={() => setHovering(false)}
     >
-      <p
-        id={hintId}
-        className="game-chat-push__hint"
-        aria-hidden={!hintVisible}
-      >
+      <p id={hintId} className="game-chat-push__hint" aria-hidden={!hintVisible}>
         {hint}
       </p>
       <button

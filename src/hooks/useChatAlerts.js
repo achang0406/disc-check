@@ -10,6 +10,7 @@ function truncate(text, max = 48) {
 }
 
 export function useChatAlerts({ gameId, gameName, messages, selfId, enabled = true }) {
+  const contextId = gameId;
   const unreadRef = useRef(0);
   const seenCountRef = useRef(0);
 
@@ -21,7 +22,7 @@ export function useChatAlerts({ gameId, gameName, messages, selfId, enabled = tr
     return () => {
       document.title = BASE_TITLE;
     };
-  }, [gameId]);
+  }, [contextId]);
 
   useEffect(() => {
     if (!enabled) return undefined;
@@ -41,7 +42,7 @@ export function useChatAlerts({ gameId, gameName, messages, selfId, enabled = tr
       document.removeEventListener("visibilitychange", clearUnread);
       window.removeEventListener("focus", clearUnread);
     };
-  }, [enabled, gameId]);
+  }, [enabled, contextId]);
 
   useEffect(() => {
     if (!enabled || !selfId) return;
@@ -61,7 +62,7 @@ export function useChatAlerts({ gameId, gameName, messages, selfId, enabled = tr
     if (incoming.length === 0) return;
 
     const latest = incoming[incoming.length - 1];
-    const context = gameName?.trim() || "game chat";
+    const context = gameName?.trim() || "group chat";
     const preview = truncate(latest.text);
 
     if (document.hidden) {
@@ -78,12 +79,12 @@ export function useChatAlerts({ gameId, gameName, messages, selfId, enabled = tr
         for (const message of incoming) {
           new Notification(`${message.name} · ${context}`, {
             body: message.text,
-            tag: `disc-check-chat-${gameId}-${message.id}`,
+            tag: `disc-check-chat-${contextId}-${message.id}`,
           });
         }
       }
     }
-  }, [enabled, gameId, gameName, messages, selfId]);
+  }, [enabled, contextId, gameName, messages, selfId]);
 }
 
 export async function requestChatNotificationPermission() {

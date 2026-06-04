@@ -207,6 +207,28 @@ export function sortGamesForLanding(games, now = new Date()) {
   return [...games].sort((a, b) => compareGamesForLanding(a, b, now));
 }
 
+export function sortGroupsForLanding(groups, games, now = new Date()) {
+  const gamesByGroup = new Map();
+  for (const game of games) {
+    if (!gamesByGroup.has(game.groupId)) {
+      gamesByGroup.set(game.groupId, []);
+    }
+    gamesByGroup.get(game.groupId).push(game);
+  }
+
+  const rank = (group) => {
+    const childGames = sortGamesForLanding(gamesByGroup.get(group.id) || [], now);
+    if (childGames.length === 0) return Number.POSITIVE_INFINITY;
+    return getOccurrenceStartMs(childGames[0], now);
+  };
+
+  return [...groups].sort((a, b) => {
+    const diff = rank(a) - rank(b);
+    if (diff !== 0) return diff;
+    return a.name.localeCompare(b.name);
+  });
+}
+
 function formatYmdInTimeZone(instant, timeZone) {
   return new Intl.DateTimeFormat("en-CA", {
     timeZone,

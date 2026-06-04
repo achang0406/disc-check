@@ -1,6 +1,16 @@
+export const SEED_GROUPS = [
+  {
+    id: "default",
+    name: "Kirkland Disc",
+    description: "Weekly pickup games in Kirkland.",
+    adminPasscode: "disc-check-dev",
+  },
+];
+
 export const SEED_GAMES = [
   {
     id: "g1",
+    groupId: "default",
     name: "Wednesday Night Disc",
     location: "Heritage Park",
     address: "11100 NE 68th St, Kirkland, WA 98033",

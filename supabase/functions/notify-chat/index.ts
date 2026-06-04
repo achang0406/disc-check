@@ -34,9 +34,9 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const { gameId, senderId, senderName, text, messageId, gameName } = await req.json();
+    const { groupId, senderId, senderName, text, messageId, groupName } = await req.json();
 
-    if (!gameId || !senderId || !text) {
+    if (!groupId || !senderId || !text) {
       return jsonResponse({ error: "Missing required fields" }, 400);
     }
 
@@ -48,7 +48,7 @@ Deno.serve(async (req) => {
     const { data: subscriptions, error: subsError } = await supabase
       .from("push_subscriptions")
       .select("id, endpoint, subscription")
-      .eq("game_id", gameId)
+      .eq("group_id", groupId)
       .eq("notifications_enabled", true)
       .neq("subscriber_id", senderId);
 
@@ -58,7 +58,7 @@ Deno.serve(async (req) => {
 
     webpush.setVapidDetails(vapidSubject, vapidPublicKey, vapidPrivateKey);
 
-    const context = typeof gameName === "string" && gameName.trim() ? gameName.trim() : "game chat";
+    const context = typeof groupName === "string" && groupName.trim() ? groupName.trim() : "group chat";
     const title = `${senderName || "Someone"} · ${context}`;
     const resolvedMessageId = messageId || `${senderId}-${Date.now()}`;
     let sent = 0;
@@ -68,9 +68,9 @@ Deno.serve(async (req) => {
       const payload = JSON.stringify({
         title,
         body: text,
-        tag: `disc-check-chat-${gameId}-${resolvedMessageId}`,
-        url: `/games/${gameId}`,
-        gameId,
+        tag: `disc-check-chat-${groupId}-${resolvedMessageId}`,
+        url: `/groups/${groupId}`,
+        groupId,
       });
 
       try {

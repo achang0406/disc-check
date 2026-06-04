@@ -1,6 +1,6 @@
 import dotenv from "dotenv";
 import { createClient } from "@supabase/supabase-js";
-import { SEED_GAMES } from "./seed-data.mjs";
+import { SEED_GAMES, SEED_GROUPS } from "./seed-data.mjs";
 
 dotenv.config({ path: ".env.local" });
 dotenv.config();
@@ -15,9 +15,27 @@ if (!url || !serviceKey) {
 
 const supabase = createClient(url, serviceKey);
 
+const passcodeOverride = process.env.GROUP_ADMIN_PASSCODE || process.env.VITE_ADMIN_PASSCODE;
+
+const groupsResult = await supabase.from("groups").upsert(
+  SEED_GROUPS.map((group) => ({
+    id: group.id,
+    name: group.name,
+    description: group.description ?? null,
+    admin_passcode: passcodeOverride || group.adminPasscode,
+  })),
+  { onConflict: "id" },
+);
+
+if (groupsResult.error) {
+  console.error("Group seed failed:", groupsResult.error.message);
+  process.exit(1);
+}
+
 const { error } = await supabase.from("games").upsert(
   SEED_GAMES.map((game) => ({
     id: game.id,
+    group_id: game.groupId,
     name: game.name,
     location: game.location,
     address: game.address ?? null,
@@ -36,17 +54,4 @@ if (error) {
   process.exit(1);
 }
 
-const adminPasscode = process.env.VITE_ADMIN_PASSCODE || process.env.ADMIN_PASSCODE;
-if (adminPasscode) {
-  const configResult = await supabase.from("app_config").upsert(
-    { key: "admin_passcode", value: adminPasscode },
-    { onConflict: "key" },
-  );
-  if (configResult.error) {
-    console.error("Admin passcode seed failed:", configResult.error.message);
-    process.exit(1);
-  }
-  console.log("Seeded admin passcode.");
-}
-
-console.log(`Seeded ${SEED_GAMES.length} game(s).`);
+console.log(`Seeded ${SEED_GROUPS.length} group(s) and ${SEED_GAMES.length} game(s).`);

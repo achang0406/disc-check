@@ -3,7 +3,13 @@ import Button from "../ui/Button.jsx";
 import Field from "../ui/Field.jsx";
 import ModalShell from "../ui/ModalShell.jsx";
 
-export default function AdminLoginModal({ saving, onSubmit, onClose }) {
+export default function AdminLoginModal({
+  saving,
+  onSubmit,
+  onClose,
+  title = "Admin access",
+  description = "Enter the passcode to manage games",
+}) {
   const [passcode, setPasscode] = useState("");
   const [error, setError] = useState("");
 
@@ -21,8 +27,8 @@ export default function AdminLoginModal({ saving, onSubmit, onClose }) {
 
   return (
     <ModalShell
-      title="Admin access"
-      description="Enter the passcode to manage games"
+      title={title}
+      description={description}
       onClose={onClose}
       footer={
         <>

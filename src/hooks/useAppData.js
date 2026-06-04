@@ -10,6 +10,7 @@ import {
   isSupabaseConfigured,
   subscribeToCheckIns,
   subscribeToGames,
+  subscribeToGroups,
   subscribeToGuests,
   subscribeToRsvps,
   syncProfileToServer,
@@ -71,12 +72,16 @@ async function syncProfileFromServer(localProfile) {
 }
 
 function applyData(
-  { games, rsvps, checkIns, guests },
+  { groups, games, rsvps, checkIns, guests },
+  setGroupsMeta,
   setGamesMeta,
   setRsvps,
   setCheckIns,
   setGuests,
 ) {
+  if (groups) {
+    setGroupsMeta(groups);
+  }
   if (games) {
     setGamesMeta(games);
   }
@@ -103,6 +108,7 @@ function shouldApplyServerData(data, latestFetchSeqRef) {
 
 export function useAppData(showToast) {
   const [profile, setProfile] = useState(null);
+  const [groupsMeta, setGroupsMeta] = useState([]);
   const [gamesMeta, setGamesMeta] = useState([]);
   const [rsvps, setRsvps] = useState({});
   const [checkIns, setCheckIns] = useState({});
@@ -122,7 +128,7 @@ export function useAppData(showToast) {
 
   const applyServerData = useCallback((data) => {
     if (!shouldApplyServerData(data, latestFetchSeqRef)) return;
-    applyData(data, setGamesMeta, setRsvps, setCheckIns, setGuests);
+    applyData(data, setGroupsMeta, setGamesMeta, setRsvps, setCheckIns, setGuests);
   }, []);
 
   useEffect(() => {
@@ -151,7 +157,7 @@ export function useAppData(showToast) {
         applyServerData(data);
       } catch {
         if (!cancelled) {
-          showToast("Couldn't load games — try again", "error");
+          showToast("Couldn't load data — try again", "error");
         }
       } finally {
         if (!cancelled) setLoading(false);
@@ -235,10 +241,18 @@ export function useAppData(showToast) {
   useEffect(() => {
     if (!useSupabaseRef.current) return undefined;
 
+    return subscribeToGroups((data) => {
+      applyServerData(data);
+    });
+  }, [applyServerData]);
+
+  useEffect(() => {
+    if (!useSupabaseRef.current) return undefined;
+
     return subscribeToGames((data) => {
       applyServerData(data);
     });
-  }, []);
+  }, [applyServerData]);
 
   const refresh = useCallback(async () => {
     if (!useSupabaseRef.current) return;
@@ -753,6 +767,7 @@ export function useAppData(showToast) {
 
   return {
     profile,
+    groupsMeta,
     gamesMeta,
     rsvps,
     checkIns,

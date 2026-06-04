@@ -41,6 +41,7 @@ export default function AppHeader({
   onAdminLoginClick,
   onAdminLogout,
   onAddGame,
+  onEditGroup,
   showAdmin = false,
   showInstallLink = false,
   leading,
@@ -156,15 +157,29 @@ export default function AppHeader({
                 ADMIN
               </button>
               {adminMenuOpen && (
-                <Button
-                  variant="icon"
-                  className="games-screen__admin-link"
-                  onClick={handleAdminLogout}
-                  aria-label="Sign out"
-                  title="Sign out"
-                >
-                  <LogoutIcon />
-                </Button>
+                <div className="games-screen__admin-menu-actions">
+                  {onEditGroup && (
+                    <Button
+                      variant="ghost"
+                      className="games-screen__admin-menu-btn"
+                      onClick={() => {
+                        setAdminMenuOpen(false);
+                        onEditGroup();
+                      }}
+                    >
+                      Edit group
+                    </Button>
+                  )}
+                  <Button
+                    variant="icon"
+                    className="games-screen__admin-link"
+                    onClick={handleAdminLogout}
+                    aria-label="Sign out"
+                    title="Sign out"
+                  >
+                    <LogoutIcon />
+                  </Button>
+                </div>
               )}
             </div>
           )}

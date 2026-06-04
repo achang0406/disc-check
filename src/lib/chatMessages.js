@@ -39,14 +39,14 @@ function rowToMessage(row) {
   };
 }
 
-export async function fetchGameChatMessages(gameId, limit = CHAT_CACHE_MAX_MESSAGES) {
-  if (!isSupabaseConfigured() || !gameId) return [];
+export async function fetchGroupChatMessages(groupId, limit = CHAT_CACHE_MAX_MESSAGES) {
+  if (!isSupabaseConfigured() || !groupId) return [];
 
   const supabase = getSupabase();
   const { data, error } = await supabase
-    .from("game_chat_messages")
-    .select("id, game_id, sender_id, sender_name, sender_color, text, created_at")
-    .eq("game_id", gameId)
+    .from("group_chat_messages")
+    .select("id, group_id, sender_id, sender_name, sender_color, text, created_at")
+    .eq("group_id", groupId)
     .order("created_at", { ascending: false })
     .limit(limit);
 
@@ -61,8 +61,8 @@ export async function fetchGameChatMessages(gameId, limit = CHAT_CACHE_MAX_MESSA
     .reverse();
 }
 
-export async function saveGameChatMessage({
-  gameId,
+export async function saveGroupChatMessage({
+  groupId,
   id,
   senderId,
   senderName,
@@ -70,14 +70,14 @@ export async function saveGameChatMessage({
   text,
   createdAt,
 }) {
-  if (!isSupabaseConfigured() || !gameId || !id || !senderId || !text) {
+  if (!isSupabaseConfigured() || !groupId || !id || !senderId || !text) {
     return false;
   }
 
   const supabase = getSupabase();
-  const { error } = await supabase.from("game_chat_messages").insert({
+  const { error } = await supabase.from("group_chat_messages").insert({
     id,
-    game_id: gameId,
+    group_id: groupId,
     sender_id: senderId,
     sender_name: senderName,
     sender_color: senderColor,
@@ -93,21 +93,21 @@ export async function saveGameChatMessage({
   return true;
 }
 
-export function subscribeGameChatMessages(gameId, onMessage) {
-  if (!isSupabaseConfigured() || !gameId) {
+export function subscribeGroupChatMessages(groupId, onMessage) {
+  if (!isSupabaseConfigured() || !groupId) {
     return () => {};
   }
 
   const supabase = getSupabase();
   const channel = supabase
-    .channel(`game-chat-messages:${gameId}`)
+    .channel(`group-chat-messages:${groupId}`)
     .on(
       "postgres_changes",
       {
         event: "INSERT",
         schema: "public",
-        table: "game_chat_messages",
-        filter: `game_id=eq.${gameId}`,
+        table: "group_chat_messages",
+        filter: `group_id=eq.${groupId}`,
       },
       (payload) => {
         const message = rowToMessage(payload.new);

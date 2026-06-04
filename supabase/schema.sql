@@ -1,8 +1,17 @@
 -- Run in Supabase SQL Editor after creating a project.
 -- Dashboard → SQL → New query → paste and run.
 
+CREATE TABLE IF NOT EXISTS groups (
+  id TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  description TEXT,
+  admin_passcode TEXT NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
 CREATE TABLE IF NOT EXISTS games (
   id TEXT PRIMARY KEY,
+  group_id TEXT NOT NULL REFERENCES groups(id) ON DELETE CASCADE,
   name TEXT NOT NULL,
   location TEXT NOT NULL,
   address TEXT,
@@ -15,6 +24,8 @@ CREATE TABLE IF NOT EXISTS games (
   rsvp_cycle_at TIMESTAMPTZ,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+
+CREATE INDEX IF NOT EXISTS games_group_id_idx ON games (group_id);
 
 CREATE TABLE IF NOT EXISTS rsvps (
   id BIGSERIAL PRIMARY KEY,
@@ -67,12 +78,14 @@ CREATE UNIQUE INDEX IF NOT EXISTS profiles_phone_unique_idx
   ON profiles (phone)
   WHERE phone IS NOT NULL;
 
+ALTER TABLE groups ENABLE ROW LEVEL SECURITY;
 ALTER TABLE games ENABLE ROW LEVEL SECURITY;
 ALTER TABLE rsvps ENABLE ROW LEVEL SECURITY;
 ALTER TABLE game_check_ins ENABLE ROW LEVEL SECURITY;
 ALTER TABLE game_guests ENABLE ROW LEVEL SECURITY;
 ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
 
+CREATE POLICY "groups_public_read" ON groups FOR SELECT USING (true);
 CREATE POLICY "games_public_read" ON games FOR SELECT USING (true);
 CREATE POLICY "rsvps_public_read" ON rsvps FOR SELECT USING (true);
 CREATE POLICY "rsvps_public_insert" ON rsvps FOR INSERT WITH CHECK (true);
@@ -92,6 +105,7 @@ CREATE POLICY "profiles_public_update" ON profiles FOR UPDATE USING (true);
 CREATE POLICY "profiles_public_delete" ON profiles FOR DELETE USING (true);
 
 ALTER TABLE rsvps REPLICA IDENTITY FULL;
+ALTER TABLE groups REPLICA IDENTITY FULL;
 ALTER TABLE games REPLICA IDENTITY FULL;
 ALTER TABLE game_check_ins REPLICA IDENTITY FULL;
 ALTER TABLE game_guests REPLICA IDENTITY FULL;
@@ -99,6 +113,7 @@ ALTER TABLE game_guests REPLICA IDENTITY FULL;
 -- Enable Realtime for RSVP, game, check-in, and walk-in live updates.
 -- If these lines error because the tables are already added, that's OK.
 ALTER PUBLICATION supabase_realtime ADD TABLE rsvps;
+ALTER PUBLICATION supabase_realtime ADD TABLE groups;
 ALTER PUBLICATION supabase_realtime ADD TABLE games;
 ALTER PUBLICATION supabase_realtime ADD TABLE game_check_ins;
 ALTER PUBLICATION supabase_realtime ADD TABLE game_guests;
@@ -509,31 +524,67 @@ $$;
 GRANT EXECUTE ON FUNCTION find_profile_by_phone(TEXT) TO anon, authenticated, service_role;
 GRANT EXECUTE ON FUNCTION upsert_profile(JSONB) TO anon, authenticated, service_role;
 
-CREATE OR REPLACE FUNCTION verify_admin_secret(p_secret TEXT)
+CREATE OR REPLACE FUNCTION verify_group_admin_secret(p_group_id TEXT, p_secret TEXT)
 RETURNS void
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = public
 AS $$
 BEGIN
-  IF p_secret IS NULL OR NOT EXISTS (
-    SELECT 1 FROM app_config WHERE key = 'admin_passcode' AND value = p_secret
+  IF p_group_id IS NULL OR trim(p_group_id) = '' OR p_secret IS NULL OR NOT EXISTS (
+    SELECT 1 FROM groups WHERE id = p_group_id AND admin_passcode = p_secret
   ) THEN
-    RAISE EXCEPTION 'invalid admin passcode';
+    RAISE EXCEPTION 'invalid group admin passcode';
   END IF;
 END;
 $$;
 
-CREATE OR REPLACE FUNCTION verify_admin_passcode(p_secret TEXT)
+CREATE OR REPLACE FUNCTION verify_group_admin(p_group_id TEXT, p_secret TEXT)
 RETURNS BOOLEAN
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = public
 AS $$
 BEGIN
-  RETURN p_secret IS NOT NULL AND EXISTS (
-    SELECT 1 FROM app_config WHERE key = 'admin_passcode' AND value = p_secret
+  RETURN p_group_id IS NOT NULL AND trim(p_group_id) <> '' AND p_secret IS NOT NULL AND EXISTS (
+    SELECT 1 FROM groups WHERE id = p_group_id AND admin_passcode = p_secret
   );
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION admin_upsert_group(p_secret TEXT, p_group JSONB)
+RETURNS void
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_id TEXT;
+  v_name TEXT;
+  v_description TEXT;
+  v_passcode TEXT;
+BEGIN
+  v_id := NULLIF(trim(p_group->>'id'), '');
+  IF v_id IS NULL THEN
+    RAISE EXCEPTION 'group id is required';
+  END IF;
+
+  PERFORM verify_group_admin_secret(v_id, p_secret);
+
+  v_name := NULLIF(trim(p_group->>'name'), '');
+  IF v_name IS NULL THEN
+    RAISE EXCEPTION 'group name is required';
+  END IF;
+
+  v_description := NULLIF(trim(COALESCE(p_group->>'description', '')), '');
+  v_passcode := NULLIF(trim(COALESCE(p_group->>'admin_passcode', '')), '');
+
+  UPDATE groups
+  SET
+    name = v_name,
+    description = v_description,
+    admin_passcode = COALESCE(v_passcode, admin_passcode)
+  WHERE id = v_id;
 END;
 $$;
 
@@ -545,6 +596,7 @@ SET search_path = public
 AS $$
 DECLARE
   v_id TEXT;
+  v_group_id TEXT;
   v_weekday SMALLINT;
   v_start_time TIME;
   v_timezone TEXT;
@@ -557,7 +609,12 @@ DECLARE
   v_cycle TIMESTAMPTZ;
   v_is_update BOOLEAN;
 BEGIN
-  PERFORM verify_admin_secret(p_secret);
+  v_group_id := NULLIF(trim(p_game->>'group_id'), '');
+  IF v_group_id IS NULL THEN
+    RAISE EXCEPTION 'game group_id is required';
+  END IF;
+
+  PERFORM verify_group_admin_secret(v_group_id, p_secret);
 
   v_id := NULLIF(trim(p_game->>'id'), '');
   IF v_id IS NULL THEN
@@ -599,6 +656,7 @@ BEGIN
   IF v_is_update THEN
     UPDATE games
     SET
+      group_id = v_group_id,
       name = v_name,
       location = v_location,
       address = v_address,
@@ -613,9 +671,10 @@ BEGIN
     PERFORM reset_game_rsvp_cycle(v_id, v_cycle);
   ELSE
     INSERT INTO games (
-      id, name, location, address, weekday, start_time, timezone, type, target, status, rsvp_cycle_at
+      id, group_id, name, location, address, weekday, start_time, timezone, type, target, status, rsvp_cycle_at
     ) VALUES (
       v_id,
+      v_group_id,
       v_name,
       v_location,
       v_address,
@@ -637,24 +696,32 @@ LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = public
 AS $$
+DECLARE
+  v_group_id TEXT;
 BEGIN
-  PERFORM verify_admin_secret(p_secret);
-
   IF p_game_id IS NULL OR trim(p_game_id) = '' THEN
     RAISE EXCEPTION 'game id is required';
   END IF;
+
+  SELECT group_id INTO v_group_id FROM games WHERE id = p_game_id;
+  IF v_group_id IS NULL THEN
+    RAISE EXCEPTION 'game not found';
+  END IF;
+
+  PERFORM verify_group_admin_secret(v_group_id, p_secret);
 
   DELETE FROM games WHERE id = p_game_id;
 END;
 $$;
 
-GRANT EXECUTE ON FUNCTION verify_admin_passcode(TEXT) TO anon, authenticated, service_role;
+GRANT EXECUTE ON FUNCTION verify_group_admin(TEXT, TEXT) TO anon, authenticated, service_role;
+GRANT EXECUTE ON FUNCTION admin_upsert_group(TEXT, JSONB) TO anon, authenticated, service_role;
 GRANT EXECUTE ON FUNCTION admin_upsert_game(TEXT, JSONB) TO anon, authenticated, service_role;
 GRANT EXECUTE ON FUNCTION admin_delete_game(TEXT, TEXT) TO anon, authenticated, service_role;
 
 CREATE TABLE IF NOT EXISTS push_subscriptions (
   id BIGSERIAL PRIMARY KEY,
-  game_id TEXT NOT NULL REFERENCES games(id) ON DELETE CASCADE,
+  group_id TEXT NOT NULL REFERENCES groups(id) ON DELETE CASCADE,
   subscriber_id TEXT NOT NULL,
   endpoint TEXT NOT NULL UNIQUE,
   subscription JSONB NOT NULL,
@@ -663,7 +730,7 @@ CREATE TABLE IF NOT EXISTS push_subscriptions (
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
-CREATE INDEX IF NOT EXISTS push_subscriptions_game_id_idx ON push_subscriptions (game_id);
+CREATE INDEX IF NOT EXISTS push_subscriptions_group_id_idx ON push_subscriptions (group_id);
 CREATE INDEX IF NOT EXISTS push_subscriptions_subscriber_id_idx ON push_subscriptions (subscriber_id);
 
 ALTER TABLE push_subscriptions ENABLE ROW LEVEL SECURITY;
@@ -673,9 +740,9 @@ CREATE POLICY "push_subscriptions_public_insert" ON push_subscriptions FOR INSER
 CREATE POLICY "push_subscriptions_public_update" ON push_subscriptions FOR UPDATE USING (true);
 CREATE POLICY "push_subscriptions_public_delete" ON push_subscriptions FOR DELETE USING (true);
 
-CREATE TABLE IF NOT EXISTS game_chat_messages (
+CREATE TABLE IF NOT EXISTS group_chat_messages (
   id TEXT PRIMARY KEY,
-  game_id TEXT NOT NULL REFERENCES games(id) ON DELETE CASCADE,
+  group_id TEXT NOT NULL REFERENCES groups(id) ON DELETE CASCADE,
   sender_id TEXT NOT NULL,
   sender_name TEXT NOT NULL,
   sender_color TEXT NOT NULL,
@@ -683,17 +750,19 @@ CREATE TABLE IF NOT EXISTS game_chat_messages (
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
-CREATE INDEX IF NOT EXISTS game_chat_messages_game_id_created_at_idx
-  ON game_chat_messages (game_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS group_chat_messages_group_id_created_at_idx
+  ON group_chat_messages (group_id, created_at DESC);
 
-ALTER TABLE game_chat_messages ENABLE ROW LEVEL SECURITY;
+ALTER TABLE group_chat_messages ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "game_chat_messages_public_read" ON game_chat_messages FOR SELECT USING (true);
-CREATE POLICY "game_chat_messages_public_insert" ON game_chat_messages FOR INSERT WITH CHECK (true);
+CREATE POLICY "group_chat_messages_public_read" ON group_chat_messages FOR SELECT USING (true);
+CREATE POLICY "group_chat_messages_public_insert" ON group_chat_messages FOR INSERT WITH CHECK (true);
 
-ALTER TABLE game_chat_messages REPLICA IDENTITY FULL;
+ALTER TABLE group_chat_messages REPLICA IDENTITY FULL;
 
-CREATE OR REPLACE FUNCTION public.trim_game_chat_messages()
+ALTER PUBLICATION supabase_realtime ADD TABLE group_chat_messages;
+
+CREATE OR REPLACE FUNCTION public.trim_group_chat_messages()
 RETURNS TRIGGER
 LANGUAGE plpgsql
 SECURITY DEFINER
@@ -704,15 +773,15 @@ DECLARE
   excess INTEGER;
 BEGIN
   SELECT COUNT(*) - max_messages INTO excess
-  FROM public.game_chat_messages
-  WHERE game_id = NEW.game_id;
+  FROM public.group_chat_messages
+  WHERE group_id = NEW.group_id;
 
   IF excess > 0 THEN
-    DELETE FROM public.game_chat_messages
+    DELETE FROM public.group_chat_messages
     WHERE id IN (
       SELECT id
-      FROM public.game_chat_messages
-      WHERE game_id = NEW.game_id
+      FROM public.group_chat_messages
+      WHERE group_id = NEW.group_id
       ORDER BY created_at ASC, id ASC
       LIMIT excess
     );
@@ -722,9 +791,9 @@ BEGIN
 END;
 $$;
 
-DROP TRIGGER IF EXISTS trim_game_chat_messages_after_insert ON game_chat_messages;
+DROP TRIGGER IF EXISTS trim_group_chat_messages_after_insert ON group_chat_messages;
 
-CREATE TRIGGER trim_game_chat_messages_after_insert
-AFTER INSERT ON game_chat_messages
+CREATE TRIGGER trim_group_chat_messages_after_insert
+AFTER INSERT ON group_chat_messages
 FOR EACH ROW
-EXECUTE FUNCTION public.trim_game_chat_messages();
+EXECUTE FUNCTION public.trim_group_chat_messages();
