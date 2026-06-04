@@ -40,6 +40,11 @@ export const TOKENS = {
   "--layout-inline-gap": "var(--space-2)",
   "--layout-stack-gap": "var(--space-2)",
   "--game-list-gap": "var(--space-3)",
+  "--game-carousel-peek": "0px",
+  "--content-rail-width": "min(var(--max-list), calc(100vw - 2 * var(--chat-bar-inset-x) - 2 * var(--game-carousel-peek)))",
+  "--game-carousel-gap": "var(--space-3)",
+  "--game-carousel-slide-width": "var(--content-rail-width)",
+  "--game-carousel-edge-pad": "calc((100vw - var(--game-carousel-slide-width)) / 2)",
   "--game-card-inset-y": "var(--space-3)",
   "--game-card-inset-x": "var(--space-3)",
   "--z-toast": "100",
@@ -61,7 +66,7 @@ export const TOKENS = {
   "--safe-area-left": "env(safe-area-inset-left, 0px)",
   "--safe-area-right": "env(safe-area-inset-right, 0px)",
   "--chat-underlap": "40px",
-  "--min-viewport-height": "500px",
+  "--min-viewport-height": "600px",
 };
 
 export const TOKEN_CSS = Object.entries(TOKENS)

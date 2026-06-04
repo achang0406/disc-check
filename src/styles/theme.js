@@ -33,6 +33,15 @@ export const globalStyles = `
     ${TOKEN_CSS}
   }
 
+  @media (max-width: ${BP_SM_MIN - 1}px) {
+    :root {
+      --layout-gutter: var(--space-4);
+      --layout-gutter-detail: var(--space-4);
+      --chat-bar-inset-x: var(--space-4);
+      --game-carousel-peek: 12px;
+    }
+  }
+
   @media (min-width: ${BP_SM_MIN}px) {
     :root {
       --font-label: 12px;
@@ -1288,10 +1297,126 @@ export const globalStyles = `
   }
 
   .group-games-screen__cards {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-3);
+    flex-shrink: 0;
     width: 100%;
+    overflow: visible;
+  }
+
+  .game-cards-carousel {
+    width: 100vw;
+    max-width: 100vw;
+    margin-left: calc(50% - 50vw);
+    margin-right: calc(50% - 50vw);
+    overflow: visible;
+    padding-block: 1px;
+  }
+
+  .game-cards-carousel__track {
+    display: flex;
+    flex-direction: row;
+    align-items: flex-start;
+    width: 100%;
+    overflow-x: auto;
+    overflow-y: visible;
+    overscroll-behavior-x: contain;
+    -webkit-overflow-scrolling: touch;
+    scroll-snap-type: x mandatory;
+    scroll-padding-inline: var(--game-carousel-edge-pad);
+    padding-inline: var(--game-carousel-edge-pad);
+    padding-block: 1px;
+    margin-block: -1px;
+    scrollbar-width: none;
+  }
+
+  .game-cards-carousel__track::-webkit-scrollbar {
+    display: none;
+  }
+
+  .game-cards-carousel__slide {
+    position: relative;
+    flex: 0 0 var(--game-carousel-slide-width);
+    scroll-snap-align: center;
+    min-width: 0;
+    align-self: flex-start;
+    padding-block: 1px;
+    margin-right: var(--game-carousel-gap);
+    box-sizing: border-box;
+  }
+
+  .game-cards-carousel__slide:last-child {
+    margin-right: 0;
+  }
+
+  .game-cards-carousel__slide--peek .game-commit-card {
+    pointer-events: none;
+    transition: opacity 0.15s ease;
+  }
+
+  .game-cards-carousel__focus-hit {
+    position: absolute;
+    inset: 0;
+    z-index: 4;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .game-cards-carousel__focus-hit:focus:not(:focus-visible) {
+    outline: none;
+  }
+
+  .game-cards-carousel__focus-hit:focus-visible {
+    outline: 2px solid var(--text-muted);
+    outline-offset: 2px;
+  }
+
+  @media (max-width: ${BP_SM_MIN - 1}px) {
+    .game-cards-carousel__slide--peek .game-commit-card {
+      opacity: 0.92;
+    }
+  }
+
+  .game-cards-carousel__dots {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 6px;
+    margin: 0 auto var(--space-3);
+    padding: 0;
+  }
+
+  .game-cards-carousel__dot {
+    width: 18px;
+    height: 3px;
+    padding: 0;
+    border: 0;
+    border-radius: var(--radius-pill);
+    background: var(--text-faint);
+    opacity: 0.35;
+    cursor: pointer;
+    transition:
+      width 0.2s ease,
+      opacity 0.15s ease,
+      background 0.15s ease;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .game-cards-carousel__dot--active {
+    width: 28px;
+    opacity: 1;
+    background: var(--text-muted);
+  }
+
+  .game-cards-carousel__dot:focus:not(:focus-visible) {
+    outline: none;
+  }
+
+  .game-cards-carousel__dot:focus-visible {
+    outline: 2px solid var(--text-muted);
+    outline-offset: 2px;
   }
 
   .group-games-screen__empty {
@@ -1807,7 +1932,8 @@ export const globalStyles = `
     flex-direction: column;
     align-items: center;
     gap: var(--space-2);
-    width: min(100%, var(--max-list));
+    width: var(--content-rail-width);
+    max-width: 100%;
     pointer-events: auto;
   }
 

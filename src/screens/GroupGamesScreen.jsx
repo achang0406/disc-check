@@ -2,6 +2,7 @@ import { Navigate, useNavigate, useParams } from "react-router-dom";
 import { useMemo } from "react";
 import AppHeader from "../components/layout/AppHeader.jsx";
 import GameCommitCard from "../components/games/GameCommitCard.jsx";
+import GameCardsCarousel from "../components/games/GameCardsCarousel.jsx";
 import GameChatThread from "../components/presence/GameChatThread.jsx";
 import GroupChatPushButton from "../components/games/GroupChatPushButton.jsx";
 import EditIcon from "../components/ui/EditIcon.jsx";
@@ -133,11 +134,9 @@ export default function GroupGamesScreen({
                 {isAdmin ? "No games yet — tap Add game to create one." : "No games scheduled."}
               </p>
             ) : (
-              groupGames.map((game, index) => (
-                <div
-                  key={game.id}
-                  style={{ animation: `fadeUp ${0.15 + index * 0.04}s ease` }}
-                >
+              <GameCardsCarousel
+                games={groupGames}
+                renderSlide={(game) => (
                   <GameCommitCard
                     profile={profile}
                     game={game}
@@ -159,8 +158,8 @@ export default function GroupGamesScreen({
                     isAdmin={isAdmin}
                     onEditGame={onEditGame}
                   />
-                </div>
-              ))
+                )}
+              />
             )}
           </div>
 
