@@ -26,19 +26,47 @@ function scrollToLatest(node) {
   node.scrollTop = 0;
 }
 
+function isThreadScrollable(node) {
+  return node.scrollHeight > node.clientHeight + 2;
+}
+
+function getViewportBottomInset() {
+  const root = document.documentElement;
+  const style = getComputedStyle(root);
+  const barHeight = parseFloat(style.getPropertyValue("--chat-bar-height")) || 58;
+  const lift = parseFloat(style.getPropertyValue("--chat-bar-lift")) || 0;
+  const safeBottom = parseFloat(style.getPropertyValue("--safe-area-bottom")) || 0;
+  return barHeight + lift + safeBottom + 16;
+}
+
 export default function GameChatThread({ messages, selfId, loading = false }) {
   const scrollRef = useRef(null);
+  const latestAnchorRef = useRef(null);
   const stickToBottomRef = useRef(true);
   const prevMessageCountRef = useRef(0);
   const [showJumpToBottom, setShowJumpToBottom] = useState(false);
+  const [hasPendingNew, setHasPendingNew] = useState(false);
+
+  const goToLatest = useCallback(() => {
+    const node = scrollRef.current;
+    const anchor = latestAnchorRef.current;
+
+    if (node && isThreadScrollable(node)) {
+      scrollToLatest(node);
+    }
+
+    anchor?.scrollIntoView({ block: "end", behavior: "smooth" });
+    requestAnimationFrame(() => {
+      if (node) scrollToLatest(node);
+    });
+  }, []);
 
   const jumpToLatest = useCallback(() => {
-    const node = scrollRef.current;
-    if (!node) return;
-    scrollToLatest(node);
+    goToLatest();
     stickToBottomRef.current = true;
     setShowJumpToBottom(false);
-  }, []);
+    setHasPendingNew(false);
+  }, [goToLatest]);
 
   useLayoutEffect(() => {
     const node = scrollRef.current;
@@ -53,16 +81,70 @@ export default function GameChatThread({ messages, selfId, loading = false }) {
     const sentBySelf = hasNewMessages && lastMessage?.senderId === selfId;
 
     if (sentBySelf || stickToBottomRef.current) {
-      scrollToLatest(node);
-      requestAnimationFrame(() => scrollToLatest(node));
+      goToLatest();
       stickToBottomRef.current = true;
       setShowJumpToBottom(false);
     } else if (hasNewMessages) {
       setShowJumpToBottom(true);
+      setHasPendingNew(true);
     }
 
     prevMessageCountRef.current = messages.length;
-  }, [messages, selfId]);
+  }, [messages, selfId, goToLatest]);
+
+  useLayoutEffect(() => {
+    const anchor = latestAnchorRef.current;
+    const thread = scrollRef.current;
+
+    if (!anchor || messages.length === 0) {
+      setShowJumpToBottom(false);
+      return undefined;
+    }
+
+    const observeLatest = () => {
+      const scrollRoot = thread && isThreadScrollable(thread) ? thread : null;
+      const bottomInset = getViewportBottomInset();
+
+      return new IntersectionObserver(
+        ([entry]) => {
+          if (!entry) return;
+
+          const atLatest = entry.isIntersecting;
+          stickToBottomRef.current = atLatest;
+          setShowJumpToBottom(!atLatest);
+
+          if (atLatest) {
+            setHasPendingNew(false);
+          }
+        },
+        {
+          root: scrollRoot,
+          rootMargin: scrollRoot ? "0px" : `0px 0px -${bottomInset}px 0px`,
+          threshold: 0,
+        },
+      );
+    };
+
+    let observer = observeLatest();
+    observer.observe(anchor);
+
+    const threadObserver =
+      thread &&
+      new ResizeObserver(() => {
+        observer.disconnect();
+        observer = observeLatest();
+        observer.observe(anchor);
+      });
+
+    if (thread && threadObserver) {
+      threadObserver.observe(thread);
+    }
+
+    return () => {
+      observer.disconnect();
+      threadObserver?.disconnect();
+    };
+  }, [messages.length, messages[messages.length - 1]?.id]);
 
   useLayoutEffect(() => {
     const thread = scrollRef.current;
@@ -126,24 +208,11 @@ export default function GameChatThread({ messages, selfId, loading = false }) {
     };
   }, [messages.length]);
 
-  const handleScroll = () => {
-    const node = scrollRef.current;
-    if (!node) return;
-
-    const atLatest = node.scrollTop < 48;
-    stickToBottomRef.current = atLatest;
-
-    if (atLatest) {
-      setShowJumpToBottom(false);
-    }
-  };
-
   return (
     <div className="game-chat-thread-shell">
       <div
         ref={scrollRef}
         className="game-detail-layout__thread"
-        onScroll={handleScroll}
         role="log"
         aria-live="polite"
         aria-relevant="additions"
@@ -153,9 +222,16 @@ export default function GameChatThread({ messages, selfId, loading = false }) {
         ) : messages.length === 0 ? (
           <p className="game-chat-thread__empty">Say hi — chat helps get a game going.</p>
         ) : (
-          [...messages].reverse().map((message) => (
-            <ChatBubble key={message.id} message={message} selfId={selfId} />
-          ))
+          <>
+            <div
+              ref={latestAnchorRef}
+              className="game-chat-thread__latest-anchor"
+              aria-hidden="true"
+            />
+            {[...messages].reverse().map((message) => (
+              <ChatBubble key={message.id} message={message} selfId={selfId} />
+            ))}
+          </>
         )}
       </div>
 
@@ -165,9 +241,11 @@ export default function GameChatThread({ messages, selfId, loading = false }) {
           className="game-chat-thread__jump"
           onMouseDown={suppressMouseFocus}
           onClick={jumpToLatest}
-          aria-label="Jump to latest messages"
+          aria-label={
+            hasPendingNew ? "Jump to new messages" : "Jump to latest messages"
+          }
         >
-          New messages ↓
+          {hasPendingNew ? "New messages ↓" : "Latest ↓"}
         </button>
       )}
     </div>

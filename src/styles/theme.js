@@ -1027,12 +1027,22 @@ export const globalStyles = `
     min-height: 0;
   }
 
+  .game-chat-thread__latest-anchor {
+    width: 100%;
+    height: 1px;
+    flex-shrink: 0;
+    pointer-events: none;
+  }
+
   .game-chat-thread__jump {
-    position: absolute;
+    position: fixed;
     left: 50%;
-    bottom: var(--space-2);
+    bottom: calc(
+      var(--chat-bar-height, 58px) + var(--chat-bar-lift, 0px) + var(--space-3) +
+        env(safe-area-inset-bottom, 0px)
+    );
     transform: translateX(-50%);
-    z-index: 3;
+    z-index: calc(var(--z-chat) - 1);
     padding: 6px 12px;
     border-radius: var(--radius-pill);
     border: 1px solid var(--card-ring);
