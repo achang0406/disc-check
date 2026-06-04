@@ -2,6 +2,16 @@ import dotenv from "dotenv";
 import { createClient } from "@supabase/supabase-js";
 import { SEED_GAMES, SEED_GROUPS } from "./seed-data.mjs";
 
+const REMOVED_TEST_GROUP_ID = "test";
+const REMOVED_TEST_GAME_IDS = [
+  "g-test",
+  "g-test-1",
+  "g-test-2",
+  "g-test-3",
+  "g-test-4",
+  "g-test-5",
+];
+
 dotenv.config({ path: ".env.local" });
 dotenv.config();
 
@@ -16,6 +26,45 @@ if (!url || !serviceKey) {
 const supabase = createClient(url, serviceKey);
 
 const passcodeOverride = process.env.GROUP_ADMIN_PASSCODE || process.env.VITE_ADMIN_PASSCODE;
+const defaultGroupId = SEED_GROUPS[0]?.id ?? "default";
+
+async function cleanup() {
+  const { error: chatError, count: chatCount } = await supabase
+    .from("group_chat_messages")
+    .delete({ count: "exact" })
+    .eq("group_id", defaultGroupId);
+
+  if (chatError) {
+    console.error("Clearing group chat failed:", chatError.message);
+    process.exit(1);
+  }
+
+  const { error: gamesError } = await supabase
+    .from("games")
+    .delete()
+    .in("id", REMOVED_TEST_GAME_IDS);
+
+  if (gamesError) {
+    console.error("Removing test games failed:", gamesError.message);
+    process.exit(1);
+  }
+
+  const { error: groupError } = await supabase
+    .from("groups")
+    .delete()
+    .eq("id", REMOVED_TEST_GROUP_ID);
+
+  if (groupError) {
+    console.error("Removing test group failed:", groupError.message);
+    process.exit(1);
+  }
+
+  console.log(
+    `Removed test group "${REMOVED_TEST_GROUP_ID}", ${REMOVED_TEST_GAME_IDS.length} test game id(s), and ${chatCount ?? 0} chat message(s) from "${defaultGroupId}".`,
+  );
+}
+
+await cleanup();
 
 const groupsResult = await supabase.from("groups").upsert(
   SEED_GROUPS.map((group) => ({
