@@ -1,8 +1,13 @@
 import { useEffect, useRef, useState } from "react";
-import { clearAppBadge, incrementAppBadge } from "../lib/appBadge.js";
 import { isSubscribedToGroupChatPush } from "../lib/push.js";
 
 const BASE_TITLE = "DiscCheck";
+
+function clearHomeScreenBadge() {
+  if (typeof navigator !== "undefined" && "clearAppBadge" in navigator) {
+    void navigator.clearAppBadge();
+  }
+}
 
 function truncate(text, max = 48) {
   const trimmed = text.trim();
@@ -20,6 +25,7 @@ export function useChatAlerts({ gameId, gameName, messages, selfId, enabled = tr
     unreadRef.current = 0;
     seenCountRef.current = messages.length;
     document.title = BASE_TITLE;
+    clearHomeScreenBadge();
 
     return () => {
       document.title = BASE_TITLE;
@@ -63,7 +69,7 @@ export function useChatAlerts({ gameId, gameName, messages, selfId, enabled = tr
       if (document.hidden) return;
       unreadRef.current = 0;
       document.title = BASE_TITLE;
-      void clearAppBadge();
+      clearHomeScreenBadge();
     };
 
     document.addEventListener("visibilitychange", clearUnread);
@@ -102,8 +108,6 @@ export function useChatAlerts({ gameId, gameName, messages, selfId, enabled = tr
         count > 1
           ? `(${count}) ${preview} · ${BASE_TITLE}`
           : `${latest.name}: ${preview} · ${BASE_TITLE}`;
-
-      void incrementAppBadge(incoming.length);
 
       if (typeof Notification !== "undefined" && Notification.permission === "granted") {
         for (const message of incoming) {

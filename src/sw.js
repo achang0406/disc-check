@@ -1,8 +1,5 @@
 import { cleanupOutdatedCaches, precacheAndRoute } from "workbox-precaching";
 
-const BADGE_CACHE = "disc-check-badge-v1";
-const BADGE_COUNT_KEY = "/count";
-
 cleanupOutdatedCaches();
 precacheAndRoute(self.__WB_MANIFEST);
 
@@ -24,44 +21,6 @@ self.addEventListener("pushsubscriptionchange", (event) => {
     })(),
   );
 });
-
-async function readBadgeCount() {
-  try {
-    const cache = await caches.open(BADGE_CACHE);
-    const response = await cache.match(BADGE_COUNT_KEY);
-    if (!response) return 0;
-    const count = Number.parseInt(await response.text(), 10);
-    return Number.isFinite(count) && count > 0 ? count : 0;
-  } catch {
-    return 0;
-  }
-}
-
-async function writeBadgeCount(count) {
-  const cache = await caches.open(BADGE_CACHE);
-  if (count <= 0) {
-    await cache.delete(BADGE_COUNT_KEY);
-    return;
-  }
-  await cache.put(BADGE_COUNT_KEY, new Response(String(count)));
-}
-
-async function incrementBadgeCount(by = 1) {
-  const amount = Number.isFinite(by) && by > 0 ? Math.floor(by) : 1;
-  const count = (await readBadgeCount()) + amount;
-  await writeBadgeCount(count);
-
-  if ("setAppBadge" in self.navigator) {
-    await self.navigator.setAppBadge(count);
-  }
-}
-
-async function clearBadgeCount() {
-  await writeBadgeCount(0);
-  if ("clearAppBadge" in self.navigator) {
-    await self.navigator.clearAppBadge();
-  }
-}
 
 async function openNotificationTarget(targetUrl) {
   const clients = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
@@ -92,16 +51,6 @@ async function openNotificationTarget(targetUrl) {
 }
 
 self.addEventListener("message", (event) => {
-  if (event.data?.type === "clear-badge") {
-    event.waitUntil(clearBadgeCount());
-    return;
-  }
-
-  if (event.data?.type === "increment-badge") {
-    event.waitUntil(incrementBadgeCount(event.data.by));
-    return;
-  }
-
   if (event.data?.type === "SKIP_WAITING") {
     self.skipWaiting();
   }
@@ -124,16 +73,13 @@ self.addEventListener("push", (event) => {
   const groupId = payload.groupId || null;
 
   event.waitUntil(
-    (async () => {
-      await self.registration.showNotification(title, {
-        body,
-        tag,
-        icon: "/pwa-192x192.png",
-        badge: "/pwa-192x192.png",
-        data: { url, groupId },
-      });
-      await incrementBadgeCount();
-    })(),
+    self.registration.showNotification(title, {
+      body,
+      tag,
+      icon: "/pwa-192x192.png",
+      badge: "/pwa-192x192.png",
+      data: { url, groupId },
+    }),
   );
 });
 
@@ -143,10 +89,5 @@ self.addEventListener("notificationclick", (event) => {
   const data = event.notification.data || {};
   const targetUrl = new URL(data.url || "/", self.location.origin).href;
 
-  event.waitUntil(
-    (async () => {
-      await clearBadgeCount();
-      await openNotificationTarget(targetUrl);
-    })(),
-  );
+  event.waitUntil(openNotificationTarget(targetUrl));
 });
