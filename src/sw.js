@@ -46,8 +46,9 @@ async function writeBadgeCount(count) {
   await cache.put(BADGE_COUNT_KEY, new Response(String(count)));
 }
 
-async function incrementBadgeCount() {
-  const count = (await readBadgeCount()) + 1;
+async function incrementBadgeCount(by = 1) {
+  const amount = Number.isFinite(by) && by > 0 ? Math.floor(by) : 1;
+  const count = (await readBadgeCount()) + amount;
   await writeBadgeCount(count);
 
   if ("setAppBadge" in self.navigator) {
@@ -93,6 +94,11 @@ async function openNotificationTarget(targetUrl) {
 self.addEventListener("message", (event) => {
   if (event.data?.type === "clear-badge") {
     event.waitUntil(clearBadgeCount());
+    return;
+  }
+
+  if (event.data?.type === "increment-badge") {
+    event.waitUntil(incrementBadgeCount(event.data.by));
     return;
   }
 

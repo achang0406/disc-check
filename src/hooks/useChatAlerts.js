@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { clearAppBadge, incrementAppBadge, notifyServiceWorkerClearBadge } from "../lib/appBadge.js";
+import { clearAppBadge, incrementAppBadge } from "../lib/appBadge.js";
 import { isSubscribedToGroupChatPush } from "../lib/push.js";
 
 const BASE_TITLE = "DiscCheck";
@@ -64,7 +64,6 @@ export function useChatAlerts({ gameId, gameName, messages, selfId, enabled = tr
       unreadRef.current = 0;
       document.title = BASE_TITLE;
       void clearAppBadge();
-      notifyServiceWorkerClearBadge();
     };
 
     document.addEventListener("visibilitychange", clearUnread);
