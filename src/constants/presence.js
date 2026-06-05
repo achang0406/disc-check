@@ -17,7 +17,6 @@ export const CURSOR_COLORS = [
 ];
 
 export const MAX_CHAT_LENGTH = 120;
-export const CHAT_INPUT_PLACEHOLDER = "Rally the squad…";
 export const CHAT_CACHE_MAX_MESSAGES = 100;
 
 export function colorForId(id) {

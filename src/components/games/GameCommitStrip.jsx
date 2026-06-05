@@ -4,6 +4,7 @@ import GameDetailHeader from "./GameDetailHeader.jsx";
 import GameDetailActions from "./GameDetailActions.jsx";
 import WhoIsHereSection from "./WhoIsHereSection.jsx";
 import ProgressBar from "./ProgressBar.jsx";
+import { getDailyWalkInPlaceholder } from "../../constants/rotatingPlaceholders.js";
 
 export default function GameCommitStrip({
   profile,
@@ -32,7 +33,7 @@ export default function GameCommitStrip({
     !cancelled &&
     !isEnded &&
     ((isLive && checkedIn) || (!isLive && rsvpd));
-  const walkInPlaceholder = isLive ? "Who else is here?" : "Who else is coming?";
+  const walkInPlaceholder = getDailyWalkInPlaceholder(isLive);
 
   return (
     <section className="game-commit-strip" aria-label="Game status and RSVP">

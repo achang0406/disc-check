@@ -1,4 +1,5 @@
-import { CHAT_INPUT_PLACEHOLDER, MAX_CHAT_LENGTH } from "../../constants/presence.js";
+import { MAX_CHAT_LENGTH } from "../../constants/presence.js";
+import { getDailyChatPlaceholder } from "../../constants/rotatingPlaceholders.js";
 
 export default function ChatBar({
   inputRef,
@@ -13,6 +14,8 @@ export default function ChatBar({
     onSend(value);
   };
 
+  const chatPlaceholder = getDailyChatPlaceholder();
+
   return (
     <div className="chat-bar-anchor chat-bar-anchor--detail">
       <div className="chat-bar-stack">
@@ -24,7 +27,7 @@ export default function ChatBar({
               type="text"
               value={value}
               onChange={(event) => onChange(event.target.value)}
-              placeholder={connected ? CHAT_INPUT_PLACEHOLDER : "Connecting…"}
+              placeholder={connected ? chatPlaceholder : "Connecting…"}
               disabled={!connected}
               maxLength={MAX_CHAT_LENGTH}
               enterKeyHint="send"
