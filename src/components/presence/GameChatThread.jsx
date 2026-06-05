@@ -61,12 +61,28 @@ function distanceFromLatest(thread) {
 
   const reversed = getComputedStyle(thread).flexDirection.includes("reverse");
   if (!reversed) {
-    return maxScroll - thread.scrollTop;
+    return Math.max(0, maxScroll - thread.scrollTop);
   }
 
-  // column-reverse: Chrome uses scrollTop 0 at latest and negative when scrolled up;
-  // WebKit may anchor at maxScroll instead — take whichever edge is closer.
-  return Math.min(Math.abs(thread.scrollTop), Math.abs(maxScroll - thread.scrollTop));
+  const scrollTop = thread.scrollTop;
+
+  // WebKit rubber-band past the latest edge — still at latest.
+  if (scrollTop > maxScroll + 2) return 0;
+
+  const newest = thread.querySelector(".chat-message");
+  if (newest) {
+    const threadRect = thread.getBoundingClientRect();
+    const msgRect = newest.getBoundingClientRect();
+    // Only count distance when the newest bubble sits below the viewport (scrolled up
+    // to read older messages). Overscroll past latest lifts content, so this stays ≤ 0.
+    const beyondBottom = msgRect.bottom - threadRect.bottom;
+    if (beyondBottom <= 2) return 0;
+    return beyondBottom;
+  }
+
+  // Fallback: Chrome uses 0 at latest (negative when scrolled up); positive is overscroll.
+  if (scrollTop >= 0) return 0;
+  return Math.abs(scrollTop);
 }
 
 function isAtLatestScroll(thread) {
