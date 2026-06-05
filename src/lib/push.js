@@ -50,12 +50,19 @@ function urlBase64ToUint8Array(base64String) {
   return outputArray;
 }
 
+async function getServiceWorkerRegistration() {
+  if (!("serviceWorker" in navigator)) return null;
+  try {
+    return (await navigator.serviceWorker.getRegistration()) ?? null;
+  } catch {
+    return null;
+  }
+}
+
 async function getBrowserPushEndpoint() {
   try {
-    if (!("serviceWorker" in navigator) || !("PushManager" in window)) {
-      return null;
-    }
-    const registration = await navigator.serviceWorker.ready;
+    const registration = await getServiceWorkerRegistration();
+    if (!registration?.pushManager) return null;
     return (await registration.pushManager.getSubscription())?.endpoint ?? null;
   } catch {
     return null;
@@ -218,6 +225,13 @@ export async function unsubscribeFromGroupChatPush({ groupId, subscriberId }) {
 
   const updated = await setNotificationsEnabled({ groupId, subscriberId, enabled: false });
   return { ok: updated, reason: updated ? null : "subscribe-failed" };
+}
+
+export async function resyncGroupChatPushSubscription({ groupId, subscriberId }) {
+  if (!groupId || !subscriberId) return false;
+  const active = await isSubscribedToGroupChatPush({ groupId, subscriberId });
+  if (!active) return false;
+  return ensureChatPushRegistration({ groupId, subscriberId });
 }
 
 export async function notifyChatPush({

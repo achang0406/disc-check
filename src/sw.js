@@ -7,11 +7,22 @@ cleanupOutdatedCaches();
 precacheAndRoute(self.__WB_MANIFEST);
 
 self.addEventListener("install", () => {
-  self.skipWaiting();
+  // Wait for the page to send SKIP_WAITING so a backgrounded PWA is not left on stale assets.
 });
 
 self.addEventListener("activate", (event) => {
   event.waitUntil(self.clients.claim());
+});
+
+self.addEventListener("pushsubscriptionchange", (event) => {
+  event.waitUntil(
+    (async () => {
+      const clients = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
+      for (const client of clients) {
+        client.postMessage({ type: "push-subscription-change" });
+      }
+    })(),
+  );
 });
 
 async function readBadgeCount() {
@@ -104,7 +115,7 @@ self.addEventListener("push", (event) => {
   const body = payload.body || "New chat message";
   const tag = payload.tag || "disc-check-chat";
   const url = payload.url || "/";
-  const gameId = payload.gameId || null;
+  const groupId = payload.groupId || null;
 
   event.waitUntil(
     (async () => {
@@ -113,7 +124,7 @@ self.addEventListener("push", (event) => {
         tag,
         icon: "/pwa-192x192.png",
         badge: "/pwa-192x192.png",
-        data: { url, gameId },
+        data: { url, groupId },
       });
       await incrementBadgeCount();
     })(),

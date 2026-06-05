@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { BrowserRouter, Navigate, Route, Routes, useMatch } from "react-router-dom";
 import FieldBackground from "./components/layout/FieldBackground.jsx";
 import LoadingScreen from "./components/layout/LoadingScreen.jsx";
@@ -19,11 +19,11 @@ import { useServiceWorkerNavigation } from "./hooks/useServiceWorkerNavigation.j
 import { useChatAlerts } from "./hooks/useChatAlerts.js";
 import GroupsLandingScreen from "./screens/GroupsLandingScreen.jsx";
 import GroupGamesScreen from "./screens/GroupGamesScreen.jsx";
+import { resyncGroupChatPushSubscription } from "./lib/push.js";
 import { globalStyles } from "./styles/theme.js";
 
 function AppRoutes() {
   const { toast, exiting, showToast, dismissToast } = useToast();
-  useServiceWorkerNavigation();
   const { theme, toggleTheme, cssVars } = useTheme();
   const app = useAppData(showToast);
   const groupMatch = useMatch("/groups/:groupId");
@@ -41,6 +41,14 @@ function AppRoutes() {
   });
   const [loadingOverlay, setLoadingOverlay] = useState(true);
   const [loadingExiting, setLoadingExiting] = useState(false);
+
+  const resyncPushSubscription = useCallback(() => {
+    const subscriberId = presence?.self?.id;
+    if (!groupId || !subscriberId) return;
+    void resyncGroupChatPushSubscription({ groupId, subscriberId });
+  }, [groupId, presence?.self?.id]);
+
+  useServiceWorkerNavigation({ onPushSubscriptionChange: resyncPushSubscription });
 
   useChatAlerts({
     gameId: groupId ?? "",
@@ -63,6 +71,31 @@ function AppRoutes() {
     }
     setLoadingExiting(true);
   }, [app.loading]);
+
+  useEffect(() => {
+    if (!loadingExiting) return undefined;
+    const timer = window.setTimeout(() => {
+      setLoadingOverlay(false);
+      setLoadingExiting(false);
+    }, 600);
+    return () => window.clearTimeout(timer);
+  }, [loadingExiting]);
+
+  useEffect(() => {
+    const repaint = () => {
+      if (document.visibilityState !== "visible") return;
+      requestAnimationFrame(() => {
+        void document.body.offsetHeight;
+      });
+    };
+
+    window.addEventListener("pageshow", repaint);
+    document.addEventListener("visibilitychange", repaint);
+    return () => {
+      window.removeEventListener("pageshow", repaint);
+      document.removeEventListener("visibilitychange", repaint);
+    };
+  }, []);
 
   const handleLoadingTransitionEnd = (event) => {
     if (event.propertyName !== "opacity" || !loadingExiting) return;

@@ -13,7 +13,19 @@ const shouldRegisterServiceWorker =
   host.includes("ngrok");
 
 if (shouldRegisterServiceWorker) {
-  registerSW({ immediate: true });
+  registerSW({
+    immediate: true,
+    onNeedRefresh() {
+      const reload = () => window.location.reload();
+      if (document.visibilityState === "visible") {
+        reload();
+        return;
+      }
+      document.addEventListener("visibilitychange", () => {
+        if (document.visibilityState === "visible") reload();
+      }, { once: true });
+    },
+  });
 }
 
 createRoot(document.getElementById("root")).render(

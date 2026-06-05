@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 
-export function useServiceWorkerNavigation() {
+export function useServiceWorkerNavigation({ onPushSubscriptionChange } = {}) {
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -9,20 +9,27 @@ export function useServiceWorkerNavigation() {
 
     const onMessage = (event) => {
       const data = event.data;
-      if (!data || typeof data !== "object" || data.type !== "notification-open") return;
+      if (!data || typeof data !== "object") return;
 
-      const path = (() => {
-        try {
-          return new URL(data.url || "/", window.location.origin).pathname;
-        } catch {
-          return "/";
-        }
-      })();
+      if (data.type === "notification-open") {
+        const path = (() => {
+          try {
+            return new URL(data.url || "/", window.location.origin).pathname;
+          } catch {
+            return "/";
+          }
+        })();
 
-      navigate(path, { replace: false });
+        navigate(path, { replace: false });
+        return;
+      }
+
+      if (data.type === "push-subscription-change") {
+        onPushSubscriptionChange?.();
+      }
     };
 
     navigator.serviceWorker.addEventListener("message", onMessage);
     return () => navigator.serviceWorker.removeEventListener("message", onMessage);
-  }, [navigate]);
+  }, [navigate, onPushSubscriptionChange]);
 }

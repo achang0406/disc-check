@@ -61,9 +61,11 @@ export function usePresence(profile, groupId, groupName = "") {
   const [messagesLoading, setMessagesLoading] = useState(false);
   const [draft, setDraft] = useState("");
   const [connected, setConnected] = useState(false);
+  const [resumeKey, setResumeKey] = useState(0);
 
   const channelRef = useRef(null);
   const chatInputRef = useRef(null);
+  const connectedRef = useRef(false);
   const draftRef = useRef("");
   const watchingPeersRef = useRef({});
   const identityRef = useRef({
@@ -78,6 +80,10 @@ export function usePresence(profile, groupId, groupName = "") {
   const channelName = getPresenceChannel(groupId);
 
   identityRef.current = { id: sessionId, name: displayName, color };
+
+  useEffect(() => {
+    connectedRef.current = connected;
+  }, [connected]);
 
   useEffect(() => {
     draftRef.current = draft;
@@ -136,6 +142,22 @@ export function usePresence(profile, groupId, groupName = "") {
     document.addEventListener("visibilitychange", onVisible);
     return () => document.removeEventListener("visibilitychange", onVisible);
   }, [groupId]);
+
+  useEffect(() => {
+    const onResume = () => {
+      if (document.visibilityState !== "visible") return;
+      if (!connectedRef.current) {
+        setResumeKey((current) => current + 1);
+      }
+    };
+
+    window.addEventListener("pageshow", onResume);
+    document.addEventListener("visibilitychange", onResume);
+    return () => {
+      window.removeEventListener("pageshow", onResume);
+      document.removeEventListener("visibilitychange", onResume);
+    };
+  }, []);
 
   useEffect(() => {
     if (!groupId || !isSupabaseConfigured()) return undefined;
@@ -199,7 +221,7 @@ export function usePresence(profile, groupId, groupName = "") {
       leavePresence();
       supabase.removeChannel(channel);
     };
-  }, [channelName, color, displayName, sessionId]);
+  }, [channelName, color, displayName, resumeKey, sessionId]);
 
   useEffect(() => {
     if (!connected || !channelRef.current) return;

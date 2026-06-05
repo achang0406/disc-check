@@ -65,6 +65,14 @@ Deno.serve(async (req) => {
     const staleEndpoints: string[] = [];
 
     for (const row of subscriptions ?? []) {
+      const subscription =
+        typeof row.subscription === "string" ? JSON.parse(row.subscription) : row.subscription;
+
+      if (!subscription?.endpoint || !subscription?.keys) {
+        staleEndpoints.push(row.endpoint);
+        continue;
+      }
+
       const payload = JSON.stringify({
         title,
         body: text,
@@ -74,10 +82,14 @@ Deno.serve(async (req) => {
       });
 
       try {
-        await webpush.sendNotification(row.subscription, payload);
+        await webpush.sendNotification(subscription, payload, {
+          TTL: 60 * 60 * 24,
+          urgency: "high",
+        });
         sent += 1;
       } catch (error) {
         const statusCode = error?.statusCode;
+        console.error("Push delivery failed", row.endpoint, statusCode, error?.body ?? error?.message);
         if (statusCode === 404 || statusCode === 410) {
           staleEndpoints.push(row.endpoint);
         }
