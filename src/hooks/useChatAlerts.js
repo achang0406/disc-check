@@ -98,7 +98,6 @@ export function useChatAlerts({ gameId, gameName, messages, selfId, enabled = tr
     if (incoming.length === 0) return;
 
     const latest = incoming[incoming.length - 1];
-    const context = gameName?.trim() || "group chat";
     const preview = truncate(latest.text);
 
     if (document.hidden) {
@@ -108,21 +107,6 @@ export function useChatAlerts({ gameId, gameName, messages, selfId, enabled = tr
         count > 1
           ? `(${count}) ${preview} · ${BASE_TITLE}`
           : `${latest.name}: ${preview} · ${BASE_TITLE}`;
-
-      if (typeof Notification !== "undefined" && Notification.permission === "granted") {
-        for (const message of incoming) {
-          new Notification(`${message.name} · ${context}`, {
-            body: message.text,
-            tag: `disc-check-chat-${contextId}-${message.id}`,
-          });
-        }
-      }
     }
-  }, [chatPushEnabled, enabled, contextId, gameName, messages, selfId]);
-}
-
-export async function requestChatNotificationPermission() {
-  if (typeof Notification === "undefined") return "unsupported";
-  if (Notification.permission !== "default") return Notification.permission;
-  return Notification.requestPermission();
+  }, [chatPushEnabled, enabled, contextId, messages, selfId]);
 }
