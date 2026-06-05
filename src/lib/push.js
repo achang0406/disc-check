@@ -246,6 +246,7 @@ export async function notifyChatPush({
 }) {
   if (!isSupabaseConfigured() || !groupId || !senderId || !text) return;
 
+  const senderEndpoint = await getBrowserPushEndpoint();
   const supabase = getSupabase();
   const { error } = await supabase.functions.invoke("notify-chat", {
     body: {
@@ -257,6 +258,7 @@ export async function notifyChatPush({
       messageId,
       groupName,
       createdAt,
+      senderEndpoint,
     },
   });
 

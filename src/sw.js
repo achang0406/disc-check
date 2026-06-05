@@ -11,7 +11,7 @@ self.addEventListener("install", () => {
 });
 
 self.addEventListener("activate", (event) => {
-  event.waitUntil(self.clients.claim());
+  event.waitUntil(self.clients.matchAll({ type: "window" }));
 });
 
 self.addEventListener("pushsubscriptionchange", (event) => {

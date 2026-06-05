@@ -86,11 +86,10 @@ export function useChatAlerts({ gameId, gameName, messages, selfId, enabled = tr
 
     if (messages.length === seenCountRef.current) return;
 
-    const incoming = messages
-      .slice(seenCountRef.current)
-      .filter((message) => message.senderId !== selfId);
-
+    const pending = messages.slice(seenCountRef.current);
     seenCountRef.current = messages.length;
+
+    const incoming = pending.filter((message) => message.senderId !== selfId);
     if (incoming.length === 0) return;
 
     const latest = incoming[incoming.length - 1];

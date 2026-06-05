@@ -8,6 +8,11 @@ export function isStandaloneDisplay() {
   );
 }
 
+export function isAndroidDevice() {
+  if (typeof navigator === "undefined") return false;
+  return /android/i.test(navigator.userAgent);
+}
+
 export function isIosDevice() {
   if (typeof navigator === "undefined") return false;
 

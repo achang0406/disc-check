@@ -87,26 +87,25 @@ export const globalStyles = `
   html, body, #root {
     margin: 0;
     padding: 0;
-    height: 100%;
+    height: var(--app-height, 100dvh);
+    min-height: var(--app-height, 100dvh);
     overflow: hidden;
     overscroll-behavior: none;
   }
 
   html {
-    height: 100vh;
-    height: 100dvh;
     min-height: -webkit-fill-available;
     -webkit-text-size-adjust: 100%;
     text-size-adjust: 100%;
   }
 
   body, #root {
-    height: 100%;
     min-height: -webkit-fill-available;
   }
 
   .app-shell {
-    height: 100%;
+    height: var(--app-height, 100%);
+    min-height: var(--app-height, 100%);
     overflow: hidden;
   }
 
@@ -488,8 +487,8 @@ export const globalStyles = `
   html:has(.games-screen--detail) body,
   html:has(.games-screen--detail) #root,
   html:has(.games-screen--detail) .app-shell {
-    height: 100%;
-    min-height: 0;
+    height: var(--app-height, 100dvh);
+    min-height: var(--app-height, 100dvh);
     overflow: hidden;
   }
 

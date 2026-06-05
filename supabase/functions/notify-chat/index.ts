@@ -34,7 +34,8 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const { groupId, senderId, senderName, text, messageId, groupName } = await req.json();
+    const { groupId, senderId, senderName, text, messageId, groupName, senderEndpoint } =
+      await req.json();
 
     if (!groupId || !senderId || !text) {
       return jsonResponse({ error: "Missing required fields" }, 400);
@@ -65,6 +66,10 @@ Deno.serve(async (req) => {
     const staleEndpoints: string[] = [];
 
     for (const row of subscriptions ?? []) {
+      if (senderEndpoint && row.endpoint === senderEndpoint) {
+        continue;
+      }
+
       const subscription =
         typeof row.subscription === "string" ? JSON.parse(row.subscription) : row.subscription;
 

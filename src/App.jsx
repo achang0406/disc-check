@@ -19,6 +19,7 @@ import { useServiceWorkerNavigation } from "./hooks/useServiceWorkerNavigation.j
 import { useChatAlerts } from "./hooks/useChatAlerts.js";
 import GroupsLandingScreen from "./screens/GroupsLandingScreen.jsx";
 import GroupGamesScreen from "./screens/GroupGamesScreen.jsx";
+import { useAppResume } from "./hooks/useAppResume.js";
 import { resyncGroupChatPushSubscription } from "./lib/push.js";
 import { globalStyles } from "./styles/theme.js";
 
@@ -40,7 +41,8 @@ function AppRoutes() {
     refresh: app.refresh,
   });
   const [loadingOverlay, setLoadingOverlay] = useState(true);
-  const [loadingExiting, setLoadingExiting] = useState(false);
+
+  useAppResume();
 
   const resyncPushSubscription = useCallback(() => {
     const subscriberId = presence?.self?.id;
@@ -59,49 +61,8 @@ function AppRoutes() {
   });
 
   useEffect(() => {
-    if (app.loading) {
-      setLoadingOverlay(true);
-      setLoadingExiting(false);
-      return;
-    }
-    if (typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
-      setLoadingOverlay(false);
-      setLoadingExiting(false);
-      return;
-    }
-    setLoadingExiting(true);
+    setLoadingOverlay(app.loading);
   }, [app.loading]);
-
-  useEffect(() => {
-    if (!loadingExiting) return undefined;
-    const timer = window.setTimeout(() => {
-      setLoadingOverlay(false);
-      setLoadingExiting(false);
-    }, 600);
-    return () => window.clearTimeout(timer);
-  }, [loadingExiting]);
-
-  useEffect(() => {
-    const repaint = () => {
-      if (document.visibilityState !== "visible") return;
-      requestAnimationFrame(() => {
-        void document.body.offsetHeight;
-      });
-    };
-
-    window.addEventListener("pageshow", repaint);
-    document.addEventListener("visibilitychange", repaint);
-    return () => {
-      window.removeEventListener("pageshow", repaint);
-      document.removeEventListener("visibilitychange", repaint);
-    };
-  }, []);
-
-  const handleLoadingTransitionEnd = (event) => {
-    if (event.propertyName !== "opacity" || !loadingExiting) return;
-    setLoadingOverlay(false);
-    setLoadingExiting(false);
-  };
 
   const groupScreenProps = {
     profile: app.profile,
@@ -237,13 +198,7 @@ function AppRoutes() {
           </Routes>
         </div>
       )}
-      {loadingOverlay && (
-        <LoadingScreen
-          cssVars={cssVars}
-          exiting={loadingExiting}
-          onTransitionEnd={handleLoadingTransitionEnd}
-        />
-      )}
+      {loadingOverlay && <LoadingScreen cssVars={cssVars} />}
     </>
   );
 }
