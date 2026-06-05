@@ -1609,16 +1609,6 @@ export const globalStyles = `
     pointer-events: none;
   }
 
-  @media (display-mode: standalone), (display-mode: fullscreen) {
-    .chat-bar-anchor--detail {
-      padding-bottom: 0;
-    }
-
-    .chat-bar-anchor--detail .composer-field__input {
-      padding-bottom: calc(var(--chat-bar-inset-y) + env(safe-area-inset-bottom, 0px));
-    }
-  }
-
   .chat-bar-stack {
     display: flex;
     flex-direction: column;
