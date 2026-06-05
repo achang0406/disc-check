@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { MAX_CHAT_LENGTH } from "../../constants/presence.js";
 import { getPortalTarget } from "../../utils/portalTarget.js";
+import { isStandaloneDisplay } from "../../utils/pwaInstall.js";
 
 /** Inset between layout viewport bottom and visual viewport bottom (Safari chrome or keyboard). */
 function getViewportBottomInset(viewport) {
@@ -71,7 +72,10 @@ export default function ChatBar({
       const keyboardOpen =
         inputFocusedRef.current && inset >= KEYBOARD_INSET_MIN;
       const safariChrome =
-        !keyboardOpen && inset > 0 && inset < SAFARI_CHROME_INSET_MAX;
+        !isStandaloneDisplay() &&
+        !keyboardOpen &&
+        inset > 0 &&
+        inset < SAFARI_CHROME_INSET_MAX;
 
       if (keyboardOpen || safariChrome) {
         root.style.setProperty("--chat-bar-bottom", `${inset}px`);
