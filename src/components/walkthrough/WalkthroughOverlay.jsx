@@ -66,11 +66,11 @@ export default function WalkthroughOverlay({
   const bodyId = useId();
   const [portalTarget, setPortalTarget] = useState(null);
   const [layout, setLayout] = useState(null);
+  const lastLayoutRef = useRef(null);
   const [viewport, setViewport] = useState(() => ({
     width: typeof window !== "undefined" ? window.innerWidth : 0,
     height: typeof window !== "undefined" ? window.innerHeight : 0,
   }));
-  const [settled, setSettled] = useState(false);
   const rafRef = useRef(null);
   const spotlightPad = step.spotlightPad ?? DEFAULT_SPOTLIGHT_PAD;
 
@@ -78,15 +78,14 @@ export default function WalkthroughOverlay({
     const rect = findTargetRect(step);
     const pad = step.spotlightPad ?? DEFAULT_SPOTLIGHT_PAD;
 
-    if (!rect) {
-      setLayout(null);
-      return;
-    }
+    if (!rect) return;
 
-    setLayout({
+    const next = {
       rect,
       bubble: getBubbleLayout(rect, pad),
-    });
+    };
+    lastLayoutRef.current = next;
+    setLayout(next);
   }, [step]);
 
   const scheduleMeasure = useCallback(() => {
@@ -102,16 +101,17 @@ export default function WalkthroughOverlay({
   }, []);
 
   useEffect(() => {
-    setSettled(false);
-    const timer = window.setTimeout(() => {
-      setSettled(true);
-      measureLayout();
-    }, SETTLE_MS);
-    return () => window.clearTimeout(timer);
+    measureLayout();
+    const settleTimer = window.setTimeout(measureLayout, SETTLE_MS);
+    const carouselTimer = window.setTimeout(measureLayout, 450);
+    return () => {
+      window.clearTimeout(settleTimer);
+      window.clearTimeout(carouselTimer);
+    };
   }, [measureLayout, stepIndex, step.id]);
 
   useEffect(() => {
-    if (!portalTarget || !settled) return undefined;
+    if (!portalTarget) return undefined;
 
     measureLayout();
 
@@ -146,12 +146,12 @@ export default function WalkthroughOverlay({
         rafRef.current = null;
       }
     };
-  }, [portalTarget, settled, measureLayout, scheduleMeasure, step]);
+  }, [portalTarget, measureLayout, scheduleMeasure, step]);
 
   useEffect(() => {
-    if (!layout || !settled) return;
+    if (!layout) return;
     document.querySelector(".walkthrough-bubble__btn--next")?.focus({ preventScroll: true });
-  }, [layout, settled, stepIndex]);
+  }, [layout, stepIndex]);
 
   useEffect(() => {
     const handleKeyDown = (event) => {
@@ -165,9 +165,21 @@ export default function WalkthroughOverlay({
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [onSkip]);
 
-  if (!portalTarget || !settled || !layout) return null;
+  if (!portalTarget) return null;
 
-  const { rect, bubble } = layout;
+  const displayLayout = layout ?? lastLayoutRef.current;
+  const isLastStep = stepIndex >= totalSteps - 1;
+
+  if (!displayLayout) {
+    return createPortal(
+      <div className="walkthrough-layer" role="presentation">
+        <div className="walkthrough-scrim walkthrough-scrim--full" aria-hidden="true" />
+      </div>,
+      portalTarget,
+    );
+  }
+
+  const { rect, bubble } = displayLayout;
   const spotlight = {
     x: rect.left - spotlightPad,
     y: rect.top - spotlightPad,
@@ -175,7 +187,6 @@ export default function WalkthroughOverlay({
     height: rect.height + spotlightPad * 2,
   };
 
-  const isLastStep = stepIndex >= totalSteps - 1;
   const bubbleStyle = {
     top: `${bubble.top}px`,
     left: `${bubble.left}px`,
@@ -197,6 +208,7 @@ export default function WalkthroughOverlay({
           <mask id={maskId}>
             <rect width="100%" height="100%" fill="white" />
             <rect
+              className="walkthrough-scrim__spotlight"
               x={spotlight.x}
               y={spotlight.y}
               width={spotlight.width}

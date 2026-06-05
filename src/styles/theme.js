@@ -1654,6 +1654,18 @@ export const globalStyles = `
     pointer-events: auto;
   }
 
+  .walkthrough-scrim--full {
+    background: rgba(0, 0, 0, 0.78);
+  }
+
+  .walkthrough-scrim__spotlight {
+    transition:
+      x 0.22s ease,
+      y 0.22s ease,
+      width 0.22s ease,
+      height 0.22s ease;
+  }
+
   .walkthrough-bubble {
     position: fixed;
     z-index: 1;
@@ -1667,6 +1679,11 @@ export const globalStyles = `
     pointer-events: auto;
     font-family: var(--font-sans);
     color: var(--text);
+    transition:
+      top 0.22s ease,
+      left 0.22s ease,
+      width 0.22s ease,
+      transform 0.22s ease;
   }
 
   .walkthrough-bubble__dismiss {

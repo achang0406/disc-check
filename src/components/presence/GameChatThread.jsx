@@ -24,6 +24,32 @@ function scrollToLatest(node) {
   });
 }
 
+function smoothScrollToLatest(node) {
+  if (!node || !isThreadScrollable(node)) return;
+
+  const maxScroll = Math.max(0, node.scrollHeight - node.clientHeight);
+  const reversed = getComputedStyle(node).flexDirection.includes("reverse");
+
+  if (!reversed) {
+    node.scrollTo({ top: maxScroll, behavior: "smooth" });
+    return;
+  }
+
+  node.scrollTo({ top: 0, behavior: "smooth" });
+
+  const finish = () => {
+    if (distanceFromLatest(node) > 2) {
+      node.scrollTo({ top: maxScroll, behavior: "smooth" });
+    }
+  };
+
+  if ("onscrollend" in window) {
+    node.addEventListener("scrollend", finish, { once: true });
+  } else {
+    window.setTimeout(finish, 400);
+  }
+}
+
 function isThreadScrollable(node) {
   return node.scrollHeight > node.clientHeight + 2;
 }
@@ -59,11 +85,17 @@ export default function GameChatThread({ messages, selfId, loading = false }) {
     const node = scrollRef.current;
     const anchor = latestAnchorRef.current;
 
+    if (smooth) {
+      anchor?.scrollIntoView({ block: "end", behavior: "smooth" });
+      smoothScrollToLatest(node);
+      return;
+    }
+
     if (node && isThreadScrollable(node)) {
       scrollToLatest(node);
     }
 
-    anchor?.scrollIntoView({ block: "end", behavior: smooth ? "smooth" : "auto" });
+    anchor?.scrollIntoView({ block: "end", behavior: "auto" });
     requestAnimationFrame(() => {
       if (node) scrollToLatest(node);
     });
