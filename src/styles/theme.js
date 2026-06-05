@@ -938,6 +938,11 @@ export const globalStyles = `
     gap: var(--layout-stack-gap);
   }
 
+  .game-commit-strip__tour-anchor {
+    min-height: 52px;
+    box-sizing: border-box;
+  }
+
   .game-commit-strip .game-detail-header__title-row .status-badge {
     padding: var(--space-1) var(--space-2);
     font-size: var(--font-label);
@@ -1646,6 +1651,208 @@ export const globalStyles = `
     border: 1px solid var(--card-ring);
     border-radius: 8px;
     padding: 6px 10px;
+  }
+
+  .walkthrough-layer {
+    position: fixed;
+    inset: 0;
+    z-index: 220;
+    pointer-events: none;
+    font-family: var(--font-sans);
+    color: var(--text);
+  }
+
+  .walkthrough-scrim {
+    position: fixed;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: auto;
+  }
+
+  .walkthrough-bubble {
+    position: fixed;
+    z-index: 1;
+    box-sizing: border-box;
+    padding: var(--space-3);
+    padding-top: var(--space-4);
+    border-radius: var(--radius-md);
+    background: var(--card-bg);
+    border: 1px solid var(--card-ring);
+    box-shadow: 0 16px 40px rgba(0, 0, 0, 0.28);
+    pointer-events: auto;
+    font-family: var(--font-sans);
+    color: var(--text);
+  }
+
+  .walkthrough-bubble__dismiss {
+    position: absolute;
+    top: var(--space-1);
+    right: var(--space-1);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    padding: 0;
+    border: none;
+    border-radius: var(--radius-sm);
+    background: none;
+    color: var(--text-faint);
+    font-family: var(--font-sans);
+    font-size: 20px;
+    line-height: 1;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .walkthrough-bubble__dismiss:hover {
+    color: var(--text-subtle);
+    background: color-mix(in srgb, var(--card-ring) 45%, transparent);
+  }
+
+  .walkthrough-bubble__dismiss:focus-visible {
+    outline: 2px solid var(--text-faint);
+    outline-offset: 1px;
+  }
+
+  .walkthrough-bubble--below::before,
+  .walkthrough-bubble--above::before {
+    content: "";
+    position: absolute;
+    left: var(--walkthrough-tail-x, 50%);
+    transform: translateX(-50%);
+    width: 0;
+    height: 0;
+    border: 12px solid transparent;
+    filter: drop-shadow(0 0 0 var(--card-ring));
+  }
+
+  .walkthrough-bubble--below::before {
+    top: -24px;
+    border-bottom-width: 16px;
+    border-bottom-color: var(--card-bg);
+  }
+
+  .walkthrough-bubble--above::before {
+    bottom: -24px;
+    border-top-width: 16px;
+    border-top-color: var(--card-bg);
+  }
+
+  .walkthrough-bubble--below::after,
+  .walkthrough-bubble--above::after {
+    content: "";
+    position: absolute;
+    left: var(--walkthrough-tail-x, 50%);
+    transform: translateX(-50%);
+    width: 0;
+    height: 0;
+    border: 13px solid transparent;
+    pointer-events: none;
+  }
+
+  .walkthrough-bubble--below::after {
+    top: -26px;
+    border-bottom-width: 17px;
+    border-bottom-color: var(--card-ring);
+    z-index: -1;
+  }
+
+  .walkthrough-bubble--above::after {
+    bottom: -26px;
+    border-top-width: 17px;
+    border-top-color: var(--card-ring);
+    z-index: -1;
+  }
+
+  .walkthrough-bubble__dots {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin: 0 0 var(--space-2);
+    padding-right: var(--space-4);
+  }
+
+  .walkthrough-bubble__dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--text-faint) 40%, transparent);
+  }
+
+  .walkthrough-bubble__dot--active {
+    width: 18px;
+    background: var(--text-subtle);
+  }
+
+  .walkthrough-bubble__title {
+    margin: 0 0 var(--space-2);
+    color: var(--text-strong);
+    font-family: var(--font-sans);
+    font-size: var(--font-title);
+    font-weight: 700;
+    line-height: 1.25;
+  }
+
+  .walkthrough-bubble__body {
+    margin: 0 0 var(--space-3);
+    padding-right: var(--space-4);
+    color: var(--text-subtle);
+    font-family: var(--font-sans);
+    font-size: var(--font-body);
+    line-height: 1.55;
+    white-space: pre-line;
+  }
+
+  .walkthrough-bubble__nav {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: var(--space-2);
+  }
+
+  .walkthrough-bubble__nav--solo {
+    justify-content: flex-end;
+  }
+
+  .walkthrough-bubble__btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 28px;
+    padding: var(--space-1) var(--space-3);
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--card-ring);
+    background: var(--card-bg);
+    color: var(--text-subtle);
+    font-family: var(--font-sans);
+    font-size: var(--font-label);
+    font-weight: 500;
+    line-height: 1.2;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .walkthrough-bubble__btn:hover {
+    color: var(--text);
+    border-color: var(--text-faint);
+  }
+
+  .walkthrough-bubble__btn:focus-visible {
+    outline: 2px solid var(--text-faint);
+    outline-offset: 1px;
+  }
+
+  .walkthrough-bubble__btn--next {
+    border-color: color-mix(in srgb, var(--rsvp-btn-border) 70%, var(--card-ring));
+    background: color-mix(in srgb, var(--rsvp-btn-bg) 55%, var(--card-bg));
+    color: var(--text);
+  }
+
+  .walkthrough-bubble__btn--next:hover {
+    border-color: var(--rsvp-btn-border);
+    background: color-mix(in srgb, var(--rsvp-btn-bg) 75%, var(--card-bg));
   }
 
 `;

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useState } from "react";
 
 function getFocusedIndexFromScroll(track, slides) {
   const trackCenter = track.scrollLeft + track.clientWidth / 2;
@@ -17,7 +17,10 @@ function getFocusedIndexFromScroll(track, slides) {
   return bestIndex;
 }
 
-export default function GameCardsCarousel({ games, renderSlide, onFocusedIndexChange }) {
+const GameCardsCarousel = forwardRef(function GameCardsCarousel(
+  { games, renderSlide, onFocusedIndexChange },
+  ref,
+) {
   const trackRef = useRef(null);
   const slideRefs = useRef([]);
   const programmaticScrollIndexRef = useRef(null);
@@ -109,6 +112,8 @@ export default function GameCardsCarousel({ games, renderSlide, onFocusedIndexCh
     }, 500);
   }, []);
 
+  useImperativeHandle(ref, () => ({ scrollToSlide }), [scrollToSlide]);
+
   const showDots = games.length > 1;
 
   return (
@@ -158,4 +163,6 @@ export default function GameCardsCarousel({ games, renderSlide, onFocusedIndexCh
       </div>
     </div>
   );
-}
+});
+
+export default GameCardsCarousel;

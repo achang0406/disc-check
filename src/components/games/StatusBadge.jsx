@@ -14,7 +14,7 @@ export default function StatusBadge({ count, target, cancelled }) {
         ? "GAME ON"
         : variant === "almost"
           ? "ALMOST"
-          : "NOPE";
+          : "NOT YET";
 
   return (
     <div

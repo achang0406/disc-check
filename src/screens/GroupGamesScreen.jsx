@@ -5,10 +5,13 @@ import GameCommitCard from "../components/games/GameCommitCard.jsx";
 import GameCardsCarousel from "../components/games/GameCardsCarousel.jsx";
 import GameChatThread from "../components/presence/GameChatThread.jsx";
 import GroupChatPushButton from "../components/games/GroupChatPushButton.jsx";
+import WalkthroughOverlay from "../components/walkthrough/WalkthroughOverlay.jsx";
 import EditIcon from "../components/ui/EditIcon.jsx";
 import Button from "../components/ui/Button.jsx";
 import { gamesForGroup } from "../lib/data.js";
 import { useGameClock } from "../hooks/useGameClock.js";
+import { useGroupWalkthrough } from "../hooks/useGroupWalkthrough.js";
+import { WALKTHROUGH_GAME_SLIDE_INDEX } from "../constants/walkthrough.js";
 import { canShowChatPushBell } from "../lib/push.js";
 import { getPresenceUsers } from "../utils/presenceUsers.js";
 import { sortGamesForLanding } from "../utils/gameSchedule.js";
@@ -53,6 +56,8 @@ export default function GroupGamesScreen({
     () => sortGamesForLanding(gamesForGroup(games, groupId), now),
     [games, groupId, now],
   );
+
+  const walkthrough = useGroupWalkthrough({ hasGames: groupGames.length > 0 });
 
   useEffect(() => {
     if (focusedGameIndex >= groupGames.length) {
@@ -144,7 +149,7 @@ export default function GroupGamesScreen({
               <GameCardsCarousel
                 games={groupGames}
                 onFocusedIndexChange={setFocusedGameIndex}
-                renderSlide={(game) => (
+                renderSlide={(game, index) => (
                   <GameCommitCard
                     profile={profile}
                     game={game}
@@ -165,6 +170,9 @@ export default function GroupGamesScreen({
                     showToast={showToast}
                     isAdmin={isAdmin}
                     onEditGame={onEditGame}
+                    walkthroughAnchorActive={
+                      walkthrough.isActive && index === WALKTHROUGH_GAME_SLIDE_INDEX
+                    }
                   />
                 )}
               />
@@ -182,6 +190,18 @@ export default function GroupGamesScreen({
           </div>
         </div>
       </main>
+
+      {walkthrough.isActive && walkthrough.currentStep && (
+        <WalkthroughOverlay
+          step={walkthrough.currentStep}
+          stepIndex={walkthrough.stepIndex}
+          totalSteps={walkthrough.totalSteps}
+          canGoBack={walkthrough.canGoBack}
+          onNext={walkthrough.next}
+          onBack={walkthrough.back}
+          onSkip={walkthrough.skip}
+        />
+      )}
     </div>
   );
 }

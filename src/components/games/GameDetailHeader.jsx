@@ -10,6 +10,7 @@ export default function GameDetailHeader({
   isEnded = false,
   onAddressCopy,
   adminAction = null,
+  walkthroughAnchorActive = false,
 }) {
   return (
     <header className="game-detail-header">
@@ -23,7 +24,12 @@ export default function GameDetailHeader({
             {!cancelled && isEnded ? (
               <span className="game-detail-header__ended-badge">Ended</span>
             ) : null}
-            <StatusBadge count={count} target={game.target} cancelled={cancelled} />
+            <span
+              className="game-detail-header__status-anchor"
+              {...(walkthroughAnchorActive ? { "data-walkthrough-target": "game-status" } : {})}
+            >
+              <StatusBadge count={count} target={game.target} cancelled={cancelled} />
+            </span>
             {adminAction ? (
               <span className="game-detail-header__admin-action">{adminAction}</span>
             ) : null}

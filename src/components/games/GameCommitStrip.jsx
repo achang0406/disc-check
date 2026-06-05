@@ -23,6 +23,7 @@ export default function GameCommitStrip({
   saving = false,
   adminAction = null,
   actionProps = null,
+  walkthroughAnchorActive = false,
 }) {
   const cancelled = game.status === "cancelled";
   const inPickupWindow = isLive || isEnded;
@@ -43,6 +44,7 @@ export default function GameCommitStrip({
         isEnded={isEnded}
         onAddressCopy={onAddressCopy}
         adminAction={adminAction}
+        walkthroughAnchorActive={walkthroughAnchorActive}
       />
 
       <div className="game-detail-body">
@@ -93,6 +95,13 @@ export default function GameCommitStrip({
           walkInPlaceholder={walkInPlaceholder}
           onAddWalkIn={(name) => onAddWalkIn?.(game.id, name)}
           walkInDisabled={!profile || saving}
+          walkthroughAnchorActive={walkthroughAnchorActive}
+        />
+      ) : walkthroughAnchorActive ? (
+        <div
+          className="game-commit-strip__actions game-commit-strip__tour-anchor"
+          data-walkthrough-target="walk-ins"
+          aria-hidden
         />
       ) : null}
     </section>

@@ -26,6 +26,7 @@ export default function GameCommitCard({
   showToast,
   isAdmin,
   onEditGame,
+  walkthroughAnchorActive = false,
 }) {
   const now = useGameClock();
   const [plusOnes, setPlusOnes] = useState(0);
@@ -133,7 +134,10 @@ export default function GameCommitCard({
     ) : null;
 
   return (
-    <div className={panelClass}>
+    <div
+      className={panelClass}
+      {...(walkthroughAnchorActive ? { "data-walkthrough-target": "game-card" } : {})}
+    >
       <GameCommitStrip
         profile={profile}
         game={game}
@@ -151,6 +155,7 @@ export default function GameCommitCard({
         onRemoveWalkIn={onRemoveWalkIn}
         saving={saving}
         actionProps={actionProps}
+        walkthroughAnchorActive={walkthroughAnchorActive}
       />
     </div>
   );

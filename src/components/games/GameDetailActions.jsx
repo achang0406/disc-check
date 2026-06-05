@@ -26,6 +26,7 @@ export default function GameDetailActions({
   walkInPlaceholder = "",
   onAddWalkIn,
   walkInDisabled = false,
+  walkthroughAnchorActive = false,
 }) {
   const cancelled = game.status === "cancelled";
   const committed = isLive ? checkedIn : rsvpd;
@@ -66,7 +67,10 @@ export default function GameDetailActions({
   };
 
   return (
-    <div className={className}>
+    <div
+      className={className}
+      {...(walkthroughAnchorActive ? { "data-walkthrough-target": "walk-ins" } : {})}
+    >
       {!committed && (
         <CommitExtras
           plusOnes={isLive ? herePlusOnes : plusOnes}
