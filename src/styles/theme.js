@@ -1287,7 +1287,7 @@ export const globalStyles = `
     justify-content: flex-start;
     flex-direction: column;
     padding-top: var(--layout-gutter-detail);
-    padding-bottom: var(--layout-gutter-detail);
+    padding-bottom: 0;
     padding-inline: var(--game-carousel-edge-pad);
     overflow: hidden;
   }
@@ -1609,19 +1609,16 @@ export const globalStyles = `
     z-index: var(--z-chat);
     display: flex;
     justify-content: center;
-    padding: var(--chat-bar-anchor-inset) var(--chat-bar-inset-x)
-      calc(var(--chat-bar-anchor-inset) + var(--safe-area-bottom));
+    padding: var(--space-2) var(--chat-bar-inset-x)
+      var(--chat-bar-pad-bottom, max(var(--chat-bar-inset-y), var(--safe-area-bottom)));
     padding-left: max(var(--chat-bar-inset-x), var(--safe-area-left));
     padding-right: max(var(--chat-bar-inset-x), var(--safe-area-right));
     pointer-events: none;
     transition: none;
   }
 
-  .chat-bar-anchor {
-    padding: var(--space-2) var(--chat-bar-inset-x)
-      max(var(--chat-bar-inset-y), var(--safe-area-bottom));
-    padding-left: max(var(--chat-bar-inset-x), var(--safe-area-left));
-    padding-right: max(var(--chat-bar-inset-x), var(--safe-area-right));
+  html.pwa-standalone .chat-bar-anchor--detail {
+    padding-top: var(--space-1);
   }
 
   .chat-bar-anchor--detail {

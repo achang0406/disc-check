@@ -23,13 +23,9 @@ function isThreadScrollable(node) {
   return node.scrollHeight > node.clientHeight + 2;
 }
 
-function getViewportBottomInset() {
-  const root = document.documentElement;
-  const style = getComputedStyle(root);
-  const barHeight = parseFloat(style.getPropertyValue("--chat-bar-height")) || 58;
-  const lift = parseFloat(style.getPropertyValue("--chat-bar-lift")) || 0;
-  const safeBottom = parseFloat(style.getPropertyValue("--safe-area-bottom")) || 0;
-  return barHeight + lift + safeBottom + 16;
+function isAtLatestScroll(thread) {
+  if (!thread) return true;
+  return thread.scrollTop <= 2;
 }
 
 export default function GameChatThread({ messages, selfId, loading = false }) {
@@ -40,7 +36,7 @@ export default function GameChatThread({ messages, selfId, loading = false }) {
   const [showJumpToBottom, setShowJumpToBottom] = useState(false);
   const [hasPendingNew, setHasPendingNew] = useState(false);
 
-  const goToLatest = useCallback(() => {
+  const goToLatest = useCallback(({ smooth = false } = {}) => {
     const node = scrollRef.current;
     const anchor = latestAnchorRef.current;
 
@@ -48,14 +44,14 @@ export default function GameChatThread({ messages, selfId, loading = false }) {
       scrollToLatest(node);
     }
 
-    anchor?.scrollIntoView({ block: "end", behavior: "smooth" });
+    anchor?.scrollIntoView({ block: "end", behavior: smooth ? "smooth" : "auto" });
     requestAnimationFrame(() => {
       if (node) scrollToLatest(node);
     });
   }, []);
 
   const jumpToLatest = useCallback(() => {
-    goToLatest();
+    goToLatest({ smooth: true });
     stickToBottomRef.current = true;
     setShowJumpToBottom(false);
     setHasPendingNew(false);
@@ -94,48 +90,63 @@ export default function GameChatThread({ messages, selfId, loading = false }) {
       return undefined;
     }
 
-    const observeLatest = () => {
-      const scrollRoot = thread && isThreadScrollable(thread) ? thread : null;
-      const bottomInset = getViewportBottomInset();
+    if (!thread || !isThreadScrollable(thread)) {
+      stickToBottomRef.current = true;
+      setShowJumpToBottom(false);
+      setHasPendingNew(false);
+      return undefined;
+    }
 
-      return new IntersectionObserver(
-        ([entry]) => {
-          if (!entry) return;
+    const updateJumpVisibility = (entry) => {
+      const atLatest = entry?.isIntersecting || isAtLatestScroll(thread);
+      stickToBottomRef.current = atLatest;
+      setShowJumpToBottom(!atLatest);
 
-          const atLatest = entry.isIntersecting;
-          stickToBottomRef.current = atLatest;
-          setShowJumpToBottom(!atLatest);
-
-          if (atLatest) {
-            setHasPendingNew(false);
-          }
-        },
-        {
-          root: scrollRoot,
-          rootMargin: scrollRoot ? "0px" : `0px 0px -${bottomInset}px 0px`,
-          threshold: 0,
-        },
-      );
+      if (atLatest) {
+        setHasPendingNew(false);
+      }
     };
 
-    let observer = observeLatest();
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (!entry) return;
+        updateJumpVisibility(entry);
+      },
+      {
+        root: thread,
+        threshold: 0,
+      },
+    );
+
     observer.observe(anchor);
 
-    const threadObserver =
-      thread &&
-      new ResizeObserver(() => {
-        observer.disconnect();
-        observer = observeLatest();
-        observer.observe(anchor);
-      });
+    const handleScroll = () => {
+      if (isAtLatestScroll(thread)) {
+        updateJumpVisibility({ isIntersecting: true });
+      }
+    };
 
-    if (thread && threadObserver) {
-      threadObserver.observe(thread);
-    }
+    thread.addEventListener("scroll", handleScroll, { passive: true });
+
+    const threadObserver = new ResizeObserver(() => {
+      if (!isThreadScrollable(thread)) {
+        stickToBottomRef.current = true;
+        setShowJumpToBottom(false);
+        setHasPendingNew(false);
+        return;
+      }
+
+      if (isAtLatestScroll(thread)) {
+        updateJumpVisibility({ isIntersecting: true });
+      }
+    });
+
+    threadObserver.observe(thread);
 
     return () => {
       observer.disconnect();
-      threadObserver?.disconnect();
+      threadObserver.disconnect();
+      thread.removeEventListener("scroll", handleScroll);
     };
   }, [messages.length, messages[messages.length - 1]?.id]);
 
