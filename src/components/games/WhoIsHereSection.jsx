@@ -7,7 +7,7 @@ function cx(...parts) {
   return parts.filter(Boolean).join(" ");
 }
 
-function WalkInAddForm({
+export function WalkInAddForm({
   disabled,
   placeholder,
   onAdd,
@@ -40,14 +40,14 @@ function WalkInAddForm({
             }}
             placeholder={placeholder}
             disabled={disabled}
-            aria-label="Walk-in name"
+            aria-label={placeholder}
           />
           <button
             type="submit"
             className="composer-field__submit game-walk-ins__submit"
             disabled={disabled || !name.trim()}
-            aria-label="Add walk-in"
-            title="Add walk-in"
+            aria-label={`Add ${placeholder}`}
+            title={`Add ${placeholder}`}
           >
             +
           </button>
@@ -105,22 +105,29 @@ export default function WhoIsHereSection({
               );
             })}
 
-            {walkInEntries.map((entry) => (
-              <span key={entry.id} className="walk-in-chip">
-                <span className={cx("chip", "chip--walk-in")}>{entry.name}</span>
-                {allowWalkInRemove && !disabled && (
-                  <button
-                    type="button"
-                    className="walk-in-chip__remove"
-                    aria-label={`Remove ${entry.name}`}
-                    onMouseDown={suppressMouseFocus}
-                    onClick={() => onRemoveWalkIn?.(entry.id)}
-                  >
-                    ×
-                  </button>
-                )}
-              </span>
-            ))}
+            {walkInEntries.map((entry) => {
+              const removable = allowWalkInRemove && !disabled;
+
+              return (
+                <span
+                  key={entry.id}
+                  className={cx("chip", "chip--walk-in", removable && "chip--removable")}
+                >
+                  {entry.name}
+                  {removable && (
+                    <button
+                      type="button"
+                      className="chip__remove"
+                      aria-label={`Remove ${entry.name}`}
+                      onMouseDown={suppressMouseFocus}
+                      onClick={() => onRemoveWalkIn?.(entry.id)}
+                    >
+                      ×
+                    </button>
+                  )}
+                </span>
+              );
+            })}
         </div>
       ) : null}
 

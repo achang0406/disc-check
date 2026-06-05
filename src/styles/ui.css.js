@@ -823,7 +823,7 @@ export const uiStyles = `
     padding: var(--space-1) var(--space-3);
     border-radius: var(--radius-pill);
     background: var(--chip-bg);
-    border: 1px solid var(--chip-border);
+    border: none;
     color: var(--chip-text);
     font-family: var(--font-sans);
     white-space: nowrap;
@@ -831,7 +831,6 @@ export const uiStyles = `
 
   .chip--you {
     background: var(--chip-you-bg);
-    border-color: var(--chip-you-border);
     color: var(--chip-you-text);
   }
 
@@ -884,7 +883,6 @@ export const uiStyles = `
     flex-direction: column;
     gap: var(--space-1);
     padding-top: var(--space-1);
-    border-top: 1px solid color-mix(in srgb, var(--card-ring) 65%, transparent);
   }
 
   .live-pickup__waiting {
@@ -906,28 +904,36 @@ export const uiStyles = `
 
   .chip--walk-in {
     background: var(--btn-bg);
-    border-color: var(--card-ring);
     color: var(--text-subtle);
   }
 
-  .walk-in-chip {
+  .chip--removable {
     display: inline-flex;
     align-items: center;
     gap: var(--space-1);
+    padding-right: var(--space-1);
   }
 
-  .walk-in-chip__remove {
+  .chip__remove {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
     border: none;
     background: none;
     color: var(--text-faint);
     cursor: pointer;
+    font-family: inherit;
     font-size: var(--font-body);
     line-height: 1;
-    padding: 0;
+    padding: var(--space-1);
+    margin: calc(-1 * var(--space-1));
+    border-radius: var(--radius-pill);
   }
 
-  .walk-in-chip__remove:hover {
+  .chip__remove:hover {
     color: var(--text-muted);
+    background: var(--chip-border);
   }
 
   @keyframes toast-enter {

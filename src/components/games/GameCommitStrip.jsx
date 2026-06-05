@@ -1,6 +1,8 @@
 import LivePickupPanel from "./LivePickupPanel.jsx";
 import GameDetailPlayersSection from "./GameDetailPlayersSection.jsx";
 import GameDetailHeader from "./GameDetailHeader.jsx";
+import GameDetailActions from "./GameDetailActions.jsx";
+import WhoIsHereSection from "./WhoIsHereSection.jsx";
 import ProgressBar from "./ProgressBar.jsx";
 
 export default function GameCommitStrip({
@@ -20,9 +22,16 @@ export default function GameCommitStrip({
   onRemoveWalkIn,
   saving = false,
   adminAction = null,
+  actionProps = null,
 }) {
   const cancelled = game.status === "cancelled";
   const inPickupWindow = isLive || isEnded;
+  const showPregameWalkInChips = !cancelled && !inPickupWindow && rsvpd && walkInEntries.length > 0;
+  const showWalkInInput =
+    !cancelled &&
+    !isEnded &&
+    ((isLive && checkedIn) || (!isLive && rsvpd));
+  const walkInPlaceholder = isLive ? "Who else is here?" : "Who else is coming?";
 
   return (
     <section className="game-commit-strip" aria-label="Game status and RSVP">
@@ -32,8 +41,6 @@ export default function GameCommitStrip({
         cancelled={cancelled}
         isLive={isLive}
         isEnded={isEnded}
-        rsvpd={rsvpd}
-        checkedIn={checkedIn}
         onAddressCopy={onAddressCopy}
         adminAction={adminAction}
       />
@@ -47,10 +54,21 @@ export default function GameCommitStrip({
 
         <div className="game-commit-strip__players">
           {!cancelled && !inPickupWindow && (
-            <GameDetailPlayersSection
-              entries={rsvpEntries}
-              profileId={profile?.id}
-            />
+            <>
+              <GameDetailPlayersSection
+                entries={rsvpEntries}
+                profileId={profile?.id}
+              />
+              {showPregameWalkInChips && (
+                <WhoIsHereSection
+                  walkInEntries={walkInEntries}
+                  profileId={profile?.id}
+                  disabled={!profile || saving}
+                  allowWalkInRemove
+                  onRemoveWalkIn={(guestId) => onRemoveWalkIn?.(game.id, guestId)}
+                />
+              )}
+            </>
           )}
 
           {!cancelled && inPickupWindow && (
@@ -61,13 +79,22 @@ export default function GameCommitStrip({
               checkInEntries={checkInEntries}
               walkInEntries={walkInEntries}
               disabled={!profile || saving}
-              showWalkInInput={!isEnded}
-              onAddWalkIn={(name) => onAddWalkIn?.(game.id, name)}
               onRemoveWalkIn={(guestId) => onRemoveWalkIn?.(game.id, guestId)}
             />
           )}
         </div>
       </div>
+
+      {actionProps ? (
+        <GameDetailActions
+          {...actionProps}
+          className="game-commit-strip__actions"
+          showWalkInInput={showWalkInInput}
+          walkInPlaceholder={walkInPlaceholder}
+          onAddWalkIn={(name) => onAddWalkIn?.(game.id, name)}
+          walkInDisabled={!profile || saving}
+        />
+      ) : null}
     </section>
   );
 }

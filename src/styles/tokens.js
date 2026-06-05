@@ -47,7 +47,7 @@ export const TOKENS = {
   "--game-carousel-edge-pad": "calc((100vw - var(--game-carousel-slide-width)) / 2)",
   "--game-card-inset-y": "var(--space-3)",
   "--game-card-inset-x": "var(--space-3)",
-  "--game-commit-chip-row-height": "calc(var(--font-body) * 1.3 + 2 * var(--space-1) + 2px)",
+  "--game-commit-chip-row-height": "calc(var(--font-body) * 1.3 + 2 * var(--space-1))",
   "--game-carousel-slot-height": "250px",
   "--z-toast": "100",
   "--z-presence": "150",

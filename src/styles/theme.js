@@ -441,27 +441,6 @@ export const globalStyles = `
     flex-shrink: 0;
   }
 
-  .commit-status-pill {
-    flex-shrink: 0;
-    font-size: var(--font-label);
-    padding: var(--space-1) var(--space-2);
-    border-radius: var(--radius-pill);
-    background: var(--chip-you-bg);
-    border: 1px solid var(--chip-you-border);
-    color: var(--chip-you-text);
-    font-family: var(--font-mono);
-    font-weight: 600;
-  }
-
-  .commit-status-pill--hidden {
-    visibility: hidden;
-  }
-
-  .game-detail-header__title-row .commit-status-pill {
-    padding: var(--space-1) var(--space-3);
-    font-size: var(--font-label);
-  }
-
   .theme-toggle {
     display: inline-flex;
     align-items: center;
@@ -858,6 +837,30 @@ export const globalStyles = `
     flex-shrink: 0;
   }
 
+  .game-detail-header__live-badge {
+    flex-shrink: 0;
+    font-size: var(--font-label);
+    padding: var(--space-1) var(--space-3);
+    border-radius: var(--radius-pill);
+    background: var(--status-almost-bg);
+    border: 1px solid var(--status-almost-color);
+    color: var(--status-almost-color);
+    font-family: var(--font-mono);
+    font-weight: 600;
+  }
+
+  .game-detail-header__ended-badge {
+    flex-shrink: 0;
+    font-size: var(--font-label);
+    padding: var(--space-1) var(--space-3);
+    border-radius: var(--radius-pill);
+    background: var(--btn-bg);
+    border: 1px solid var(--card-ring);
+    color: var(--text-subtle);
+    font-family: var(--font-mono);
+    font-weight: 600;
+  }
+
   .game-detail-header__admin-action {
     flex-shrink: 0;
     display: inline-flex;
@@ -915,12 +918,24 @@ export const globalStyles = `
   .game-commit-strip {
     flex: 1;
     min-height: 0;
-    padding: var(--game-card-inset-y) var(--game-card-inset-x);
+    padding: var(--game-card-inset-y) var(--game-card-inset-x) 0;
     display: flex;
     flex-direction: column;
     gap: var(--layout-stack-gap);
     font-size: var(--font-body);
     overflow: hidden;
+  }
+
+  .game-commit-strip__actions {
+    position: relative;
+    z-index: 2;
+    flex-shrink: 0;
+    margin-top: auto;
+    background: var(--card-bg);
+    padding: 0 var(--game-card-inset-x) var(--game-card-inset-y);
+    display: flex;
+    flex-direction: column;
+    gap: var(--layout-stack-gap);
   }
 
   .game-commit-strip .game-detail-header__title-row .status-badge {
@@ -941,32 +956,35 @@ export const globalStyles = `
     min-height: 0;
     display: flex;
     flex-direction: column;
+    justify-content: center;
     gap: var(--layout-stack-gap);
     overflow: hidden;
   }
 
   .game-commit-card .live-pickup {
-    flex: 1;
+    flex: 0 1 auto;
     min-height: 0;
     display: flex;
     flex-direction: column;
+    justify-content: center;
     gap: var(--layout-stack-gap);
     overflow: hidden;
   }
 
   .game-commit-card .game-detail-players {
+    flex: 0 1 auto;
     display: flex;
     flex-direction: column;
+    justify-content: center;
     gap: var(--space-1);
   }
 
   .game-commit-card .chip-list {
     flex-wrap: nowrap;
     align-items: center;
-    height: var(--game-commit-chip-row-height);
-    max-height: var(--game-commit-chip-row-height);
+    min-height: var(--game-commit-chip-row-height);
     overflow-x: auto;
-    overflow-y: hidden;
+    overflow-y: visible;
     max-width: 100%;
     -webkit-overflow-scrolling: touch;
     overscroll-behavior-x: contain;
@@ -978,23 +996,14 @@ export const globalStyles = `
   }
 
   .game-commit-card .chip-list__empty {
-    height: var(--game-commit-chip-row-height);
-    max-height: var(--game-commit-chip-row-height);
+    min-height: var(--game-commit-chip-row-height);
     display: flex;
     align-items: center;
     line-height: 1.3;
-    overflow: hidden;
   }
 
-  .game-commit-card .chip-list .chip,
-  .game-commit-card .chip-list .walk-in-chip {
+  .game-commit-card .chip-list .chip {
     flex-shrink: 0;
-  }
-
-  .game-commit-card .walk-in-chip {
-    display: inline-flex;
-    align-items: center;
-    height: var(--game-commit-chip-row-height);
   }
 
   .games-screen__main {
@@ -1218,10 +1227,6 @@ export const globalStyles = `
     margin: 0;
     color: var(--text-subtle);
     font-size: 15px;
-  }
-
-  .game-commit-card .game-detail-panel__actions {
-    flex-shrink: 0;
   }
 
   .install-app-link {
@@ -1539,19 +1544,6 @@ export const globalStyles = `
     line-height: 1.2;
   }
 
-  .game-detail-header__live {
-    display: inline-flex;
-    margin-top: var(--space-1);
-    font-size: var(--font-label);
-    padding: var(--space-1) var(--space-2);
-    border-radius: 999px;
-    background: var(--status-almost-bg);
-    border: 1px solid var(--status-almost-color);
-    color: var(--status-almost-color);
-    font-family: var(--font-mono);
-    font-weight: 600;
-  }
-
   .game-detail-header__starting-soon {
     display: inline-flex;
     margin-top: var(--space-1);
@@ -1561,19 +1553,6 @@ export const globalStyles = `
     background: var(--status-go-bg);
     border: 1px solid var(--status-go-color);
     color: var(--status-go-color);
-    font-family: var(--font-mono);
-    font-weight: 600;
-  }
-
-  .game-detail-header__ended {
-    display: inline-flex;
-    margin-top: var(--space-1);
-    font-size: var(--font-label);
-    padding: var(--space-1) var(--space-2);
-    border-radius: 999px;
-    background: var(--btn-bg);
-    border: 1px solid var(--card-ring);
-    color: var(--text-subtle);
     font-family: var(--font-mono);
     font-weight: 600;
   }

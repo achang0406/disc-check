@@ -2,7 +2,6 @@ import { useEffect, useRef, useState } from "react";
 import EditIcon from "../ui/EditIcon.jsx";
 import Button from "../ui/Button.jsx";
 import GameCommitStrip from "./GameCommitStrip.jsx";
-import GameDetailActions from "./GameDetailActions.jsx";
 import { useGameClock } from "../../hooks/useGameClock.js";
 import { isGameEnded, isGameLive } from "../../utils/gameSchedule.js";
 import { countHeadcount, countPlayers } from "../../utils/format.js";
@@ -97,25 +96,29 @@ export default function GameCommitCard({
     .filter(Boolean)
     .join(" ");
 
-  const actionProps = {
-    game,
-    isLive: live,
-    rsvpd,
-    checkedIn,
-    saving,
-    plusOnes,
-    onPlusOnesChange: setPlusOnes,
-    bringingKit,
-    onBringingKitChange: setBringingKit,
-    herePlusOnes,
-    onHerePlusOnesChange: setHerePlusOnes,
-    hereBringingKit,
-    onHereBringingKitChange: setHereBringingKit,
-    onRequestRsvp,
-    onCancel,
-    onRequestCheckIn,
-    onCheckOut,
-  };
+  const actionProps =
+    !ended && !cancelled
+      ? {
+          game,
+          isLive: live,
+          rsvpd,
+          checkedIn,
+          saving,
+          plusOnes,
+          onPlusOnesChange: setPlusOnes,
+          bringingKit,
+          onBringingKitChange: setBringingKit,
+          herePlusOnes,
+          onHerePlusOnesChange: setHerePlusOnes,
+          hereBringingKit,
+          onHereBringingKitChange: setHereBringingKit,
+          onRequestRsvp,
+          onCancel,
+          onRequestCheckIn,
+          onCheckOut,
+          isEnded: ended,
+        }
+      : null;
 
   const adminAction =
     isAdmin && onEditGame ? (
@@ -147,10 +150,8 @@ export default function GameCommitCard({
         onAddWalkIn={onAddWalkIn}
         onRemoveWalkIn={onRemoveWalkIn}
         saving={saving}
+        actionProps={actionProps}
       />
-      {!ended && game.status !== "cancelled" && (
-        <GameDetailActions {...actionProps} isEnded={ended} />
-      )}
     </div>
   );
 }

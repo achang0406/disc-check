@@ -8,8 +8,6 @@ export default function LivePickupPanel({
   checkInEntries,
   walkInEntries = [],
   disabled = false,
-  showWalkInInput = true,
-  onAddWalkIn,
   onRemoveWalkIn,
 }) {
   const hasRsvps = rsvpEntries.length > 0;
@@ -22,7 +20,6 @@ export default function LivePickupPanel({
   const showEmptyLead = !isEnded && !hasAnyoneHere && !hasRsvps;
   const showWaitingLead = !isEnded && !hasAnyoneHere && hasRsvps;
   const showEndedEmptyLead = isEnded && !hasAnyoneHere;
-  const showHereSection = hasAnyoneHere || (!isEnded && showWalkInInput);
 
   return (
     <div className="live-pickup">
@@ -38,17 +35,14 @@ export default function LivePickupPanel({
         <p className="live-pickup__lead">No one attended this game.</p>
       )}
 
-      {showHereSection && (
+      {hasAnyoneHere && (
         <WhoIsHereSection
           label={hereLabel}
           checkInEntries={checkInEntries}
           walkInEntries={walkInEntries}
           profileId={profile?.id}
           disabled={disabled}
-          showWalkInInput={!isEnded && showWalkInInput}
           allowWalkInRemove={!isEnded}
-          inputPlaceholder="Walk-in name"
-          onAddWalkIn={onAddWalkIn}
           onRemoveWalkIn={onRemoveWalkIn}
         />
       )}

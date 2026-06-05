@@ -1,5 +1,6 @@
 import Button from "../ui/Button.jsx";
 import CommitExtras from "./CommitExtras.jsx";
+import { WalkInAddForm } from "./WhoIsHereSection.jsx";
 
 export default function GameDetailActions({
   game,
@@ -20,6 +21,11 @@ export default function GameDetailActions({
   onRequestCheckIn,
   onCheckOut,
   isEnded = false,
+  className = "game-detail-panel__actions",
+  showWalkInInput = false,
+  walkInPlaceholder = "",
+  onAddWalkIn,
+  walkInDisabled = false,
 }) {
   const cancelled = game.status === "cancelled";
   const committed = isLive ? checkedIn : rsvpd;
@@ -60,7 +66,7 @@ export default function GameDetailActions({
   };
 
   return (
-    <div className="game-detail-panel__actions">
+    <div className={className}>
       {!committed && (
         <CommitExtras
           plusOnes={isLive ? herePlusOnes : plusOnes}
@@ -70,6 +76,13 @@ export default function GameDetailActions({
           guestsLabel={isLive ? "With you" : "Guests"}
           kitLabel={isLive ? "Has kit" : "Bringing kit"}
           disabled={saving}
+        />
+      )}
+      {showWalkInInput && (
+        <WalkInAddForm
+          disabled={walkInDisabled}
+          placeholder={walkInPlaceholder}
+          onAdd={onAddWalkIn}
         />
       )}
       <Button
