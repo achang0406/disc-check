@@ -40,6 +40,15 @@
           root.style.setProperty("--initial-bg", bg);
           root.style.setProperty("--initial-text", text);
           root.style.colorScheme = theme === "light" ? "light" : "dark";
+          document
+            .querySelector('meta[name="theme-color"]')
+            ?.setAttribute("content", bg);
+          document
+            .querySelector('meta[name="apple-mobile-web-app-status-bar-style"]')
+            ?.setAttribute(
+              "content",
+              theme === "light" ? "default" : "black-translucent",
+            );
         } catch (error) {
           // Storage unavailable — keep dark defaults.
         }

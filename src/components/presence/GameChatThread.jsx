@@ -17,15 +17,34 @@ function ChatBubble({ message, selfId }) {
 function scrollToLatest(node) {
   if (!node) return;
   node.scrollTop = 0;
+  requestAnimationFrame(() => {
+    if (distanceFromLatest(node) > 2) {
+      node.scrollTop = Math.max(0, node.scrollHeight - node.clientHeight);
+    }
+  });
 }
 
 function isThreadScrollable(node) {
   return node.scrollHeight > node.clientHeight + 2;
 }
 
+function distanceFromLatest(thread) {
+  if (!thread) return 0;
+  const maxScroll = Math.max(0, thread.scrollHeight - thread.clientHeight);
+  if (maxScroll <= 2) return 0;
+
+  const reversed = getComputedStyle(thread).flexDirection.includes("reverse");
+  if (!reversed) {
+    return maxScroll - thread.scrollTop;
+  }
+
+  // column-reverse: Chrome uses scrollTop 0 at latest and negative when scrolled up;
+  // WebKit may anchor at maxScroll instead — take whichever edge is closer.
+  return Math.min(Math.abs(thread.scrollTop), Math.abs(maxScroll - thread.scrollTop));
+}
+
 function isAtLatestScroll(thread) {
-  if (!thread) return true;
-  return thread.scrollTop <= 2;
+  return distanceFromLatest(thread) <= 2;
 }
 
 export default function GameChatThread({ messages, selfId, loading = false }) {
@@ -82,53 +101,14 @@ export default function GameChatThread({ messages, selfId, loading = false }) {
   }, [messages, selfId, goToLatest]);
 
   useLayoutEffect(() => {
-    const anchor = latestAnchorRef.current;
     const thread = scrollRef.current;
 
-    if (!anchor || messages.length === 0) {
+    if (!thread || messages.length === 0) {
       setShowJumpToBottom(false);
       return undefined;
     }
 
-    if (!thread || !isThreadScrollable(thread)) {
-      stickToBottomRef.current = true;
-      setShowJumpToBottom(false);
-      setHasPendingNew(false);
-      return undefined;
-    }
-
-    const updateJumpVisibility = (entry) => {
-      const atLatest = entry?.isIntersecting || isAtLatestScroll(thread);
-      stickToBottomRef.current = atLatest;
-      setShowJumpToBottom(!atLatest);
-
-      if (atLatest) {
-        setHasPendingNew(false);
-      }
-    };
-
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        if (!entry) return;
-        updateJumpVisibility(entry);
-      },
-      {
-        root: thread,
-        threshold: 0,
-      },
-    );
-
-    observer.observe(anchor);
-
-    const handleScroll = () => {
-      if (isAtLatestScroll(thread)) {
-        updateJumpVisibility({ isIntersecting: true });
-      }
-    };
-
-    thread.addEventListener("scroll", handleScroll, { passive: true });
-
-    const threadObserver = new ResizeObserver(() => {
+    const syncJumpVisibility = () => {
       if (!isThreadScrollable(thread)) {
         stickToBottomRef.current = true;
         setShowJumpToBottom(false);
@@ -136,17 +116,28 @@ export default function GameChatThread({ messages, selfId, loading = false }) {
         return;
       }
 
-      if (isAtLatestScroll(thread)) {
-        updateJumpVisibility({ isIntersecting: true });
-      }
-    });
+      const atLatest = isAtLatestScroll(thread);
+      stickToBottomRef.current = atLatest;
+      setShowJumpToBottom(distanceFromLatest(thread) > 2);
 
+      if (atLatest) {
+        setHasPendingNew(false);
+      }
+    };
+
+    thread.addEventListener("scroll", syncJumpVisibility, { passive: true });
+    thread.addEventListener("scrollend", syncJumpVisibility, { passive: true });
+
+    const threadObserver = new ResizeObserver(syncJumpVisibility);
     threadObserver.observe(thread);
 
+    syncJumpVisibility();
+    requestAnimationFrame(syncJumpVisibility);
+
     return () => {
-      observer.disconnect();
       threadObserver.disconnect();
-      thread.removeEventListener("scroll", handleScroll);
+      thread.removeEventListener("scroll", syncJumpVisibility);
+      thread.removeEventListener("scrollend", syncJumpVisibility);
     };
   }, [messages.length, messages[messages.length - 1]?.id]);
 

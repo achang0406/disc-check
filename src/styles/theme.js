@@ -479,33 +479,28 @@ export const globalStyles = `
   }
 
   .games-screen--detail {
-    min-height: max(var(--min-viewport-height), 100dvh);
-    height: auto;
-    overflow: visible;
+    height: 100%;
+    min-height: 0;
+    overflow: hidden;
   }
 
-  html:has(.games-screen--detail) {
-    min-height: max(var(--min-viewport-height), 100dvh);
-    overflow-y: auto;
-    overflow-x: hidden;
-    -webkit-overflow-scrolling: touch;
-  }
-
+  html:has(.games-screen--detail),
   html:has(.games-screen--detail) body,
   html:has(.games-screen--detail) #root,
   html:has(.games-screen--detail) .app-shell {
-    min-height: max(var(--min-viewport-height), 100dvh);
-    height: auto;
-    overflow: visible;
+    height: 100%;
+    min-height: 0;
+    overflow: hidden;
   }
 
   .games-screen--detail .games-screen__main--detail {
-    overflow: visible;
-    flex: 1 0 auto;
+    flex: 1 1 0;
+    min-height: 0;
   }
 
   .games-screen--detail .game-detail-layout--responsive {
-    flex: 0 1 auto;
+    flex: 1 1 0;
+    min-height: 0;
   }
 
   .game-detail-layout {
@@ -968,7 +963,7 @@ export const globalStyles = `
     min-height: 0;
     display: flex;
     flex-direction: column;
-    justify-content: center;
+    padding-top: var(--space-2);
     gap: var(--layout-stack-gap);
     overflow: hidden;
   }

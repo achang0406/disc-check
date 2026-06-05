@@ -4,6 +4,31 @@ import { THEMES } from "../styles/themes.js";
 
 const STORAGE_KEY = "disc_theme";
 
+const BROWSER_THEME_META = {
+  dark: {
+    themeColor: "#0a0a0a",
+    appleStatusBar: "black-translucent",
+  },
+  light: {
+    themeColor: "#f4f4ef",
+    appleStatusBar: "default",
+  },
+};
+
+function syncBrowserThemeMeta(theme) {
+  if (typeof document === "undefined") return;
+
+  const meta = BROWSER_THEME_META[theme] ?? BROWSER_THEME_META.dark;
+
+  document
+    .querySelector('meta[name="theme-color"]')
+    ?.setAttribute("content", meta.themeColor);
+
+  document
+    .querySelector('meta[name="apple-mobile-web-app-status-bar-style"]')
+    ?.setAttribute("content", meta.appleStatusBar);
+}
+
 function getStoredTheme() {
   try {
     return localStorage.getItem(STORAGE_KEY) === "light" ? "light" : "dark";
@@ -28,6 +53,7 @@ function applyTheme(theme) {
   document.body.style.background = vars["--bg"];
   document.body.style.margin = "0";
   document.body.style.color = vars["--text"];
+  syncBrowserThemeMeta(theme);
 }
 
 export function useTheme() {
