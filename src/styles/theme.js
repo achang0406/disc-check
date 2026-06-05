@@ -691,6 +691,10 @@ export const globalStyles = `
     color: var(--chip-you-text);
   }
 
+  .game-detail-panel__cta.btn--secondary {
+    transition: opacity 0.12s ease;
+  }
+
   .game-detail-layout__thread-wrap {
     display: flex;
     flex-direction: column;

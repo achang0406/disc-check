@@ -7,14 +7,7 @@ function ChatBubble({ message, selfId }) {
   return (
     <div className={`chat-message${isSelf ? " chat-message--self" : ""}`}>
       {!isSelf && <span className="chat-message__name">{message.name}</span>}
-      <div
-        className="chat-message__bubble"
-        style={
-          isSelf
-            ? { background: message.color, borderColor: message.color }
-            : undefined
-        }
-      >
+      <div className="chat-message__bubble">
         {message.text}
       </div>
     </div>

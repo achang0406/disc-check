@@ -1052,7 +1052,9 @@ export const uiStyles = `
   }
 
   .chat-message--self .chat-message__bubble {
-    color: #0a0a0a;
+    background: var(--chip-you-bg);
+    border-color: var(--chip-you-border);
+    color: var(--chip-you-text);
   }
 
   @media (max-width: 767px) {

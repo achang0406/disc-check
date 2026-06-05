@@ -3,7 +3,6 @@ import { colorForId } from "../../constants/presence.js";
 import Button from "../ui/Button.jsx";
 import Field from "../ui/Field.jsx";
 import ModalShell from "../ui/ModalShell.jsx";
-import ColorWheel, { HexColorInput } from "./ColorWheel.jsx";
 import PhoneField from "./PhoneField.jsx";
 import { formatPhoneDisplay, isValidPhone, normalizePhone } from "../../utils/phone.js";
 
@@ -18,7 +17,6 @@ export default function EditProfileModal({
 }) {
   const [name, setName] = useState(profile.name);
   const [phone, setPhone] = useState(formatPhoneDisplay(profile.phone));
-  const [bubbleColor, setBubbleColor] = useState(profile.bubbleColor || colorForId(profile.id));
   const [error, setError] = useState("");
   const [phoneError, setPhoneError] = useState("");
   const [checkingPhone, setCheckingPhone] = useState(false);
@@ -117,7 +115,7 @@ export default function EditProfileModal({
     setPhoneError("");
     onSubmit({
       name: trimmedName,
-      bubbleColor,
+      bubbleColor: profile.bubbleColor || colorForId(profile.id),
       phone: phone.trim() || null,
     });
   };
@@ -186,27 +184,6 @@ export default function EditProfileModal({
         }}
         removeDisabled={busy}
       />
-
-      <Field label="Speech bubble color">
-        <ColorWheel color={bubbleColor} onChange={setBubbleColor} />
-        <HexColorInput color={bubbleColor} onChange={setBubbleColor} />
-        <div
-          style={{
-            marginTop: "var(--space-3)",
-            display: "inline-flex",
-            alignItems: "center",
-            gap: "var(--space-2)",
-            padding: "var(--space-2) var(--space-3)",
-            borderRadius: "var(--radius-md)",
-            background: bubbleColor,
-            color: "#0a0a0a",
-            fontSize: "var(--font-body)",
-            fontFamily: "var(--font-sans)",
-          }}
-        >
-          Who&apos;s got disc?
-        </div>
-      </Field>
     </ModalShell>
   );
 }
