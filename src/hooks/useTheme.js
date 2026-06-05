@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { TOKENS } from "../styles/tokens.js";
 import { THEMES } from "../styles/themes.js";
-import { syncStandaloneRootClass } from "../utils/pwaInstall.js";
 
 const STORAGE_KEY = "disc_theme";
 
@@ -29,7 +28,6 @@ function applyTheme(theme) {
   document.body.style.background = vars["--bg"];
   document.body.style.margin = "0";
   document.body.style.color = vars["--text"];
-  syncStandaloneRootClass();
 }
 
 export function useTheme() {

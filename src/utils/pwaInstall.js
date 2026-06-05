@@ -8,11 +8,6 @@ export function isStandaloneDisplay() {
   );
 }
 
-export function syncStandaloneRootClass() {
-  if (typeof document === "undefined") return;
-  document.documentElement.classList.toggle("pwa-standalone", isStandaloneDisplay());
-}
-
 export function isIosDevice() {
   if (typeof navigator === "undefined") return false;
 

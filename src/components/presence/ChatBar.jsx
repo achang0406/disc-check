@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { CHAT_INPUT_PLACEHOLDER, MAX_CHAT_LENGTH } from "../../constants/presence.js";
 import { getPortalTarget } from "../../utils/portalTarget.js";
-import { isStandaloneDisplay, syncStandaloneRootClass } from "../../utils/pwaInstall.js";
+import { isStandaloneDisplay } from "../../utils/pwaInstall.js";
 
 /** Inset between layout viewport bottom and visual viewport bottom (Safari chrome or keyboard). */
 function getViewportBottomInset(viewport) {
@@ -12,31 +12,6 @@ function getViewportBottomInset(viewport) {
 
 const KEYBOARD_INSET_MIN = 150;
 const SAFARI_CHROME_INSET_MAX = 140;
-
-function applyChatBarInsets(root, { standalone, keyboardOpen, safariChrome, inset }) {
-  if (keyboardOpen) {
-    root.style.setProperty("--chat-bar-bottom", `${inset}px`);
-    root.style.setProperty("--chat-bar-pad-bottom", "0px");
-    root.style.setProperty("--chat-bar-lift", `${inset}px`);
-    return;
-  }
-
-  root.style.setProperty("--chat-bar-lift", "0px");
-
-  if (safariChrome) {
-    root.style.setProperty("--chat-bar-bottom", `${inset}px`);
-    root.style.removeProperty("--chat-bar-pad-bottom");
-    return;
-  }
-
-  root.style.setProperty("--chat-bar-bottom", "0px");
-
-  if (standalone) {
-    root.style.setProperty("--chat-bar-pad-bottom", "env(safe-area-inset-bottom, 0px)");
-  } else {
-    root.style.removeProperty("--chat-bar-pad-bottom");
-  }
-}
 
 export default function ChatBar({
   inputRef,
@@ -51,7 +26,6 @@ export default function ChatBar({
 
   useEffect(() => {
     setPortalTarget(getPortalTarget());
-    syncStandaloneRootClass();
   }, []);
 
   useEffect(() => {
@@ -62,7 +36,6 @@ export default function ChatBar({
       root.style.removeProperty("--chat-bar-height");
       root.style.removeProperty("--chat-bar-lift");
       root.style.removeProperty("--chat-bar-bottom");
-      root.style.removeProperty("--chat-bar-pad-bottom");
       root.style.removeProperty("--chat-bar-offset-left");
       root.style.removeProperty("--chat-bar-offset-right");
     };
@@ -71,11 +44,19 @@ export default function ChatBar({
 
     const syncHeight = () => {
       const field = anchor.querySelector(".chat-bar__field");
+      if (!field) return;
+
       const anchorStyle = getComputedStyle(anchor);
-      const padTop = parseFloat(anchorStyle.paddingTop) || 0;
       const padBottom = parseFloat(anchorStyle.paddingBottom) || 0;
-      const fieldHeight = field?.getBoundingClientRect().height ?? anchor.getBoundingClientRect().height;
-      const height = Math.ceil(fieldHeight + padTop + padBottom);
+      const fieldHeight = field.getBoundingClientRect().height;
+
+      const thread = document.querySelector(".game-detail-layout__thread");
+      const threadStyle = thread ? getComputedStyle(thread) : null;
+      const threadGap = threadStyle
+        ? parseFloat(threadStyle.rowGap || threadStyle.gap) || 0
+        : parseFloat(getComputedStyle(root).getPropertyValue("--space-2")) || 0;
+
+      const height = Math.ceil(threadGap + fieldHeight + padBottom);
       root.style.setProperty("--chat-bar-height", `${height}px`);
     };
 
@@ -90,19 +71,12 @@ export default function ChatBar({
 
     const viewport = window.visualViewport;
     const update = () => {
-      syncStandaloneRootClass();
       syncHeight();
       syncOffsets();
 
-      const standalone = isStandaloneDisplay();
-
       if (!viewport) {
-        applyChatBarInsets(root, {
-          standalone,
-          keyboardOpen: false,
-          safariChrome: false,
-          inset: 0,
-        });
+        root.style.setProperty("--chat-bar-lift", "0px");
+        root.style.setProperty("--chat-bar-bottom", "0px");
         return;
       }
 
@@ -110,12 +84,18 @@ export default function ChatBar({
       const keyboardOpen =
         inputFocusedRef.current && inset >= KEYBOARD_INSET_MIN;
       const safariChrome =
-        !standalone &&
+        !isStandaloneDisplay() &&
         !keyboardOpen &&
         inset > 0 &&
         inset < SAFARI_CHROME_INSET_MAX;
 
-      applyChatBarInsets(root, { standalone, keyboardOpen, safariChrome, inset });
+      if (keyboardOpen || safariChrome) {
+        root.style.setProperty("--chat-bar-bottom", `${inset}px`);
+      } else {
+        root.style.setProperty("--chat-bar-bottom", "0px");
+      }
+
+      root.style.setProperty("--chat-bar-lift", keyboardOpen ? `${inset}px` : "0px");
     };
 
     const resizeObserver = new ResizeObserver(update);
