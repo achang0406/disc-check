@@ -769,7 +769,7 @@ SECURITY DEFINER
 SET search_path = public
 AS $$
 DECLARE
-  max_messages CONSTANT INTEGER := 50;
+  max_messages CONSTANT INTEGER := 100;
   excess INTEGER;
 BEGIN
   SELECT COUNT(*) - max_messages INTO excess
