@@ -141,68 +141,6 @@ export default function GameChatThread({ messages, selfId, loading = false }) {
     };
   }, [messages.length, messages[messages.length - 1]?.id]);
 
-  useLayoutEffect(() => {
-    const thread = scrollRef.current;
-    const root = document.documentElement;
-
-    const clearThreadPad = () => {
-      root.style.removeProperty("--chat-thread-pad-left");
-      root.style.removeProperty("--chat-thread-pad-right");
-    };
-
-    if (!thread) return undefined;
-
-    const syncThreadPadding = () => {
-      if (thread.querySelector(".game-chat-thread__empty") || thread.querySelector(".game-chat-thread__loading")) {
-        clearThreadPad();
-        return;
-      }
-
-      const field = document.querySelector(".chat-bar__field");
-      if (!field) return;
-
-      const threadRect = thread.getBoundingClientRect();
-      const inputRect = field.getBoundingClientRect();
-
-      root.style.setProperty(
-        "--chat-thread-pad-left",
-        `${Math.max(0, inputRect.left - threadRect.left)}px`,
-      );
-      root.style.setProperty(
-        "--chat-thread-pad-right",
-        `${Math.max(0, threadRect.right - inputRect.right)}px`,
-      );
-    };
-
-    const resizeObserver = new ResizeObserver(syncThreadPadding);
-    resizeObserver.observe(thread);
-
-    const field = document.querySelector(".chat-bar__field");
-    if (field) {
-      resizeObserver.observe(field);
-    }
-
-    window.addEventListener("resize", syncThreadPadding);
-
-    const viewport = window.visualViewport;
-    if (viewport) {
-      viewport.addEventListener("resize", syncThreadPadding);
-      viewport.addEventListener("scroll", syncThreadPadding);
-    }
-
-    syncThreadPadding();
-
-    return () => {
-      resizeObserver.disconnect();
-      window.removeEventListener("resize", syncThreadPadding);
-      if (viewport) {
-        viewport.removeEventListener("resize", syncThreadPadding);
-        viewport.removeEventListener("scroll", syncThreadPadding);
-      }
-      clearThreadPad();
-    };
-  }, [messages.length]);
-
   return (
     <div className="game-chat-thread-shell">
       <div

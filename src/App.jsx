@@ -6,7 +6,6 @@ import Toast from "./components/layout/Toast.jsx";
 import SignUpModal from "./components/auth/SignUpModal.jsx";
 import EditProfileModal from "./components/auth/EditProfileModal.jsx";
 import AdminLoginModal from "./components/auth/AdminLoginModal.jsx";
-import ChatBar from "./components/presence/ChatBar.jsx";
 import GameFormModal from "./components/games/GameFormModal.jsx";
 import DeleteGameModal from "./components/games/DeleteGameModal.jsx";
 import GroupFormModal from "./components/groups/GroupFormModal.jsx";
@@ -203,16 +202,6 @@ function AppRoutes() {
             <Route path="/groups/:groupId" element={<GroupGamesScreen {...groupScreenProps} />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
-
-          {groupMatch && (
-            <ChatBar
-              inputRef={presence.chatInputRef}
-              value={presence.draft}
-              onChange={presence.setThreadDraft}
-              onSend={presence.sendChat}
-              connected={presence.connected}
-            />
-          )}
         </div>
       )}
       {loadingOverlay && (

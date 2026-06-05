@@ -5,7 +5,7 @@
  * Responsive steps are applied in `theme.js` at sm / lg (md is layout-only).
  *
  * Layout tokens: `--layout-gutter*`, `--layout-inline-gap`, `--layout-stack-gap`,
- * `--game-card-inset-*`, `--game-list-gap`, `--chat-bar-inset-*`, `--chat-bar-anchor-inset`
+ * `--game-card-inset-*`, `--game-list-gap`, `--chat-bar-inset-*`
  */
 export const TOKENS = {
   "--space-1": "4px",
@@ -55,14 +55,8 @@ export const TOKENS = {
   "--z-modal": "200",
   "--chat-bar-inset-x": "var(--space-3)",
   "--chat-bar-inset-y": "var(--space-2)",
-  "--chat-bar-anchor-inset": "var(--space-5)",
   "--chat-bar-width-wide": "50vw",
-  "--chat-bar-height": "58px",
   "--chat-thread-gap": "var(--space-2)",
-  "--chat-bar-bottom": "0px",
-  "--chat-bar-lift": "0px",
-  "--chat-bar-offset-left": "max(var(--chat-bar-inset-x), env(safe-area-inset-left, 0px))",
-  "--chat-bar-offset-right": "max(var(--chat-bar-inset-x), env(safe-area-inset-right, 0px))",
   "--safe-area-top": "env(safe-area-inset-top, 0px)",
   "--safe-area-bottom": "env(safe-area-inset-bottom, 0px)",
   "--safe-area-left": "env(safe-area-inset-left, 0px)",

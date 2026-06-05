@@ -4,6 +4,7 @@ import AppHeader from "../components/layout/AppHeader.jsx";
 import GameCommitCard from "../components/games/GameCommitCard.jsx";
 import GameCardsCarousel from "../components/games/GameCardsCarousel.jsx";
 import GameChatThread from "../components/presence/GameChatThread.jsx";
+import ChatBar from "../components/presence/ChatBar.jsx";
 import GroupChatPushButton from "../components/games/GroupChatPushButton.jsx";
 import WalkthroughOverlay from "../components/walkthrough/WalkthroughOverlay.jsx";
 import EditIcon from "../components/ui/EditIcon.jsx";
@@ -188,6 +189,16 @@ export default function GroupGamesScreen({
               />
             )}
           </div>
+
+          {presence && (
+            <ChatBar
+              inputRef={presence.chatInputRef}
+              value={presence.draft}
+              onChange={presence.setThreadDraft}
+              onSend={presence.sendChat}
+              connected={presence.connected}
+            />
+          )}
         </div>
       </main>
 

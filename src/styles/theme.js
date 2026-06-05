@@ -515,9 +515,8 @@ export const globalStyles = `
     flex-direction: column;
     flex: 1;
     min-height: 0;
-    gap: 0;
+    gap: var(--chat-thread-gap);
     justify-content: flex-start;
-    padding-bottom: var(--chat-bar-height, 58px);
   }
 
   .games-screen--detail .games-screen__main--detail {
@@ -725,8 +724,8 @@ export const globalStyles = `
     -webkit-overflow-scrolling: touch;
     overscroll-behavior: contain;
     gap: var(--chat-thread-gap);
-    padding-left: var(--chat-thread-pad-left, var(--chat-bar-inset-x));
-    padding-right: var(--chat-thread-pad-right, var(--chat-bar-inset-x));
+    padding-left: var(--chat-bar-inset-x);
+    padding-right: var(--chat-bar-inset-x);
     padding-bottom: 0;
     scroll-padding-bottom: var(--chat-thread-gap);
   }
@@ -765,11 +764,9 @@ export const globalStyles = `
   }
 
   .game-chat-thread__jump {
-    position: fixed;
+    position: absolute;
     left: 50%;
-    bottom: calc(
-      var(--chat-bar-height, 58px) + var(--chat-bar-lift, 0px) + var(--chat-thread-gap)
-    );
+    bottom: var(--space-2);
     transform: translateX(-50%);
     z-index: calc(var(--z-chat) - 1);
     padding: 6px 12px;
@@ -1285,7 +1282,7 @@ export const globalStyles = `
     justify-content: flex-start;
     flex-direction: column;
     padding-top: var(--layout-gutter-detail);
-    padding-bottom: var(--layout-gutter-detail);
+    padding-bottom: 0;
     padding-inline: var(--game-carousel-edge-pad);
     overflow: hidden;
   }
@@ -1599,40 +1596,36 @@ export const globalStyles = `
     }
   }
 
-  .chat-bar-anchor {
-    position: fixed;
-    left: 0;
-    right: 0;
-    bottom: var(--chat-bar-bottom, 0px);
+  .chat-bar-anchor--detail {
+    position: relative;
+    flex-shrink: 0;
     z-index: var(--z-chat);
     display: flex;
     justify-content: center;
-    padding: var(--chat-bar-anchor-inset) var(--chat-bar-inset-x)
-      calc(var(--chat-bar-anchor-inset) + var(--safe-area-bottom));
+    width: 100%;
+    padding: 0 var(--chat-bar-inset-x) max(var(--chat-bar-inset-y), var(--safe-area-bottom));
     padding-left: max(var(--chat-bar-inset-x), var(--safe-area-left));
     padding-right: max(var(--chat-bar-inset-x), var(--safe-area-right));
     pointer-events: none;
-    transition: none;
   }
 
-  .chat-bar-anchor {
-    padding: var(--space-2) var(--chat-bar-inset-x)
-      max(var(--chat-bar-inset-y), var(--safe-area-bottom));
-    padding-left: max(var(--chat-bar-inset-x), var(--safe-area-left));
-    padding-right: max(var(--chat-bar-inset-x), var(--safe-area-right));
-  }
+  @media (display-mode: standalone), (display-mode: fullscreen) {
+    .chat-bar-anchor--detail {
+      padding-bottom: 0;
+    }
 
-  .chat-bar-anchor--detail {
-    padding-top: 0;
+    .chat-bar-anchor--detail .composer-field__input {
+      padding-bottom: calc(var(--chat-bar-inset-y) + env(safe-area-inset-bottom, 0px));
+    }
   }
 
   .chat-bar-stack {
     display: flex;
     flex-direction: column;
-    align-items: center;
+    align-items: stretch;
     gap: var(--space-2);
-    width: var(--content-rail-width);
-    max-width: 100%;
+    width: 100%;
+    max-width: var(--content-rail-width);
     pointer-events: auto;
   }
 
