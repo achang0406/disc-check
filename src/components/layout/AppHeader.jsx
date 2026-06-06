@@ -41,8 +41,6 @@ export default function AppHeader({
   onAdminLoginClick,
   onAdminLogout,
   onAddGame,
-  addGameDisabled = false,
-  addGameHint,
   showAdmin = false,
   showInstallLink = false,
   leading,
@@ -189,9 +187,8 @@ export default function AppHeader({
             variant="ghost"
             className="games-screen__add-game games-screen__add-game--header"
             onClick={onAddGame}
-            disabled={addGameDisabled}
-            aria-label={addGameHint ?? "Add game"}
-            title={addGameHint ?? "Add game"}
+            aria-label="Add game"
+            title="Add game"
           >
             <span className="games-screen__add-game-icon" aria-hidden="true">
               +

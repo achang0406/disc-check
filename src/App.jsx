@@ -20,7 +20,6 @@ import { useChatAlerts } from "./hooks/useChatAlerts.js";
 import GroupsLandingScreen from "./screens/GroupsLandingScreen.jsx";
 import GroupGamesScreen from "./screens/GroupGamesScreen.jsx";
 import { useAppResume } from "./hooks/useAppResume.js";
-import { gamesForGroup } from "./lib/data.js";
 import { resyncGroupChatPushSubscription } from "./lib/push.js";
 import { globalStyles } from "./styles/theme.js";
 
@@ -33,10 +32,6 @@ function AppRoutes() {
   const detailGroup = useMemo(
     () => (groupId ? app.groupsMeta.find((item) => item.id === groupId) ?? null : null),
     [groupId, app.groupsMeta],
-  );
-  const groupGames = useMemo(
-    () => (groupId ? gamesForGroup(app.gamesMeta, groupId) : []),
-    [groupId, app.gamesMeta],
   );
   const presence = usePresence(app.profile, groupId, detailGroup?.name ?? "");
   const groupAdminSession = useGroupAdminSession(groupId ?? "");
@@ -76,7 +71,6 @@ function AppRoutes() {
     rsvps: app.rsvps,
     checkIns: app.checkIns,
     guests: app.guests,
-    announcements: app.announcements,
     myRsvps: app.myRsvps,
     myCheckIns: app.myCheckIns,
     savingGameId: app.savingGameId,
@@ -96,17 +90,9 @@ function AppRoutes() {
     isAdmin: groupAdminSession.isAdmin,
     onAdminLoginClick: () => groupAdmin.setShowLogin(true),
     onAdminLogout: groupAdminSession.logout,
-    onAddGame: () => {
-      if (groupGames.length >= 7) {
-        showToast("Maximum 7 games per group", "error");
-        return;
-      }
-      groupAdmin.openCreate();
-    },
+    onAddGame: groupAdmin.openCreate,
     onEditGame: groupAdmin.openEdit,
     onEditGroup: groupAdmin.openGroupSettings,
-    onPostAnnouncement: groupAdmin.postAnnouncement,
-    postingAnnouncementGameId: groupAdmin.postingAnnouncementGameId,
   };
 
   return (
@@ -175,7 +161,6 @@ function AppRoutes() {
             <GameFormModal
               mode={groupAdmin.gameModal.mode}
               initial={groupAdmin.gameModal.mode === "edit" ? groupAdmin.gameModal.game : null}
-              groupGames={groupGames}
               saving={groupAdmin.saving}
               onSave={groupAdmin.saveGame}
               onClose={groupAdmin.closeGameModal}

@@ -12,15 +12,15 @@ export function useServiceWorkerNavigation({ onPushSubscriptionChange } = {}) {
       if (!data || typeof data !== "object") return;
 
       if (data.type === "notification-open") {
-        try {
-          const url = new URL(data.url || "/", window.location.origin);
-          navigate(
-            { pathname: url.pathname, search: url.search },
-            { replace: false },
-          );
-        } catch {
-          navigate("/", { replace: false });
-        }
+        const path = (() => {
+          try {
+            return new URL(data.url || "/", window.location.origin).pathname;
+          } catch {
+            return "/";
+          }
+        })();
+
+        navigate(path, { replace: false });
         return;
       }
 

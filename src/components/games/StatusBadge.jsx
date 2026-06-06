@@ -1,7 +1,12 @@
-import { getGameBadgeVariant } from "../../utils/gameBadge.js";
+function getGameStatusVariant(count, target, cancelled) {
+  if (cancelled) return "cancelled";
+  if (count >= target) return "go";
+  if (count >= Math.max(1, target - 2)) return "almost";
+  return "not";
+}
 
 export default function StatusBadge({ count, target, cancelled }) {
-  const variant = getGameBadgeVariant({ count, target, cancelled });
+  const variant = getGameStatusVariant(count, target, cancelled);
   const label =
     variant === "cancelled"
       ? "CANCELLED"

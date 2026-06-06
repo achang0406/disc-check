@@ -76,18 +76,6 @@ function groupGuests(rows) {
   return map;
 }
 
-function groupAnnouncements(rows) {
-  const map = {};
-  for (const row of rows) {
-    map[row.game_id] = {
-      message: row.message,
-      cycleAt: row.cycle_at,
-      postedAt: row.posted_at,
-    };
-  }
-  return map;
-}
-
 function formatStartTimeForRpc(value) {
   const clock = parseStartTime(value);
   if (!clock) return null;
@@ -308,13 +296,6 @@ export async function fetchAppData() {
 
   if (guestsResult.error) throw guestsResult.error;
 
-  const announcementsResult = await supabase
-    .from("game_announcements")
-    .select("game_id, cycle_at, message, posted_at")
-    .order("posted_at", { ascending: false });
-
-  if (announcementsResult.error) throw announcementsResult.error;
-
   const games = (gamesResult.data || []).map(formatGame);
   const displayCycles = Object.fromEntries(
     games.map((game) => [game.id, getGameDisplayCycle(game)]),
@@ -336,32 +317,14 @@ export async function fetchAppData() {
     return expected && normalizeCycleAt(row.cycle_at) === expected;
   });
 
-  const activeAnnouncements = (announcementsResult.data || []).filter((row) => {
-    const expected = displayCycles[row.game_id];
-    return expected && normalizeCycleAt(row.cycle_at) === expected;
-  });
-
   return {
     groups: (groupsResult.data || []).map(formatGroup),
     games,
     rsvps: groupRsvps(activeRsvpRows),
     checkIns: groupCheckIns(activeCheckIns),
     guests: groupGuests(activeGuests),
-    announcements: groupAnnouncements(activeAnnouncements),
     fetchSeq,
   };
-}
-
-export async function postGameAnnouncement({ secret, gameId, message, subscriberId }) {
-  const supabase = getSupabase();
-  const { error } = await supabase.rpc("admin_post_game_announcement", {
-    p_secret: secret,
-    p_game_id: gameId,
-    p_message: message,
-    p_subscriber_id: subscriberId ?? null,
-  });
-  if (error) throw error;
-  return fetchAppData();
 }
 
 export function gamesForGroup(games, groupId) {
@@ -647,24 +610,6 @@ export function subscribeToGuests(onChange) {
     .on(
       "postgres_changes",
       { event: "*", schema: "public", table: "game_guests" },
-      refresh,
-    )
-    .subscribe();
-
-  return () => {
-    supabase.removeChannel(channel);
-  };
-}
-
-export function subscribeToAnnouncements(onChange) {
-  const supabase = getSupabase();
-  const refresh = createDebouncedAppDataRefresh(onChange);
-
-  const channel = supabase
-    .channel("disc-check:announcements")
-    .on(
-      "postgres_changes",
-      { event: "*", schema: "public", table: "game_announcements" },
       refresh,
     )
     .subscribe();

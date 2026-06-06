@@ -1,11 +1,5 @@
 import { useCallback, useState } from "react";
-import {
-  createGame,
-  deleteGame,
-  postGameAnnouncement,
-  updateGame,
-  updateGroup,
-} from "../lib/data.js";
+import { createGame, deleteGame, updateGame, updateGroup } from "../lib/data.js";
 import { getGroupAdminPasscode } from "./useGroupAdminSession.js";
 
 export function useGroupAdminActions({ groupId, showToast, refresh }) {
@@ -14,7 +8,6 @@ export function useGroupAdminActions({ groupId, showToast, refresh }) {
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [showLogin, setShowLogin] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [postingAnnouncementGameId, setPostingAnnouncementGameId] = useState(null);
 
   const openCreate = useCallback(() => setGameModal({ mode: "create" }), []);
   const openEdit = useCallback((game) => setGameModal({ mode: "edit", game }), []);
@@ -62,14 +55,10 @@ export function useGroupAdminActions({ groupId, showToast, refresh }) {
         await refresh();
         setGameModal(null);
       } catch (error) {
-        const raw = error?.message ?? "";
-        const message = raw.includes("invalid group admin passcode")
-          ? "Admin passcode out of sync — sign in again"
-          : raw.includes("group game limit reached")
-            ? "Maximum 7 games per group"
-            : raw.includes("already has a game on that day")
-              ? "This group already has a game on that day"
-              : "Couldn't save game — try again";
+        const message =
+          error?.message?.includes("invalid group admin passcode")
+            ? "Admin passcode out of sync — sign in again"
+            : "Couldn't save game — try again";
         showToast(message, "error");
       } finally {
         setSaving(false);
@@ -123,43 +112,12 @@ export function useGroupAdminActions({ groupId, showToast, refresh }) {
     }
   }, [deleteTarget, groupId, refresh, showToast]);
 
-  const postAnnouncement = useCallback(
-    async ({ gameId, message, subscriberId }) => {
-      const secret = getGroupAdminPasscode(groupId);
-      if (!secret) {
-        showToast("Admin session expired", "error");
-        return false;
-      }
-
-      setPostingAnnouncementGameId(gameId);
-      try {
-        await postGameAnnouncement({
-          secret,
-          gameId,
-          message,
-          subscriberId,
-        });
-        await refresh();
-        showToast("Announcement posted");
-        return true;
-      } catch {
-        showToast("Couldn't post announcement — try again", "error");
-        return false;
-      } finally {
-        setPostingAnnouncementGameId(null);
-      }
-    },
-    [groupId, refresh, showToast],
-  );
-
   return {
     gameModal,
     groupModal,
     deleteTarget,
     showLogin,
     saving,
-    postingAnnouncementGameId,
-    postAnnouncement,
     setShowLogin,
     openCreate,
     openEdit,

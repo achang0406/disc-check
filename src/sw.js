@@ -67,30 +67,19 @@ self.addEventListener("push", (event) => {
   }
 
   const title = payload.title || "DiscCheck";
-  const body = payload.body || "New update";
-  const tag = payload.tag || "disc-check-push";
+  const body = payload.body || "New chat message";
+  const tag = payload.tag || "disc-check-chat";
   const url = payload.url || "/";
   const groupId = payload.groupId || null;
 
   event.waitUntil(
-    (async () => {
-      const windowClients = await self.clients.matchAll({
-        type: "window",
-        includeUncontrolled: true,
-      });
-      const appIsForeground = windowClients.some(
-        (client) => client.visibilityState === "visible",
-      );
-      if (appIsForeground) return;
-
-      await self.registration.showNotification(title, {
-        body,
-        tag,
-        icon: "/pwa-192x192.png",
-        badge: "/pwa-192x192.png",
-        data: { url, groupId },
-      });
-    })(),
+    self.registration.showNotification(title, {
+      body,
+      tag,
+      icon: "/pwa-192x192.png",
+      badge: "/pwa-192x192.png",
+      data: { url, groupId },
+    }),
   );
 });
 

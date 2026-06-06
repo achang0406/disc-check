@@ -54,11 +54,11 @@ export function useChatAlerts({ gameId, gameName, messages, selfId, enabled = tr
       void syncPushPreference();
     };
 
-    window.addEventListener("disc-check-push-changed", onPreferenceChange);
+    window.addEventListener("disc-check-chat-push-changed", onPreferenceChange);
 
     return () => {
       cancelled = true;
-      window.removeEventListener("disc-check-push-changed", onPreferenceChange);
+      window.removeEventListener("disc-check-chat-push-changed", onPreferenceChange);
     };
   }, [contextId, enabled, selfId]);
 

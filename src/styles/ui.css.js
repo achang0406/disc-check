@@ -560,15 +560,6 @@ export const uiStyles = `
     color: var(--cancel-btn-text);
   }
 
-  .select-field__option--disabled,
-  .select-field__option--disabled:hover,
-  .select-field__option--disabled.select-field__option--highlighted {
-    color: var(--text-muted);
-    opacity: 0.55;
-    cursor: not-allowed;
-    background: transparent;
-  }
-
   .select-field__option:focus {
     outline: none;
   }
