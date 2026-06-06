@@ -32,9 +32,15 @@ export function isWebPushSupported() {
   return getWebPushSupportState().supported;
 }
 
-/** Show the chat bell only in the installed web app (standalone / Home Screen). */
+/** Show the alerts bell only in the installed web app (standalone / Home Screen). */
 export function canShowChatPushBell() {
   return isStandaloneDisplay() && isWebPushSupported();
+}
+
+export function buildGameDeepLink(groupId, gameId) {
+  if (!groupId) return "/";
+  if (!gameId) return `/groups/${groupId}`;
+  return `/groups/${groupId}?game=${encodeURIComponent(gameId)}`;
 }
 
 function urlBase64ToUint8Array(base64String) {
@@ -96,7 +102,7 @@ async function findPushRegistration({ groupId, subscriberId }) {
   return data ?? null;
 }
 
-/** Whether visible chat alerts (bell) are on for this group. */
+/** Whether game alerts (bell) are on for this group. */
 export async function isSubscribedToGroupChatPush({ groupId, subscriberId }) {
   if (!groupId) return false;
   const row = await findPushRegistration({ groupId, subscriberId });
@@ -183,7 +189,7 @@ async function ensureBrowserPushSubscription() {
 
     return subscription;
   } catch (error) {
-    console.warn("Chat push registration failed", error);
+    console.warn("Push registration failed", error);
     return null;
   }
 }
@@ -232,37 +238,4 @@ export async function resyncGroupChatPushSubscription({ groupId, subscriberId })
   const active = await isSubscribedToGroupChatPush({ groupId, subscriberId });
   if (!active) return false;
   return ensureChatPushRegistration({ groupId, subscriberId });
-}
-
-export async function notifyChatPush({
-  groupId,
-  senderId,
-  senderName,
-  senderColor,
-  text,
-  messageId,
-  groupName,
-  createdAt,
-}) {
-  if (!isSupabaseConfigured() || !groupId || !senderId || !text) return;
-
-  const senderEndpoint = await getBrowserPushEndpoint();
-  const supabase = getSupabase();
-  const { error } = await supabase.functions.invoke("notify-chat", {
-    body: {
-      groupId,
-      senderId,
-      senderName,
-      senderColor,
-      text,
-      messageId,
-      groupName,
-      createdAt,
-      senderEndpoint,
-    },
-  });
-
-  if (error) {
-    console.warn("Chat push notify failed", error.message ?? error);
-  }
 }

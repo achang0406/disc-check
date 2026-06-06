@@ -14,8 +14,6 @@ import {
   saveGroupChatMessage,
   subscribeGroupChatMessages,
 } from "../lib/chatMessages.js";
-import { notifyChatPush } from "../lib/push.js";
-
 function createThreadMessage({ id, senderId, name, color, text, createdAt }) {
   return {
     id: id || `${senderId}-${createdAt || Date.now()}`,
@@ -263,19 +261,8 @@ export function usePresence(profile, groupId, groupName = "") {
         text: trimmed,
         createdAt,
       });
-
-      void notifyChatPush({
-        groupId,
-        senderId: sessionId,
-        senderName: displayName,
-        senderColor: color,
-        text: trimmed,
-        messageId,
-        groupName,
-        createdAt,
-      });
     },
-    [color, displayName, groupId, groupName, sessionId],
+    [color, displayName, groupId, sessionId],
   );
 
   const sendChat = useCallback(

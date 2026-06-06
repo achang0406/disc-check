@@ -1,8 +1,10 @@
-import { Navigate, useNavigate, useParams } from "react-router-dom";
-import { useEffect, useMemo, useState } from "react";
+import { Navigate, useNavigate, useParams, useSearchParams } from "react-router-dom";
+import { useEffect, useMemo, useRef, useState } from "react";
 import AppHeader from "../components/layout/AppHeader.jsx";
 import GameCommitCard from "../components/games/GameCommitCard.jsx";
 import GameCardsCarousel from "../components/games/GameCardsCarousel.jsx";
+import GameAnnouncementBanner from "../components/games/GameAnnouncementBanner.jsx";
+import GameAnnouncementComposer from "../components/games/GameAnnouncementComposer.jsx";
 import GameChatThread from "../components/presence/GameChatThread.jsx";
 import ChatBar from "../components/presence/ChatBar.jsx";
 import GroupChatPushButton from "../components/games/GroupChatPushButton.jsx";
@@ -24,6 +26,7 @@ export default function GroupGamesScreen({
   rsvps,
   checkIns,
   guests,
+  announcements = {},
   myRsvps,
   myCheckIns,
   savingGameId,
@@ -46,11 +49,16 @@ export default function GroupGamesScreen({
   onAddGame,
   onEditGame,
   onEditGroup,
+  onPostAnnouncement,
+  postingAnnouncementGameId,
 }) {
   const { groupId } = useParams();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const now = useGameClock();
   const [focusedGameIndex, setFocusedGameIndex] = useState(0);
+  const carouselRef = useRef(null);
+  const deepLinkHandledRef = useRef(false);
 
   const group = groups.find((item) => item.id === groupId) ?? null;
   const groupGames = useMemo(
@@ -65,6 +73,26 @@ export default function GroupGamesScreen({
       setFocusedGameIndex(0);
     }
   }, [focusedGameIndex, groupGames.length]);
+
+  useEffect(() => {
+    deepLinkHandledRef.current = false;
+  }, [groupId]);
+
+  useEffect(() => {
+    const gameId = searchParams.get("game");
+    if (!gameId || groupGames.length === 0 || deepLinkHandledRef.current) return;
+
+    const index = groupGames.findIndex((item) => item.id === gameId);
+    if (index < 0) return;
+
+    deepLinkHandledRef.current = true;
+    carouselRef.current?.scrollToSlide(index, "auto");
+    setFocusedGameIndex(index);
+
+    const next = new URLSearchParams(searchParams);
+    next.delete("game");
+    setSearchParams(next, { replace: true });
+  }, [groupGames, searchParams, setSearchParams]);
 
   const watching = useMemo(
     () =>
@@ -96,6 +124,8 @@ export default function GroupGamesScreen({
         onAdminLoginClick={onAdminLoginClick}
         onAdminLogout={onAdminLogout}
         onAddGame={onAddGame}
+        addGameDisabled={groupGames.length >= 7}
+        addGameHint={groupGames.length >= 7 ? "Maximum 7 games per group" : undefined}
         showInstallLink
         leading={
           showBack ? (
@@ -148,34 +178,56 @@ export default function GroupGamesScreen({
               </p>
             ) : (
               <GameCardsCarousel
+                ref={carouselRef}
                 games={groupGames}
                 onFocusedIndexChange={setFocusedGameIndex}
-                renderSlide={(game, index) => (
-                  <GameCommitCard
-                    profile={profile}
-                    game={game}
-                    rsvps={rsvps}
-                    checkIns={checkIns}
-                    guests={guests}
-                    myRsvps={myRsvps}
-                    myCheckIns={myCheckIns}
-                    savingGameId={savingGameId}
-                    isRsvpd={isRsvpd}
-                    isCheckedIn={isCheckedIn}
-                    onRequestRsvp={onRequestRsvp}
-                    onCancel={onCancel}
-                    onRequestCheckIn={onRequestCheckIn}
-                    onCheckOut={onCheckOut}
-                    onAddWalkIn={onAddWalkIn}
-                    onRemoveWalkIn={onRemoveWalkIn}
-                    showToast={showToast}
-                    isAdmin={isAdmin}
-                    onEditGame={onEditGame}
-                    walkthroughAnchorActive={
-                      walkthrough.isActive && index === WALKTHROUGH_GAME_SLIDE_INDEX
-                    }
-                  />
-                )}
+                renderSlide={(game, index) => {
+                  const announcement = announcements[game.id];
+                  return (
+                    <div className="group-games-screen__slide-stack">
+                      <GameCommitCard
+                        profile={profile}
+                        game={game}
+                        rsvps={rsvps}
+                        checkIns={checkIns}
+                        guests={guests}
+                        myRsvps={myRsvps}
+                        myCheckIns={myCheckIns}
+                        savingGameId={savingGameId}
+                        isRsvpd={isRsvpd}
+                        isCheckedIn={isCheckedIn}
+                        onRequestRsvp={onRequestRsvp}
+                        onCancel={onCancel}
+                        onRequestCheckIn={onRequestCheckIn}
+                        onCheckOut={onCheckOut}
+                        onAddWalkIn={onAddWalkIn}
+                        onRemoveWalkIn={onRemoveWalkIn}
+                        showToast={showToast}
+                        isAdmin={isAdmin}
+                        onEditGame={onEditGame}
+                        walkthroughAnchorActive={
+                          walkthrough.isActive && index === WALKTHROUGH_GAME_SLIDE_INDEX
+                        }
+                      />
+                      {announcement?.message ? (
+                        <GameAnnouncementBanner message={announcement.message} />
+                      ) : null}
+                      {isAdmin && onPostAnnouncement ? (
+                        <GameAnnouncementComposer
+                          gameId={game.id}
+                          saving={postingAnnouncementGameId === game.id}
+                          onPost={({ gameId: targetGameId, message }) =>
+                            onPostAnnouncement({
+                              gameId: targetGameId,
+                              message,
+                              subscriberId: presence?.self?.id ?? null,
+                            })
+                          }
+                        />
+                      ) : null}
+                    </div>
+                  );
+                }}
               />
             )}
           </div>

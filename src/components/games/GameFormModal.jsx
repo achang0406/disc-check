@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import Button from "../ui/Button.jsx";
 import Field from "../ui/Field.jsx";
 import ModalShell from "../ui/ModalShell.jsx";
@@ -47,9 +47,30 @@ function buildForm(initial) {
   };
 }
 
-export default function GameFormModal({ mode, initial, saving, onSave, onClose, onDelete }) {
+export default function GameFormModal({
+  mode,
+  initial,
+  groupGames = [],
+  saving,
+  onSave,
+  onClose,
+  onDelete,
+}) {
   const [form, setForm] = useState(() => buildForm(initial));
   const [error, setError] = useState("");
+
+  const weekdayOptions = useMemo(() => {
+    const taken = new Set(
+      groupGames
+        .filter((game) => game.id !== initial?.id)
+        .map((game) => game.weekday),
+    );
+
+    return WEEKDAY_OPTIONS.map((option) => ({
+      ...option,
+      disabled: taken.has(option.value),
+    }));
+  }, [groupGames, initial?.id]);
 
   const setField = (key, value) => setForm((current) => ({ ...current, [key]: value }));
 
@@ -151,7 +172,7 @@ export default function GameFormModal({ mode, initial, saving, onSave, onClose, 
           <SelectField
             value={form.weekday}
             onChange={(weekday) => setField("weekday", Number(weekday))}
-            options={WEEKDAY_OPTIONS}
+            options={weekdayOptions}
             disabled={saving}
             aria-label="Day of week"
           />

@@ -1092,6 +1092,112 @@ export const globalStyles = `
     isolation: isolate;
   }
 
+  .group-games-screen__slide-stack {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+    width: 100%;
+    min-height: 0;
+  }
+
+  .game-announcement-banner {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+    padding: var(--space-2) var(--space-3);
+    border-radius: var(--radius-md);
+    background: color-mix(in srgb, var(--status-almost-bg) 55%, var(--card-bg));
+    border: 1px solid color-mix(in srgb, var(--status-almost-color) 25%, transparent);
+  }
+
+  .game-announcement-banner__label {
+    font-family: var(--font-mono);
+    font-size: var(--font-label);
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--status-almost-color);
+  }
+
+  .game-announcement-banner__message {
+    margin: 0;
+    font-size: var(--font-body);
+    line-height: 1.45;
+    color: var(--text-strong);
+    white-space: pre-wrap;
+  }
+
+  .game-announcement-composer {
+    display: flex;
+    justify-content: flex-start;
+  }
+
+  .game-announcement-composer__toggle {
+    min-height: auto;
+    padding: var(--space-1) var(--space-2);
+    color: var(--text-muted);
+    font-size: var(--font-label);
+    gap: var(--space-1);
+  }
+
+  .game-announcement-composer__toggle-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.25rem;
+    height: 1.25rem;
+    border-radius: 999px;
+    border: 1px solid color-mix(in srgb, var(--text-muted) 35%, transparent);
+    font-size: 0.95rem;
+    line-height: 1;
+  }
+
+  .game-announcement-composer--open {
+    flex-direction: column;
+    align-items: stretch;
+    gap: var(--space-2);
+    padding: var(--space-2) var(--space-3);
+    border-radius: var(--radius-md);
+    background: color-mix(in srgb, var(--card-bg) 92%, var(--bg));
+    border: 1px dashed color-mix(in srgb, var(--text-muted) 25%, transparent);
+  }
+
+  .game-announcement-composer__label {
+    font-family: var(--font-mono);
+    font-size: var(--font-label);
+    color: var(--text-muted);
+  }
+
+  .game-announcement-composer__input {
+    width: 100%;
+    min-height: 4.5rem;
+    resize: vertical;
+    padding: var(--space-2) var(--space-3);
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--input-border);
+    background: var(--input-bg);
+    color: var(--text);
+    font-family: var(--font-sans);
+    font-size: var(--font-body);
+    line-height: 1.45;
+  }
+
+  .game-announcement-composer__input:focus-visible {
+    outline: 2px solid var(--chip-you-border);
+    outline-offset: 1px;
+  }
+
+  .game-announcement-composer__error {
+    margin: 0;
+    color: var(--cancel-btn-text);
+    font-size: var(--font-label);
+  }
+
+  .game-announcement-composer__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+  }
+
   .game-cards-carousel {
     width: 100vw;
     max-width: 100vw;

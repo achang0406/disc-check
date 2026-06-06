@@ -70,11 +70,25 @@ export default function SelectField({
 
   const selectOption = useCallback(
     (option) => {
-      if (disabled) return;
+      if (disabled || option.disabled) return;
       onChange(option.value);
       close();
     },
     [close, disabled, onChange],
+  );
+
+  const findNextEnabledIndex = useCallback(
+    (startIndex, direction) => {
+      if (options.length === 0) return -1;
+
+      for (let step = 1; step <= options.length; step += 1) {
+        const index = (startIndex + direction * step + options.length) % options.length;
+        if (!options[index]?.disabled) return index;
+      }
+
+      return startIndex;
+    },
+    [options],
   );
 
   useEffect(() => {
@@ -97,8 +111,8 @@ export default function SelectField({
       if (event.key === "ArrowDown") {
         event.preventDefault();
         setHighlightIndex((index) => {
-          if (index < 0) return selectedIndex >= 0 ? selectedIndex : 0;
-          return Math.min(options.length - 1, index + 1);
+          const start = index < 0 ? (selectedIndex >= 0 ? selectedIndex : -1) : index;
+          return findNextEnabledIndex(start, 1);
         });
         return;
       }
@@ -106,21 +120,21 @@ export default function SelectField({
       if (event.key === "ArrowUp") {
         event.preventDefault();
         setHighlightIndex((index) => {
-          if (index < 0) return selectedIndex >= 0 ? selectedIndex : options.length - 1;
-          return Math.max(0, index - 1);
+          const start = index < 0 ? (selectedIndex >= 0 ? selectedIndex : 0) : index;
+          return findNextEnabledIndex(start, -1);
         });
         return;
       }
 
       if (event.key === "Home") {
         event.preventDefault();
-        setHighlightIndex(0);
+        setHighlightIndex(findNextEnabledIndex(-1, 1));
         return;
       }
 
       if (event.key === "End") {
         event.preventDefault();
-        setHighlightIndex(options.length - 1);
+        setHighlightIndex(findNextEnabledIndex(0, -1));
         return;
       }
 
@@ -138,12 +152,16 @@ export default function SelectField({
       document.removeEventListener("pointerdown", dismiss);
       document.removeEventListener("keydown", onKeyDown);
     };
-  }, [close, highlightIndex, open, options, selectOption, selectedIndex]);
+  }, [close, findNextEnabledIndex, highlightIndex, open, options, selectOption, selectedIndex]);
 
   const openMenu = () => {
     if (disabled) return;
     setOpen(true);
-    setHighlightIndex(selectedIndex >= 0 ? selectedIndex : 0);
+    setHighlightIndex(
+      selectedIndex >= 0 && !options[selectedIndex]?.disabled
+        ? selectedIndex
+        : findNextEnabledIndex(-1, 1),
+    );
   };
 
   return (
@@ -174,6 +192,7 @@ export default function SelectField({
           {options.map((option, index) => {
             const isSelected = option.value === value;
             const isHighlighted = index === highlightIndex;
+            const isDisabled = Boolean(option.disabled);
 
             return (
               <li key={String(option.value)} role="presentation">
@@ -181,14 +200,19 @@ export default function SelectField({
                   type="button"
                   role="option"
                   aria-selected={isSelected}
+                  aria-disabled={isDisabled || undefined}
+                  disabled={isDisabled}
                   className={cx(
                     "select-field__option",
                     isSelected && "select-field__option--selected",
                     isHighlighted && "select-field__option--highlighted",
+                    isDisabled && "select-field__option--disabled",
                     option.tone && `select-field__option--${option.tone}`,
                   )}
                   onMouseDown={suppressMouseFocus}
-                  onMouseEnter={() => setHighlightIndex(index)}
+                  onMouseEnter={() => {
+                    if (!isDisabled) setHighlightIndex(index);
+                  }}
                   onClick={() => selectOption(option)}
                 >
                   <SelectOptionLabel option={option} />

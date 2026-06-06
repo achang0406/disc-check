@@ -11,6 +11,7 @@ import {
   subscribeToCheckIns,
   subscribeToGames,
   subscribeToGroups,
+  subscribeToAnnouncements,
   subscribeToGuests,
   subscribeToRsvps,
   syncProfileToServer,
@@ -72,12 +73,13 @@ async function syncProfileFromServer(localProfile) {
 }
 
 function applyData(
-  { groups, games, rsvps, checkIns, guests },
+  { groups, games, rsvps, checkIns, guests, announcements },
   setGroupsMeta,
   setGamesMeta,
   setRsvps,
   setCheckIns,
   setGuests,
+  setAnnouncements,
 ) {
   if (groups) {
     setGroupsMeta(groups);
@@ -97,6 +99,9 @@ function applyData(
     setGuests(guests);
     localStorage.setItem(STORAGE_KEYS.GUESTS, JSON.stringify(guests));
   }
+  if (announcements) {
+    setAnnouncements(announcements);
+  }
 }
 
 function shouldApplyServerData(data, latestFetchSeqRef) {
@@ -113,6 +118,7 @@ export function useAppData(showToast) {
   const [rsvps, setRsvps] = useState({});
   const [checkIns, setCheckIns] = useState({});
   const [guests, setGuests] = useState({});
+  const [announcements, setAnnouncements] = useState({});
   const [myRsvps, setMyRsvps] = useState({});
   const [myCheckIns, setMyCheckIns] = useState({});
   const [loading, setLoading] = useState(true);
@@ -128,7 +134,15 @@ export function useAppData(showToast) {
 
   const applyServerData = useCallback((data) => {
     if (!shouldApplyServerData(data, latestFetchSeqRef)) return;
-    applyData(data, setGroupsMeta, setGamesMeta, setRsvps, setCheckIns, setGuests);
+    applyData(
+      data,
+      setGroupsMeta,
+      setGamesMeta,
+      setRsvps,
+      setCheckIns,
+      setGuests,
+      setAnnouncements,
+    );
   }, []);
 
   useEffect(() => {
@@ -215,6 +229,14 @@ export function useAppData(showToast) {
       applyServerData(data);
     });
   }, []);
+
+  useEffect(() => {
+    if (!useSupabaseRef.current) return undefined;
+
+    return subscribeToAnnouncements((data) => {
+      applyServerData(data);
+    });
+  }, [applyServerData]);
 
   useEffect(() => {
     if (!useSupabaseRef.current) return undefined;
@@ -772,6 +794,7 @@ export function useAppData(showToast) {
     rsvps,
     checkIns,
     guests,
+    announcements,
     myRsvps,
     myCheckIns,
     loading,
