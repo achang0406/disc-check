@@ -1,6 +1,6 @@
 ---
 name: Intent-aligned push refactor v2 rollout
-overview: Phased re-implementation of the intent-aligned push refactor in small, reversible PRs. Chunk 1 removes per-message chat push while preserving subscription plumbing; game coordination events follow via thin outbox + cron (no heavy sync triggers on RSVP/chat writes).
+overview: Phased re-implementation of the intent-aligned push refactor in small, reversible PRs. PR1 stops per-message chat push, renames the bell, and deletes notify-chat; PR2 adds notify-push plumbing; game coordination events follow via thin outbox + cron (no heavy sync triggers on RSVP/chat writes).
 status: planned
 note: Derisked rollout after v1 revert. Reference spec at docs/intent-aligned-push-refactor-plan.md; rollback template at scripts/supabase-rollback-push-plan.sql.
 ---
@@ -12,9 +12,10 @@ Reference: archived spec in [intent-aligned-push-refactor-plan.md](intent-aligne
 ## Goals
 
 - Ship **small PRs** with independent rollback and clear pass/fail tests.
-- **Remove per-message chat push in PR 1** ([`notifyChatPush`](../src/lib/push.js) + [`notify-chat`](../supabase/functions/notify-chat/index.ts)); keep bell + `push_subscriptions` for future **game alerts**.
-- Defer **`chat_chatter` summary** to a **late optional chunk**.
-- Split **announcements**: in-app UI first, push later.
+- **Remove per-message chat push in PR 1** — stop client invoke, rename bell to “Game alerts,” delete unused [`notify-chat`](../supabase/functions/notify-chat/index.ts); keep `push_subscriptions` registration.
+- **Add shared push infrastructure in PR 2** — `notify-push`, SW gate, deep links; still no automatic game pushes until PR4+.
+- Defer **`chat_chatter` summary** to a **late optional chunk** (PR10).
+- Split **announcements**: in-app UI first (PR7), push later (PR8).
 - Avoid v1 performance traps: **no heavy SQL on RSVP/chat write path**, **no new full-`fetchAppData` Realtime subscription**.
 
 ## Risk levels
@@ -30,21 +31,27 @@ Reference: archived spec in [intent-aligned-push-refactor-plan.md](intent-aligne
 
 | PR | Risk | Primary concern |
 |----|------|-----------------|
-| PR1 | Low–Medium | Removes per-message chat push; edge function swap |
-| PR2 | Low | Idle DB + cron only |
-| PR3 | Low–Medium | First live game push; thin DB trigger on admin cancel |
-| PR4 | Low | Cron-only scan; no write triggers |
-| PR5 | Medium | Cron badge scan; must not regress RSVP feel |
-| PR6 | Medium | Announcement UI + Realtime; carousel layout |
-| PR7 | Low–Medium | Push on admin post; RPC change only |
-| PR8 | Low–Medium | Schema constraint; admin create/edit only |
-| PR9 | Medium | Optional chatter summary; chat activity path |
+| PR1 | Low–Medium | Stop chat push; bell rename; delete unused notify-chat |
+| PR2 | Low–Medium | notify-push + SW/deep links/gameBadge (no notify-chat left) |
+| PR3 | Low | Idle DB + cron only |
+| PR4 | Low–Medium | First live game push; thin DB trigger on admin cancel |
+| PR5 | Low | Cron-only scan; no write triggers |
+| PR6 | Medium | Cron badge scan; must not regress RSVP feel |
+| PR7 | Medium | Announcement UI + Realtime; carousel layout |
+| PR8 | Low–Medium | Push on admin post; RPC change only |
+| PR9 | Low–Medium | Schema constraint; admin create/edit only |
+| PR10 | Medium | Optional chatter summary; chat activity path |
 
 ## Architecture (v2)
 
 ```mermaid
 flowchart TD
-  subgraph pr1 [PR1 Plumbing]
+  subgraph pr1 [PR1 Remove chat push]
+    StopInvoke[Stop notifyChatPush in usePresence]
+    BellRename[Game alerts bell copy]
+    DelNotifyChat[Delete notify-chat edge fn]
+  end
+  subgraph pr2 [PR2 Plumbing]
     Bell[Game alerts bell]
     Subs[push_subscriptions]
     PushSend[pushSend.ts]
@@ -52,19 +59,20 @@ flowchart TD
     SW[sw.js visibility gate]
     Bell --> Subs
   end
-  subgraph writes [Thin writes later PRs]
+  subgraph writes [Thin writes PR4+]
     Cancel[games.status cancel]
     AdminRPC[admin_post_announcement]
   end
-  subgraph cron [Cron every 2 min]
+  subgraph cron [Cron every 2 min PR3+]
     Processor[process-push-outbox]
     BadgeScan[badge tier scan]
     LiveScan[phase_live scan]
-    ChatterScan[chatter scan late PR]
+    ChatterScan[chatter scan PR10]
   end
   subgraph outbox [push_outbox]
     Queue[queued events]
   end
+  StopInvoke -.->|"subscriptions kept"| Subs
   Cancel -->|"INSERT minimal row"| Queue
   AdminRPC -->|"INSERT minimal row"| Queue
   Processor --> BadgeScan
@@ -82,49 +90,83 @@ flowchart TD
 
 ---
 
-## PR 1 — Plumbing + remove chat push (ship first)
+## PR 1 — Remove per-message chat push (ship first)
 
-**Risk: Low–Medium** — Removes a user-visible behavior (per-message chat push) and swaps edge functions; no DB migrations. Rollback is redeploy `notify-chat` + restore client invoke.
+**Risk: Low–Medium** — Stops chat push and removes dead `notify-chat` edge function; no DB, no SW changes. Rollback is restore client + redeploy `notify-chat`.
 
-**User-visible:** no more OS notification per chat message. Bell remains; copy becomes “Game alerts.” No game pushes yet (acceptable empty state).
+**User-visible:** chat still works in-app; OS notifications stop for every message. Bell copy becomes “Game alerts”; `push_subscriptions` still register (no pushes fire until PR2+).
 
 ### Client
 
 | Change | Files |
 |--------|-------|
-| Remove `notifyChatPush` call | [src/hooks/usePresence.js](../src/hooks/usePresence.js) |
-| Delete `notifyChatPush`; add `buildGameDeepLink` | [src/lib/push.js](../src/lib/push.js) |
+| Remove `notifyChatPush` call after send | [src/hooks/usePresence.js](../src/hooks/usePresence.js) |
+| Delete `notifyChatPush` export | [src/lib/push.js](../src/lib/push.js) |
 | Rename bell copy; dispatch `disc-check-push-changed` | [src/components/games/GroupChatPushButton.jsx](../src/components/games/GroupChatPushButton.jsx) |
 | Listen for `disc-check-push-changed` | [src/hooks/useChatAlerts.js](../src/hooks/useChatAlerts.js) |
+
+### Edge
+
+- **Delete** [supabase/functions/notify-chat/index.ts](../supabase/functions/notify-chat/index.ts) from repo
+- Remove `notify-chat` from Supabase project (no replacement yet — bell registers subscriptions only)
+
+### Explicitly out of scope
+
+- `notify-push`, `pushSend.ts` (PR2 — extract send logic from git history of `notify-chat`)
+- SW visibility gate, deep links, `gameBadge.js`
+
+### Verify
+
+- Chat works in-app; **no** per-message push (foreground or background)
+- Bell shows “Game alerts” copy; on/off still registers `push_subscriptions`
+- RSVP/chat latency unchanged
+- `notify-chat` absent from Supabase functions list
+
+### Rollback
+
+- Restore `notifyChatPush` + bell copy; redeploy `notify-chat` to Supabase and Vercel
+
+---
+
+## PR 2 — Push plumbing foundation
+
+**Risk: Low–Medium** — Adds `notify-push` send path + SW/deep-link polish; still **no automatic game pushes** until PR4+.
+
+**User-visible:** no copy change (bell already “Game alerts” from PR1). Manual/test pushes work via `notify-push`.
+
+### Client
+
+| Change | Files |
+|--------|-------|
+| Add `buildGameDeepLink` | [src/lib/push.js](../src/lib/push.js) |
 | SW: skip `showNotification` when any client `visible` | [src/sw.js](../src/sw.js) |
 | Deep link: preserve `?game=` on notification open | [src/hooks/useServiceWorkerNavigation.js](../src/hooks/useServiceWorkerNavigation.js) |
 | Shared badge tier helper (UI only) | new [src/utils/gameBadge.js](../src/utils/gameBadge.js), [src/components/games/StatusBadge.jsx](../src/components/games/StatusBadge.jsx) |
 
 ### Edge
 
-- Add [supabase/functions/_shared/pushSend.ts](../supabase/functions/_shared/pushSend.ts) (extract VAPID send + exclude list from current `notify-chat`).
-- Add [supabase/functions/notify-push/index.ts](../supabase/functions/notify-push/index.ts) (thin POST → `pushSend`).
-- **Delete** [supabase/functions/notify-chat/index.ts](../supabase/functions/notify-chat/index.ts) after extraction.
-- Deploy `notify-push`; remove `notify-chat` from Supabase.
+- Add [supabase/functions/_shared/pushSend.ts](../supabase/functions/_shared/pushSend.ts) (extract VAPID send + exclude list from pre-PR1 `notify-chat` in git history)
+- Add [supabase/functions/notify-push/index.ts](../supabase/functions/notify-push/index.ts) (thin POST → `pushSend`)
+- Deploy `notify-push` to Supabase
 
 ### Docs
 
-- Update [.env.example](../.env.example): `notify-push` secrets; remove `notify-chat`.
+- Update [.env.example](../.env.example): `notify-push` secrets; remove `notify-chat`
 
 ### Verify
 
-- Chat works in-app; **no** per-message push (foreground or background).
-- Bell on/off still registers `push_subscriptions`.
-- Manual `notify-push` POST (service role) delivers one test notification when bell on.
-- SW visibility gate: no banner when PWA foreground.
+- Bell on/off still registers `push_subscriptions`
+- Manual `notify-push` POST (service role) delivers one test notification when bell on
+- SW visibility gate: no banner when PWA foreground
+- Still no automatic pushes from app actions
 
 ### Rollback
 
-- Restore `notify-chat` + `notifyChatPush` invocation; redeploy.
+- Delete `notify-push`; revert PR2 client/SW changes (PR1 `notify-chat` removal unchanged unless full rollback)
 
 ---
 
-## PR 2 — Outbox infrastructure (idle)
+## PR 3 — Outbox infrastructure (idle)
 
 **Risk: Low** — New tables, functions, and cron with no write triggers; outbox empty in normal use. Main ops risk is misconfigured cron (fixable without app deploy).
 
@@ -147,13 +189,13 @@ flowchart TD
 
 ### Verify
 
-- RSVP/chat latency unchanged vs PR1 baseline.
-- Cron logs show `processed: 0` runs.
-- Manual SQL `enqueue_push_event` → notification in background.
+- RSVP/chat latency unchanged vs PR1 baseline
+- Cron logs show `processed: 0` runs
+- Manual SQL `enqueue_push_event` → notification in background
 
 ---
 
-## PR 3 — First game event: `game_cancelled`
+## PR 4 — First game event: `game_cancelled`
 
 **Risk: Low–Medium** — First end-to-end game push; thin trigger on rare admin `status` change only. Low write-path cost; validates full pipeline before hotter events.
 
@@ -167,16 +209,16 @@ Low-frequency, easy to test; proves end-to-end.
 
 ### Verify
 
-- Admin cancels game → one push per subscriber (background).
-- In-app cancel UI unchanged.
+- Admin cancels game → one push per subscriber (background)
+- In-app cancel UI unchanged
 
 ### Rollback
 
-- Drop trigger only; outbox infra remains.
+- Drop trigger only; outbox infra remains
 
 ---
 
-## PR 4 — `phase_live` (cron-only)
+## PR 5 — `phase_live` (cron-only)
 
 **Risk: Low** — Cron scan only; no triggers on RSVP or chat. ~2 min delivery lag is acceptable; duplicate-push guard via `game_push_state`.
 
@@ -189,12 +231,12 @@ No RSVP triggers.
 
 ### Verify
 
-- Near game start, one “Game is live” push per cycle (~2 min lag acceptable).
-- No duplicate pushes same cycle.
+- Near game start, one “Game is live” push per cycle (~2 min lag acceptable)
+- No duplicate pushes same cycle
 
 ---
 
-## PR 5 — Badge pushes (`badge_almost` / `badge_go`) — cron-based
+## PR 6 — Badge pushes (`badge_almost` / `badge_go`) — cron-based
 
 **Risk: Medium** — Highest routine load in the push pipeline: cron scans games + RSVP headcounts every 2 min. Must confirm RSVP/chat UI stays snappy (v1 failed here with sync triggers).
 
@@ -208,13 +250,13 @@ No RSVP triggers.
 
 ### Verify
 
-- RSVP tap feels instant (same as before PR5).
-- Badge flip push arrives within ~2 min in background.
-- No push during live/ended/stale cycle.
+- RSVP tap feels instant (same as before PR6)
+- Badge flip push arrives within ~2 min in background
+- No push during live/ended/stale cycle
 
 ---
 
-## PR 6 — Announcements in-app only (no push)
+## PR 7 — Announcements in-app only (no push)
 
 **Risk: Medium** — New table, RPC, Realtime, and carousel UI. Mitigated by focused-slide-only layout and no full-`fetchAppData` subscription (v1 regression source).
 
@@ -233,14 +275,14 @@ Avoid v1 carousel/slide-stack regression.
 
 ### Verify
 
-- Admin posts → banner on focused game; no carousel button regressions (Chrome mobile).
-- No new push on post.
+- Admin posts → banner on focused game; no carousel button regressions (Chrome mobile)
+- No new push on post
 
 ---
 
-## PR 7 — Announcement push
+## PR 8 — Announcement push
 
-**Risk: Low–Medium** — Small RPC extension; push only on infrequent admin post. Depends on PR6 UI being stable.
+**Risk: Low–Medium** — Small RPC extension; push only on infrequent admin post. Depends on PR7 UI being stable.
 
 ### Migration `036_announcement_push.sql`
 
@@ -248,15 +290,15 @@ Avoid v1 carousel/slide-stack regression.
 
 ### Verify
 
-- Non-admin with bell on gets push; posting admin excluded when backgrounded.
+- Non-admin with bell on gets push; posting admin excluded when backgrounded
 
 ---
 
-## PR 8 — Group limits (orthogonal)
+## PR 9 — Group limits (orthogonal)
 
 **Risk: Low–Medium** — DB unique constraint can fail deploy if duplicate weekdays exist; admin-only UX changes. No impact on player hot paths.
 
-Can ship anytime after PR1; no push dependency.
+Can ship anytime after PR2; no push dependency.
 
 ### Migration `037_group_game_limits.sql`
 
@@ -266,11 +308,11 @@ Can ship anytime after PR1; no push dependency.
 
 ---
 
-## PR 9 — `chat_chatter` summary (optional, late)
+## PR 10 — `chat_chatter` summary (optional, late)
 
-**Risk: Medium** — Reintroduces chat-related push (summary only). Prefer cron scan; avoid v1 per-insert `COUNT(DISTINCT)` trigger. Defer until PR5–7 are stable in prod.
+**Risk: Medium** — Reintroduces chat-related push (summary only). Prefer cron scan; avoid v1 per-insert `COUNT(DISTINCT)` trigger. Defer until PR6–8 are stable in prod.
 
-Only after PR5–7 stable. **Cron-based**, not per-insert trigger.
+Only after PR6–8 stable. **Cron-based**, not per-insert trigger.
 
 ### Migration `038_chat_chatter_cron.sql`
 
@@ -279,7 +321,7 @@ Only after PR5–7 stable. **Cron-based**, not per-insert trigger.
 
 ### Verify
 
-- 2+ senders → at most one push/hour; no per-message spam.
+- 2+ senders → at most one push/hour; no per-message spam
 
 ---
 
@@ -288,29 +330,29 @@ Only after PR5–7 stable. **Cron-based**, not per-insert trigger.
 1. **One behavior change per PR** where possible.
 2. **Per-PR rollback SQL** alongside forward migration (template: [scripts/supabase-rollback-push-plan.sql](../scripts/supabase-rollback-push-plan.sql)).
 3. **Measure RSVP + chat latency** before/after any migration touching writes.
-4. **Staging Supabase project** recommended for PR2+ before prod.
+4. **Staging Supabase project** recommended for PR3+ before prod.
 5. **Do not bundle** group limits, announcements UI, and push triggers in one PR.
 
 ## Suggested release order
 
 ```text
-PR1 → PR2 → PR3 → PR4 → PR5 → PR6 → PR7
-PR8 anytime after PR1
-PR9 optional last
+PR1 → PR2 → PR3 → PR4 → PR5 → PR6 → PR7 → PR8
+PR9 anytime after PR2
+PR10 optional last
 ```
 
 ## Rollback script map
 
 | PR | Forward migration | Rollback script |
 |----|-------------------|-----------------|
-| PR2 | `030_push_outbox.sql`, `031_push_outbox_cron.sql` | `scripts/supabase-rollback-030-push-outbox.sql` |
-| PR3 | `032_game_cancelled_push.sql` | Drop trigger in per-PR rollback |
-| PR4 | `033_phase_live_cron.sql` | Drop cron function hook in per-PR rollback |
-| PR5 | `034_badge_push_cron.sql` | Drop badge scan in per-PR rollback |
-| PR6 | `035_game_announcements.sql` | Drop table/RPC in per-PR rollback |
-| PR7 | `036_announcement_push.sql` | Revert RPC to PR6 version |
-| PR8 | `037_group_game_limits.sql` | Drop constraint + revert RPC |
-| PR9 | `038_chat_chatter_cron.sql` | Drop chatter scan in per-PR rollback |
+| PR3 | `030_push_outbox.sql`, `031_push_outbox_cron.sql` | `scripts/supabase-rollback-030-push-outbox.sql` |
+| PR4 | `032_game_cancelled_push.sql` | Drop trigger in per-PR rollback |
+| PR5 | `033_phase_live_cron.sql` | Drop cron function hook in per-PR rollback |
+| PR6 | `034_badge_push_cron.sql` | Drop badge scan in per-PR rollback |
+| PR7 | `035_game_announcements.sql` | Drop table/RPC in per-PR rollback |
+| PR8 | `036_announcement_push.sql` | Revert RPC to PR7 version |
+| PR9 | `037_group_game_limits.sql` | Drop constraint + revert RPC |
+| PR10 | `038_chat_chatter_cron.sql` | Drop chatter scan in per-PR rollback |
 
 Full v1 rollback reference: [scripts/supabase-rollback-push-plan.sql](../scripts/supabase-rollback-push-plan.sql).
 
