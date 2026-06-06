@@ -14,9 +14,38 @@ Reference: archived spec in [intent-aligned-push-refactor-plan.md](intent-aligne
 - Ship **small PRs** with independent rollback and clear pass/fail tests.
 - **Remove per-message chat push in PR 1** — stop client invoke, rename bell to “Game alerts,” delete unused [`notify-chat`](../supabase/functions/notify-chat/index.ts); keep `push_subscriptions` registration.
 - **Add shared push infrastructure in PR 2** — `notify-push`, SW gate, deep links; still no automatic game pushes until PR4+.
-- Defer **`chat_chatter` summary** to a **late optional chunk** (PR10).
-- Split **announcements**: in-app UI first (PR7), push later (PR8).
+- **Core push line ends at PR6** (cancel, live, badge) — no announcements in the main path.
+- Defer **announcements** (in-app banner + push) to **optional PR8–PR9**, immediately before chatter.
+- Defer **`chat_chatter` summary** to **optional PR10** (last).
 - Avoid v1 performance traps: **no heavy SQL on RSVP/chat write path**, **no new full-`fetchAppData` Realtime subscription**.
+
+## PR map at a glance
+
+| PR | Track | One-line summary |
+|----|-------|------------------|
+| **PR1** | Required | **Chat removal** — stop per-message push, rename bell to “Game alerts,” delete `notify-chat`. Subscriptions still register; nothing auto-sends yet. |
+| **PR2** | Required | **Push plumbing** — `notify-push` + `pushSend`, SW visibility gate, deep links (`?game=`), `gameBadge.js`. Manual test pushes only. |
+| **PR3** | Required | **Outbox + cron (idle)** — `push_outbox` tables and `process-push-outbox` every 2 min. Pipeline wired; queue empty until PR4+. |
+| **PR4** | Required | **Game cancelled** — first auto-push when admin sets `open` → `cancelled`. |
+| **PR5** | Required | **Game is live** — cron detects phase flip to live (~2 min lag). |
+| **PR6** | Required | **RSVP badge** — cron detects `badge_almost` / `badge_go` tier upgrades (~2 min lag). **Core game-alert line ends here.** |
+| **PR7** | Orthogonal | **Group limits** — max 7 games, one per weekday. Anytime after PR2; unrelated to push. |
+| **PR8** | Optional | **Announcement banner** — in-app admin composer + banner on focused carousel slide. |
+| **PR9** | Optional | **Announcement push** — OS notification when admin posts (after PR8, or skip). |
+| **PR10** | Optional | **Chatter summary** — at most one push/hour when 2+ people chatted (last optional chunk). |
+
+### Release tracks
+
+```text
+Required:  PR1 → PR2 → PR3 → PR4 → PR5 → PR6
+           PR1 = turn off chat push
+           PR2–PR3 = wire the pipes
+           PR4–PR6 = game coordination notifications (cancel, live, badge)
+
+Orthogonal: PR7 anytime after PR2
+
+Optional:  PR8 → PR9 → PR10  (announcements → chatter)
+```
 
 ## Risk levels
 
@@ -37,10 +66,10 @@ Reference: archived spec in [intent-aligned-push-refactor-plan.md](intent-aligne
 | PR4 | Low–Medium | First live game push; thin DB trigger on admin cancel |
 | PR5 | Low | Cron-only scan; no write triggers |
 | PR6 | Medium | Cron badge scan; must not regress RSVP feel |
-| PR7 | Medium | Announcement UI + Realtime; carousel layout |
-| PR8 | Low–Medium | Push on admin post; RPC change only |
-| PR9 | Low–Medium | Schema constraint; admin create/edit only |
-| PR10 | Medium | Optional chatter summary; chat activity path |
+| PR7 | Low–Medium | Schema constraint; admin create/edit only |
+| PR8 | Medium | Optional — announcement banner UI + Realtime; carousel layout |
+| PR9 | Low–Medium | Optional — announcement push on admin post |
+| PR10 | Medium | Optional — chatter summary; chat activity path |
 
 ## Architecture (v2)
 
@@ -61,6 +90,8 @@ flowchart TD
   end
   subgraph writes [Thin writes PR4+]
     Cancel[games.status cancel]
+  end
+  subgraph optionalLate [Optional PR8 to PR9]
     AdminRPC[admin_post_announcement]
   end
   subgraph cron [Cron every 2 min PR3+]
@@ -74,9 +105,9 @@ flowchart TD
   end
   StopInvoke -.->|"subscriptions kept"| Subs
   Cancel -->|"INSERT minimal row"| Queue
-  AdminRPC -->|"INSERT minimal row"| Queue
   Processor --> BadgeScan
   Processor --> LiveScan
+  AdminRPC -->|"INSERT minimal row"| Queue
   Processor --> ChatterScan
   BadgeScan --> Queue
   LiveScan --> Queue
@@ -256,9 +287,23 @@ No RSVP triggers.
 
 ---
 
-## PR 7 — Announcements in-app only (no push)
+## PR 7 — Group limits (orthogonal)
 
-**Risk: Medium** — New table, RPC, Realtime, and carousel UI. Mitigated by focused-slide-only layout and no full-`fetchAppData` subscription (v1 regression source).
+**Risk: Low–Medium** — DB unique constraint can fail deploy if duplicate weekdays exist; admin-only UX changes. No impact on player hot paths.
+
+Can ship anytime after PR2; no push dependency.
+
+### Migration `037_group_game_limits.sql`
+
+- `UNIQUE (group_id, weekday)`, max 7 games in `admin_upsert_game`
+- [src/components/ui/SelectField.jsx](../src/components/ui/SelectField.jsx) `option.disabled`
+- [src/components/games/GameFormModal.jsx](../src/components/games/GameFormModal.jsx), [src/components/layout/AppHeader.jsx](../src/components/layout/AppHeader.jsx)
+
+---
+
+## PR 8 — Announcements in-app banner (optional)
+
+**Risk: Medium** — New table, RPC, Realtime, and carousel UI. **Optional** — defer until PR1–PR6 are stable in prod. Mitigated by focused-slide-only layout and no full-`fetchAppData` subscription (v1 regression source).
 
 Avoid v1 carousel/slide-stack regression.
 
@@ -280,9 +325,9 @@ Avoid v1 carousel/slide-stack regression.
 
 ---
 
-## PR 8 — Announcement push
+## PR 9 — Announcement push (optional)
 
-**Risk: Low–Medium** — Small RPC extension; push only on infrequent admin post. Depends on PR7 UI being stable.
+**Risk: Low–Medium** — Small RPC extension; push only on infrequent admin post. **Optional** — ship after PR8 banner is stable (or skip if banner is skipped).
 
 ### Migration `036_announcement_push.sql`
 
@@ -294,25 +339,11 @@ Avoid v1 carousel/slide-stack regression.
 
 ---
 
-## PR 9 — Group limits (orthogonal)
+## PR 10 — `chat_chatter` summary (optional, last)
 
-**Risk: Low–Medium** — DB unique constraint can fail deploy if duplicate weekdays exist; admin-only UX changes. No impact on player hot paths.
+**Risk: Medium** — Reintroduces chat-related push (summary only). **Optional** — defer until PR1–PR6 stable; ship after PR8–PR9 if announcements are included. Prefer cron scan; avoid v1 per-insert `COUNT(DISTINCT)` trigger.
 
-Can ship anytime after PR2; no push dependency.
-
-### Migration `037_group_game_limits.sql`
-
-- `UNIQUE (group_id, weekday)`, max 7 games in `admin_upsert_game`
-- [src/components/ui/SelectField.jsx](../src/components/ui/SelectField.jsx) `option.disabled`
-- [src/components/games/GameFormModal.jsx](../src/components/games/GameFormModal.jsx), [src/components/layout/AppHeader.jsx](../src/components/layout/AppHeader.jsx)
-
----
-
-## PR 10 — `chat_chatter` summary (optional, late)
-
-**Risk: Medium** — Reintroduces chat-related push (summary only). Prefer cron scan; avoid v1 per-insert `COUNT(DISTINCT)` trigger. Defer until PR6–8 are stable in prod.
-
-Only after PR6–8 stable. **Cron-based**, not per-insert trigger.
+**Cron-based**, not per-insert trigger.
 
 ### Migration `038_chat_chatter_cron.sql`
 
@@ -336,9 +367,9 @@ Only after PR6–8 stable. **Cron-based**, not per-insert trigger.
 ## Suggested release order
 
 ```text
-PR1 → PR2 → PR3 → PR4 → PR5 → PR6 → PR7 → PR8
-PR9 anytime after PR2
-PR10 optional last
+PR1 → PR2 → PR3 → PR4 → PR5 → PR6          (core game coordination pushes)
+PR7 anytime after PR2                        (group limits, orthogonal)
+PR8 → PR9 → PR10 optional last               (announcements banner → announcement push → chatter)
 ```
 
 ## Rollback script map
@@ -349,9 +380,9 @@ PR10 optional last
 | PR4 | `032_game_cancelled_push.sql` | Drop trigger in per-PR rollback |
 | PR5 | `033_phase_live_cron.sql` | Drop cron function hook in per-PR rollback |
 | PR6 | `034_badge_push_cron.sql` | Drop badge scan in per-PR rollback |
-| PR7 | `035_game_announcements.sql` | Drop table/RPC in per-PR rollback |
-| PR8 | `036_announcement_push.sql` | Revert RPC to PR7 version |
-| PR9 | `037_group_game_limits.sql` | Drop constraint + revert RPC |
+| PR7 | `037_group_game_limits.sql` | Drop constraint + revert RPC |
+| PR8 | `035_game_announcements.sql` | Drop table/RPC in per-PR rollback |
+| PR9 | `036_announcement_push.sql` | Revert RPC to PR8 version |
 | PR10 | `038_chat_chatter_cron.sql` | Drop chatter scan in per-PR rollback |
 
 Full v1 rollback reference: [scripts/supabase-rollback-push-plan.sql](../scripts/supabase-rollback-push-plan.sql).
