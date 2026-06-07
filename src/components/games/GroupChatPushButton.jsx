@@ -6,6 +6,7 @@ import {
   subscribeToGroupChatPush,
   unsubscribeFromGroupChatPush,
 } from "../../lib/push.js";
+import { isIosDevice, isStandaloneDisplay } from "../../utils/pwaInstall.js";
 
 const HINT_PEEK_MS = 3000;
 
@@ -13,8 +14,14 @@ function notifyPushPreferenceChanged(groupId) {
   window.dispatchEvent(new CustomEvent("disc-check-push-changed", { detail: { groupId } }));
 }
 
+function deniedStatusLabel() {
+  if (isIosDevice() && isStandaloneDisplay()) {
+    return "Turn on notifications in Settings → DiscCheck";
+  }
+  return "Notifications blocked in browser settings";
+}
+
 const STATUS_LABEL = {
-  denied: "Notifications blocked in browser settings",
   "subscribe-failed": "Could not enable game alerts",
   "sw-not-ready": "Reload the app, then try again",
   "missing-identity": "Loading… try again in a moment",
@@ -25,6 +32,7 @@ const STATUS_LABEL = {
 
 function statusMessage(reason) {
   if (!reason) return null;
+  if (reason === "denied") return deniedStatusLabel();
   return STATUS_LABEL[reason] ?? "Could not enable game alerts";
 }
 
@@ -174,13 +182,16 @@ export default function GroupChatPushButton({ groupId = "", subscriberId = "" })
     }
   };
 
-  const activeError = errorReason || (!subscribed && pushSupport.reason ? pushSupport.reason : null);
   const label = subscribed
     ? "Turn off game alerts"
-    : statusMessage(activeError) || (subscribed === null ? "Checking notification status…" : "Get game alerts");
+    : errorReason || pushSupport.reason
+      ? statusMessage(errorReason || pushSupport.reason) || "Get game alerts"
+      : subscribed === null
+        ? "Checking notification status…"
+        : "Get game alerts";
 
-  const hint = getHintText({ subscribed, errorReason: activeError });
-  const showStatus = Boolean(activeError) || hovering || peeking;
+  const hint = getHintText({ subscribed, errorReason });
+  const showStatus = Boolean(errorReason) || hovering || peeking;
   const hintId = `group-chat-push-hint-${groupId}`;
 
   return (
@@ -188,7 +199,7 @@ export default function GroupChatPushButton({ groupId = "", subscriberId = "" })
       className={[
         "game-chat-push",
         subscribed ? "game-chat-push--on" : "",
-        activeError ? "game-chat-push--error" : "",
+        errorReason ? "game-chat-push--error" : "",
         showStatus ? "game-chat-push--hint-visible" : "",
       ]
         .filter(Boolean)
@@ -215,7 +226,7 @@ export default function GroupChatPushButton({ groupId = "", subscriberId = "" })
         <ChatBellIcon active={Boolean(subscribed)} />
       </button>
       {showStatus ? (
-        <p id={hintId} className="game-chat-push__hint" role={activeError ? "alert" : "status"}>
+        <p id={hintId} className="game-chat-push__hint" role={errorReason ? "alert" : "status"}>
           {hint}
         </p>
       ) : null}

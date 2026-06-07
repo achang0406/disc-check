@@ -158,31 +158,27 @@ async function savePushSubscription({ groupId, subscriberId, subscription, notif
   return !error;
 }
 
+function subscribeFailureReason(permission) {
+  if (permission === "denied") return "denied";
+  return "subscribe-failed";
+}
+
 async function ensureBrowserPushSubscription() {
   if (!isWebPushSupported()) return { subscription: null, reason: getWebPushSupportState().reason };
 
   if (typeof Notification !== "undefined" && Notification.permission === "default") {
     const permission = await Notification.requestPermission();
     if (permission !== "granted") {
-      return { subscription: null, reason: permission === "denied" ? "denied" : "subscribe-failed" };
+      return { subscription: null, reason: subscribeFailureReason(permission) };
     }
-  }
-
-  if (typeof Notification !== "undefined" && Notification.permission === "denied") {
-    return { subscription: null, reason: "denied" };
   }
 
   if (typeof Notification !== "undefined" && Notification.permission !== "granted") {
-    return { subscription: null, reason: "subscribe-failed" };
+    return { subscription: null, reason: subscribeFailureReason(Notification.permission) };
   }
 
   try {
-    const registration = await getServiceWorkerRegistration();
-    if (!registration?.pushManager) {
-      return { subscription: null, reason: "sw-not-ready" };
-    }
-
-    await navigator.serviceWorker.ready;
+    const registration = await navigator.serviceWorker.ready;
     let subscription = await registration.pushManager.getSubscription();
 
     if (!subscription) {
@@ -195,7 +191,8 @@ async function ensureBrowserPushSubscription() {
     return { subscription, reason: null };
   } catch (error) {
     console.warn("Chat push registration failed", error);
-    return { subscription: null, reason: "subscribe-failed" };
+    const reason = error?.name === "NotAllowedError" ? "denied" : "subscribe-failed";
+    return { subscription: null, reason };
   }
 }
 
