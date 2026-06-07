@@ -233,36 +233,3 @@ export async function resyncGroupChatPushSubscription({ groupId, subscriberId })
   if (!active) return false;
   return ensureChatPushRegistration({ groupId, subscriberId });
 }
-
-export async function notifyChatPush({
-  groupId,
-  senderId,
-  senderName,
-  senderColor,
-  text,
-  messageId,
-  groupName,
-  createdAt,
-}) {
-  if (!isSupabaseConfigured() || !groupId || !senderId || !text) return;
-
-  const senderEndpoint = await getBrowserPushEndpoint();
-  const supabase = getSupabase();
-  const { error } = await supabase.functions.invoke("notify-chat", {
-    body: {
-      groupId,
-      senderId,
-      senderName,
-      senderColor,
-      text,
-      messageId,
-      groupName,
-      createdAt,
-      senderEndpoint,
-    },
-  });
-
-  if (error) {
-    console.warn("Chat push notify failed", error.message ?? error);
-  }
-}

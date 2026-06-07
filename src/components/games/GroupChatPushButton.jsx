@@ -9,15 +9,13 @@ import {
 
 const HINT_PEEK_MS = 3000;
 
-function notifyChatPushPreferenceChanged(groupId) {
-  window.dispatchEvent(
-    new CustomEvent("disc-check-chat-push-changed", { detail: { groupId } }),
-  );
+function notifyPushPreferenceChanged(groupId) {
+  window.dispatchEvent(new CustomEvent("disc-check-push-changed", { detail: { groupId } }));
 }
 
 const STATUS_LABEL = {
   denied: "Notifications blocked in browser settings",
-  "subscribe-failed": "Could not enable chat notifications",
+  "subscribe-failed": "Could not enable game alerts",
   "missing-identity": "Loading… try again in a moment",
   misconfigured: "Push notifications are not configured on this build",
   unsupported: "Push notifications are not supported in this browser",
@@ -53,9 +51,9 @@ function getHintText({ subscribed, errorReason }) {
     return "Checking…";
   }
   if (subscribed) {
-    return "Chat alerts on";
+    return "Game alerts on";
   }
-  return "Chat alerts off";
+  return "Game alerts off";
 }
 
 export default function GroupChatPushButton({ groupId = "", subscriberId = "" }) {
@@ -129,7 +127,7 @@ export default function GroupChatPushButton({ groupId = "", subscriberId = "" })
         const result = await unsubscribeFromGroupChatPush({ groupId, subscriberId });
         if (result.ok) {
           setSubscribed(false);
-          notifyChatPushPreferenceChanged(groupId);
+          notifyPushPreferenceChanged(groupId);
           finishInteraction();
         } else {
           setErrorReason(result.reason);
@@ -157,7 +155,7 @@ export default function GroupChatPushButton({ groupId = "", subscriberId = "" })
       const result = await subscribeToGroupChatPush({ groupId, subscriberId });
       if (result.ok) {
         setSubscribed(true);
-        notifyChatPushPreferenceChanged(groupId);
+        notifyPushPreferenceChanged(groupId);
         finishInteraction();
       } else {
         setErrorReason(result.reason);
@@ -170,12 +168,12 @@ export default function GroupChatPushButton({ groupId = "", subscriberId = "" })
   };
 
   const label = subscribed
-    ? "Turn off chat notifications"
+    ? "Turn off game alerts"
     : errorReason || pushSupport.reason
-      ? STATUS_LABEL[errorReason || pushSupport.reason] || "Get chat notifications"
+      ? STATUS_LABEL[errorReason || pushSupport.reason] || "Get game alerts"
       : subscribed === null
         ? "Checking notification status…"
-        : "Get chat notifications";
+        : "Get game alerts";
 
   const hint = getHintText({ subscribed, errorReason });
   const hintVisible = hovering || peeking;
