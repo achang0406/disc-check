@@ -582,43 +582,33 @@ export const globalStyles = `
   }
 
   .game-chat-push {
-    position: relative;
     display: flex;
-    align-items: center;
-    justify-content: flex-end;
+    flex-direction: column;
+    align-items: flex-end;
+    justify-content: flex-start;
     width: auto;
-    max-width: 100%;
-    min-height: 36px;
+    max-width: min(11.5rem, 42vw);
     min-width: 36px;
+    gap: var(--space-1);
   }
 
   .game-chat-push__hint {
-    position: absolute;
-    right: calc(36px + var(--space-2));
-    top: 50%;
     margin: 0;
-    max-width: min(18rem, calc(100vw - var(--game-card-inset-x) * 2 - 52px));
+    width: 100%;
     text-align: right;
     color: var(--text-faint);
     font-family: var(--font-mono);
     font-size: var(--font-label);
     line-height: 1.35;
-    white-space: nowrap;
-    opacity: 0;
-    visibility: hidden;
-    pointer-events: none;
-    transform: translateY(-50%);
-    transition:
-      opacity 140ms ease,
-      visibility 140ms ease;
+    white-space: normal;
+    word-break: break-word;
   }
 
-  .game-chat-push--hint-visible .game-chat-push__hint {
-    opacity: 1;
-    visibility: visible;
+  .game-chat-push--error .game-chat-push__hint {
+    color: var(--status-almost-color, #d97706);
   }
 
-  .game-chat-push--on .game-chat-push__hint {
+  .game-chat-push--on:not(.game-chat-push--error) .game-chat-push__hint {
     color: var(--text-subtle);
   }
 
@@ -1055,18 +1045,21 @@ export const globalStyles = `
 
   .group-games-screen__title-row {
     display: flex;
-    align-items: center;
+    align-items: flex-start;
     gap: var(--space-2);
     min-width: 0;
   }
 
   .group-games-screen__title {
     margin: 0;
+    padding-top: 6px;
     font-size: 22px;
     font-weight: 700;
     letter-spacing: -0.02em;
     min-width: 0;
     flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 
   .group-games-screen__description {
@@ -1080,7 +1073,7 @@ export const globalStyles = `
   .group-games-screen__bell {
     display: flex;
     flex-shrink: 0;
-    align-items: center;
+    align-items: flex-start;
   }
 
   .group-games-screen__cards {

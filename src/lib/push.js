@@ -159,19 +159,30 @@ async function savePushSubscription({ groupId, subscriberId, subscription, notif
 }
 
 async function ensureBrowserPushSubscription() {
-  if (!isWebPushSupported()) return null;
+  if (!isWebPushSupported()) return { subscription: null, reason: getWebPushSupportState().reason };
 
   if (typeof Notification !== "undefined" && Notification.permission === "default") {
     const permission = await Notification.requestPermission();
-    if (permission !== "granted") return null;
+    if (permission !== "granted") {
+      return { subscription: null, reason: permission === "denied" ? "denied" : "subscribe-failed" };
+    }
+  }
+
+  if (typeof Notification !== "undefined" && Notification.permission === "denied") {
+    return { subscription: null, reason: "denied" };
   }
 
   if (typeof Notification !== "undefined" && Notification.permission !== "granted") {
-    return null;
+    return { subscription: null, reason: "subscribe-failed" };
   }
 
   try {
-    const registration = await navigator.serviceWorker.ready;
+    const registration = await getServiceWorkerRegistration();
+    if (!registration?.pushManager) {
+      return { subscription: null, reason: "sw-not-ready" };
+    }
+
+    await navigator.serviceWorker.ready;
     let subscription = await registration.pushManager.getSubscription();
 
     if (!subscription) {
@@ -181,27 +192,29 @@ async function ensureBrowserPushSubscription() {
       });
     }
 
-    return subscription;
+    return { subscription, reason: null };
   } catch (error) {
     console.warn("Chat push registration failed", error);
-    return null;
+    return { subscription: null, reason: "subscribe-failed" };
   }
 }
 
 export async function ensureChatPushRegistration({ groupId, subscriberId }) {
   if (!groupId || !subscriberId || !isWebPushSupported()) {
-    return false;
+    return { ok: false, reason: "missing-identity" };
   }
 
-  const subscription = await ensureBrowserPushSubscription();
-  if (!subscription) return false;
+  const { subscription, reason } = await ensureBrowserPushSubscription();
+  if (!subscription) return { ok: false, reason: reason ?? "subscribe-failed" };
 
-  return savePushSubscription({
+  const saved = await savePushSubscription({
     groupId,
     subscriberId,
     subscription,
     notificationsEnabled: true,
   });
+
+  return { ok: saved, reason: saved ? null : "subscribe-failed" };
 }
 
 export async function subscribeToGroupChatPush({ groupId, subscriberId }) {
@@ -214,8 +227,7 @@ export async function subscribeToGroupChatPush({ groupId, subscriberId }) {
     return { ok: false, reason: "missing-identity" };
   }
 
-  const saved = await ensureChatPushRegistration({ groupId, subscriberId });
-  return { ok: saved, reason: saved ? null : "subscribe-failed" };
+  return ensureChatPushRegistration({ groupId, subscriberId });
 }
 
 export async function unsubscribeFromGroupChatPush({ groupId, subscriberId }) {
@@ -231,5 +243,6 @@ export async function resyncGroupChatPushSubscription({ groupId, subscriberId })
   if (!groupId || !subscriberId) return false;
   const active = await isSubscribedToGroupChatPush({ groupId, subscriberId });
   if (!active) return false;
-  return ensureChatPushRegistration({ groupId, subscriberId });
+  const result = await ensureChatPushRegistration({ groupId, subscriberId });
+  return result.ok;
 }
