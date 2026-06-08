@@ -1,5 +1,5 @@
-import { Navigate, useNavigate, useParams } from "react-router-dom";
-import { useEffect, useMemo, useState } from "react";
+import { Navigate, useNavigate, useParams, useSearchParams } from "react-router-dom";
+import { useEffect, useMemo, useRef, useState } from "react";
 import AppHeader from "../components/layout/AppHeader.jsx";
 import GameCommitCard from "../components/games/GameCommitCard.jsx";
 import GameCardsCarousel from "../components/games/GameCardsCarousel.jsx";
@@ -49,8 +49,11 @@ export default function GroupGamesScreen({
 }) {
   const { groupId } = useParams();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const now = useGameClock();
   const [focusedGameIndex, setFocusedGameIndex] = useState(0);
+  const carouselRef = useRef(null);
+  const deepLinkHandledRef = useRef(false);
 
   const group = groups.find((item) => item.id === groupId) ?? null;
   const groupGames = useMemo(
@@ -65,6 +68,26 @@ export default function GroupGamesScreen({
       setFocusedGameIndex(0);
     }
   }, [focusedGameIndex, groupGames.length]);
+
+  useEffect(() => {
+    deepLinkHandledRef.current = false;
+  }, [groupId]);
+
+  useEffect(() => {
+    const gameId = searchParams.get("game");
+    if (!gameId || groupGames.length === 0 || deepLinkHandledRef.current) return;
+
+    const index = groupGames.findIndex((item) => item.id === gameId);
+    if (index < 0) return;
+
+    deepLinkHandledRef.current = true;
+    carouselRef.current?.scrollToSlide(index, "auto");
+    setFocusedGameIndex(index);
+
+    const next = new URLSearchParams(searchParams);
+    next.delete("game");
+    setSearchParams(next, { replace: true });
+  }, [groupGames, searchParams, setSearchParams]);
 
   const watching = useMemo(
     () =>
@@ -148,6 +171,7 @@ export default function GroupGamesScreen({
               </p>
             ) : (
               <GameCardsCarousel
+                ref={carouselRef}
                 games={groupGames}
                 onFocusedIndexChange={setFocusedGameIndex}
                 renderSlide={(game, index) => (

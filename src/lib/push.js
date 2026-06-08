@@ -236,6 +236,10 @@ export async function unsubscribeFromGroupChatPush({ groupId, subscriberId }) {
   return { ok: updated, reason: updated ? null : "subscribe-failed" };
 }
 
+export function buildGameDeepLink(groupId, gameId) {
+  return `/groups/${groupId}?game=${gameId}`;
+}
+
 export async function resyncGroupChatPushSubscription({ groupId, subscriberId }) {
   if (!groupId || !subscriberId) return false;
   const active = await isSubscribedToGroupChatPush({ groupId, subscriberId });
