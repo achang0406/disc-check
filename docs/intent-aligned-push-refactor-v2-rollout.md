@@ -1,6 +1,6 @@
 ---
 name: Intent-aligned push refactor v2 rollout
-overview: Feature-phased rollout with PR sub-phases (2b-i/ii/iii, 4a/b, 5a/b) isolating hot-path risk. Thin paths via deduped enforce, denormalized game_push_state, stub outbox + drain copy, single cron. Optional client scoped-fetch before 2b-iii.
+overview: Feature-phased rollout with PR sub-phases (2b-i/ii/ii-client/iii, 4a/b, 5a/b) isolating hot-path risk. Thin paths via deduped enforce, denormalized game_push_state, stub outbox + drain copy, single cron. Required client scoped-fetch (2b-ii-client) before 2b-iii.
 status: planned
 note: Derisked rollout after v1 revert. Reference spec at docs/intent-aligned-push-refactor-plan.md; rollback template at scripts/supabase-rollback-push-plan.sql.
 ---
@@ -18,7 +18,7 @@ Reference: archived spec in [intent-aligned-push-refactor-plan.md](intent-aligne
 - Prefer **event-driven or precomputed-time discovery** over scanning all games/groups; **one drain cron** for delivery only.
 - Avoid v1 traps: no `SUM` / `COUNT(DISTINCT)` on hot paths, no push logic on `name`-only updates, no full-`fetchAppData` subscription for announcements.
 - **Baseline hygiene (pre-push):** single occurrence computation per enforce write; atomic `game_push_state` reset on cycle rollover; narrow check-in/guest UPDATE triggers.
-- **Client hygiene (orthogonal):** replace full `fetchAppData()` after RSVP/check-in with scoped fetch or Realtime + optimistic state where safe.
+- **Client hygiene (Phase 2b-ii-client):** replace full `fetchAppData()` after RSVP/check-in with scoped per-game fetch + merge; required before 2b-iii latency gate.
 
 ## Push discovery model (one processor)
 
@@ -28,13 +28,15 @@ All features share **one** `process-push-outbox` run every 1–2 min. Each tick:
 2. **Due live pushes** — `game_push_state.next_live_at <= now()` (indexed, no `is_game_live` scan)
 3. *(Optional fallback only)* reconcile badge/chatter state if event path missed a row
 
-| Feature | Discovery (ideal) | Delivery |
-|---------|-------------------|----------|
-| Badge | RSVP AFTER trigger, O(1) headcount delta | Drain cron |
-| Cancel | `games` status trigger | Drain cron |
-| Live | **Precomputed `next_live_at`** due on drain tick | Drain cron |
-| Chatter | **Chat AFTER INSERT**, O(1) `chat_push_state` update | Drain cron |
-| Announcements | Admin RPC | Drain cron |
+
+| Feature       | Discovery (ideal)                                    | Delivery   |
+| ------------- | ---------------------------------------------------- | ---------- |
+| Badge         | RSVP AFTER trigger, O(1) headcount delta             | Drain cron |
+| Cancel        | `games` status trigger                               | Drain cron |
+| Live          | **Precomputed `next_live_at`** due on drain tick     | Drain cron |
+| Chatter       | **Chat AFTER INSERT**, O(1) `chat_push_state` update | Drain cron |
+| Announcements | Admin RPC                                            | Drain cron |
+
 
 **Do not** add separate cron jobs per feature. **Do not** use per-game one-shot pg_cron schedules (high ops cost for weekly recurrence + admin edits).
 
@@ -44,12 +46,14 @@ RSVP and live check-in are tap-and-expect-instant actions. Everything below appl
 
 ### What stays on the write path (minimal)
 
-| Path | Allowed work | Why |
-|------|----------------|-----|
-| **RSVP** `enforce_rsvp_window` (BEFORE) | One `games` row read; **one** `get_current_occurrence_start`; cycle + lock from that timestamp | Product rules — must block invalid RSVPs |
-| **Check-in** `enforce_check_in_window` (BEFORE) | One `games` row read; **one** occurrence; live + cycle from that timestamp | Product rules — check-in only while live |
-| **Badge push** (AFTER, Phase 2b-iii) | O(1) `game_push_state` delta; tier compare; **stub** outbox row on upgrade only — **no `games` read** | Event-driven; denormalized state |
-| **Chatter push** (AFTER, Phase 4) | Bounded `chat_push_state` update; stub outbox only when threshold + cooldown pass | No `COUNT(DISTINCT)` per message |
+
+| Path                                            | Allowed work                                                                                          | Why                                      |
+| ----------------------------------------------- | ----------------------------------------------------------------------------------------------------- | ---------------------------------------- |
+| **RSVP** `enforce_rsvp_window` (BEFORE)         | One `games` row read; **one** `get_current_occurrence_start`; cycle + lock from that timestamp        | Product rules — must block invalid RSVPs |
+| **Check-in** `enforce_check_in_window` (BEFORE) | One `games` row read; **one** occurrence; live + cycle from that timestamp                            | Product rules — check-in only while live |
+| **Badge push** (AFTER, Phase 2b-iii)            | O(1) `game_push_state` delta; tier compare; **stub** outbox row on upgrade only — **no `games` read** | Event-driven; denormalized state         |
+| **Chatter push** (AFTER, Phase 4)               | Bounded `chat_push_state` update; stub outbox only when threshold + cooldown pass                     | No `COUNT(DISTINCT)` per message         |
+
 
 ### What must be offloaded (never on RSVP/check-in/chat send transaction)
 
@@ -60,9 +64,9 @@ RSVP and live check-in are tap-and-expect-instant actions. Everything below appl
 - `is_game_live` scans over all games (use `next_live_at` due check instead)
 - **Full push copy** (title/body/tag/url) — materialize on drain, not in triggers
 - **Second `games` SELECT** in badge AFTER trigger (denormalize onto `game_push_state` instead)
-- Full client `fetchAppData()` after every RSVP/check-in (see Client hot path below)
+- Full client `fetchAppData()` after every RSVP/check-in (see Phase 2b-ii-client below)
 
-### Enforce trigger deduplication (migration `033`, Phase 2b-i)
+### Enforce trigger deduplication (migration `035`, Phase 2b-i)
 
 Today `enforce_rsvp_window` calls `get_current_occurrence_start`, then `is_rsvp_locked` which calls it **again**. Check-in does the same via `is_game_live` + a separate cycle compare.
 
@@ -81,7 +85,7 @@ v_occurrence := get_current_occurrence_start(v_weekday, v_start_time, v_timezone
 
 Same product rules; fewer function calls. Cools RSVP/check-in **before** badge push lands.
 
-### Trigger hygiene (migration `033_hot_path_triggers.sql`, Phase 2b-i)
+### Trigger hygiene (migration `035_hot_path_triggers.sql`, Phase 2b-i)
 
 **RSVP `rsvps_enforce_window`** — narrow UPDATE firing + deduped occurrence math:
 
@@ -114,15 +118,17 @@ BEFORE UPDATE OF plus_ones, bringing_kit, game_id, user_id, cycle_at ON game_che
 
 Extend `game_push_state` (PK `game_id`, `cycle_at`) with push-hot fields copied from `games` when the row is created or reset:
 
-| Column | Purpose |
-|--------|---------|
-| `rsvp_headcount` | Incremental headcount (O(1) delta) |
-| `last_rsvp_badge` | `'not' \| 'almost' \| 'go'` for upgrade-only compare |
-| `last_phase` | Live push dedup per cycle |
-| `next_live_at` | Precomputed live push time |
-| `group_id` | Outbox routing — no `games` read in badge trigger |
-| `target` | Tier thresholds — no `games` read in badge trigger |
-| `game_status` | Short-circuit badge when `'cancelled'` |
+
+| Column            | Purpose                                            |
+| ----------------- | -------------------------------------------------- |
+| `rsvp_headcount`  | Incremental headcount (O(1) delta)                 |
+| `last_rsvp_badge` | `'not' | 'almost' | 'go'` for upgrade-only compare |
+| `last_phase`      | Live push dedup per cycle                          |
+| `next_live_at`    | Precomputed live push time                         |
+| `group_id`        | Outbox routing — no `games` read in badge trigger  |
+| `target`          | Tier thresholds — no `games` read in badge trigger |
+| `game_status`     | Short-circuit badge when `'cancelled'`             |
+
 
 **Initialize or reset in one place** — extend [reset_game_rsvp_cycle](../supabase/schema.sql) (called from `reset_stale_game_cycles`) to upsert the new-cycle row:
 
@@ -160,7 +166,7 @@ Derive tier from `rsvp_headcount` + denormalized `target` (same rules as [gameBa
 
 Optional nightly or cron **reconcile** `SUM(rsvps)` vs `rsvp_headcount` (off hot path) if paranoid about drift.
 
-### Thin outbox enqueue (Phase 2a — `030`)
+### Thin outbox enqueue (Phase 2a — `032`)
 
 Triggers and RPCs insert a **minimal** `push_outbox` row:
 
@@ -172,16 +178,17 @@ Triggers and RPCs insert a **minimal** `push_outbox` row:
 
 **Materialize** title/body/tag/url in `process-push-outbox` (or `notify-push`) when draining — copy lives in one place (SQL or shared TS), latency does not block taps. Profile on staging; if stub + drain is still heavy, keep copy in SQL but only on drain path.
 
-### Client hot path (orthogonal — anytime after Phase 1, ideally before Phase 2b-iii)
+### Client scoped fetch (Phase 2b-ii-client — required before 2b-iii)
 
 Today [upsertRsvp](../src/lib/data.js) / [upsertCheckIn](../src/lib/data.js) await full [fetchAppData](../src/lib/data.js) (groups, games, **all** RSVPs, check-ins, guests). UI already optimizes locally in [useAppData.js](../src/hooks/useAppData.js) before persist; the refetch often dominates perceived latency.
 
-**Ideal:** after successful RSVP/check-in write, either:
+**2b-ii-client** (client-only PR, no SQL migration) ships scoped fetch so the **2b-iii RSVP latency gate** measures badge enqueue—not a five-table refetch on every tap. See [#### Phase 2b-ii-client](#phase-2b-ii-client--scoped-client-fetch) for scope, E2E, and rollback.
 
-- Return **scoped** data for the affected game only, or
-- Skip refetch and rely on existing Realtime subscriptions + optimistic local state
+**In scope:** RSVP + check-in write paths; scoped Realtime on `rsvps` / `game_check_ins`.
 
-Do **not** add new full-refetch paths. Announcements (Phase 5) use scoped fetch per plan. Gate RSVP latency tests on staging with this improvement when feasible.
+**Out of scope (still full `fetchAppData()`):** `renameRsvps`, guest writes, bootstrap/refresh, groups/games Realtime.
+
+Do **not** add new full-refetch paths on RSVP/check-in. Announcements (Phase 5) use scoped fetch per plan.
 
 ### Async delivery (still cron, not RSVP-blocking)
 
@@ -191,57 +198,67 @@ Do **not** add new full-refetch paths. Announcements (Phase 5) use scoped fetch 
 
 ## Feature phases at a glance
 
-| Phase | Feature | E2E pass criterion |
-|-------|---------|-------------------|
-| **1** | Chat push removal | Send chat → no OS notification; bell still registers subscriptions |
-| **2a** | Game cancelled push | Admin cancels game → subscriber gets one push (background) |
-| **2b** | Pregame badge push *(3 PRs: 2b-i → 2b-ii → 2b-iii)* | RSVP crosses almost/go tier → push after drain (not per-message delay on RSVP UI) |
-| **3** | Live game push | `next_live_at` due → “Game is live” once per cycle (≤ drain interval lag) |
-| **4** | Chat chatter push *(2 PRs: 4a → 4b)* | 2+ senders in 30 min → ≤1 summary push/hour; chat send stays instant |
-| **5** | Announcements *(2 PRs: 5a → 5b)* | Admin posts → banner on focused game + OS push to subscribers |
 
-**Orthogonal (anytime after Phase 2a):** group limits; **client scoped fetch** (recommended before **2b-iii**).
+| Phase  | Feature                                             | E2E pass criterion                                                                |
+| ------ | --------------------------------------------------- | --------------------------------------------------------------------------------- |
+| **1**  | Chat push removal                                   | Send chat → no OS notification; bell still registers subscriptions                |
+| **2a** | Game cancelled push                                 | Admin cancels game → subscriber gets one push (background)                        |
+| **2b** | Pregame badge push *(4 PRs: 2b-i → 2b-ii → 2b-ii-client → 2b-iii)* | RSVP crosses almost/go tier → push after drain (not per-message delay on RSVP UI) |
+| **3**  | Live game push                                      | `next_live_at` due → “Game is live” once per cycle (≤ drain interval lag)         |
+| **4**  | Chat chatter push *(2 PRs: 4a → 4b)*                | 2+ senders in 30 min → ≤1 summary push/hour; chat send stays instant              |
+| **5**  | Announcements *(2 PRs: 5a → 5b)*                    | Admin posts → banner on focused game + OS push to subscribers                     |
+
+
+**Orthogonal (anytime after Phase 2a):** group limits.
 
 ### Release order
 
 ```text
-1 → 2a → 2b-i → 2b-ii → [client fetch] → 2b-iii → 3 → 4a → 4b → 5a → 5b
+1 → 2a → 2b-i → 2b-ii → 2b-ii-client → 2b-iii → 3 → 4a → 4b → 5a → 5b
 
-           └─ pregame badge stack ─┘              └─ chatter stack ─┘
+           └─ pregame badge stack ─────────┘              └─ chatter stack ─┘
 
 Orthogonal: group limits anytime after 2a
 ```
+
+**Migration numbering:** Phase 2a shipped `032`–`034` (outbox, cancel trigger, cron). Phase 2b DB migrations are `035` (2b-i), `036` (2b-ii), `037` (2b-iii). **2b-ii-client** has no migration.
 
 ### PR sub-phases (isolate risky hot-path changes)
 
 Split **medium-risk** phases so each PR changes **one layer**: hygiene → state → enqueue. Do **not** split Phases 1, 2a, or 3 further (already small or low-risk).
 
-| PR | Ships | Risk | Gate before next PR |
-|----|--------|------|---------------------|
-| **2b-i** | `033` — deduped enforce + narrow RSVP/check-in/guest UPDATE triggers | **Low** | RSVP/check-in latency unchanged or better; `renameRsvps` skips enforce |
-| **2b-ii** | `034` — `game_push_state` denorm + `reset_game_rsvp_cycle` hooks; optional headcount-only AFTER (**no enqueue**) | **Low–Medium** | Cycle reset creates correct rows; headcount matches RSVPs |
-| **2b-iii** | `035` — badge AFTER trigger + stub enqueue | **Medium** | **RSVP latency gate** + badge E2E |
-| **4a** | `037` — `chat_push_state` + AFTER INSERT state-only trigger | **Low–Medium** | Chat send instant; window state correct |
-| **4b** | `038` — enqueue branch on chatter trigger | **Medium** | **Chat latency gate** + chatter E2E |
-| **5a** | `039` — announcements table + banner/composer UI | **Low–Medium** | Banner E2E; no push yet |
-| **5b** | `040` — announcement push RPC | **Low** | Admin post → banner + OS push |
 
-**Dependency rule:** 2b-iii requires 2b-ii (`game_push_state` exists). 2b-i should ship before 2b-iii (isolates enforce regressions). 4b requires 4a.
+| PR         | Ships                                                                                                            | Risk           | Gate before next PR                                                    |
+| ---------- | ---------------------------------------------------------------------------------------------------------------- | -------------- | ---------------------------------------------------------------------- |
+| **2b-i**         | `035` — deduped enforce + narrow RSVP/check-in/guest UPDATE triggers                                             | **Low**        | RSVP/check-in latency unchanged or better; `renameRsvps` skips enforce |
+| **2b-ii**        | `036` — `game_push_state` denorm + `reset_game_rsvp_cycle` hooks; optional headcount-only AFTER (**no enqueue**) | **Low–Medium** | Cycle reset creates correct rows; headcount matches RSVPs              |
+| **2b-ii-client** | *(no migration)* — scoped RSVP/check-in fetch + merge in [data.js](../src/lib/data.js) / [useAppData.js](../src/hooks/useAppData.js) | **Low**        | Network: 1 write + 1 scoped read per tap; two-device same-game sync   |
+| **2b-iii**       | `037` — badge AFTER trigger + stub enqueue                                                                       | **Medium**     | **RSVP latency gate** + badge E2E                                      |
+| **4a**           | `038` — `chat_push_state` + AFTER INSERT state-only trigger                                                      | **Low–Medium** | Chat send instant; window state correct                                |
+| **4b**           | `039` — enqueue branch on chatter trigger                                                                        | **Medium**     | **Chat latency gate** + chatter E2E                                    |
+| **5a**           | `040` — announcements table + banner/composer UI                                                                 | **Low–Medium** | Banner E2E; no push yet                                                |
+| **5b**           | `041` — announcement push RPC                                                                                    | **Low**        | Admin post → banner + OS push                                          |
+
+
+**Dependency rule:** 2b-iii requires **2b-ii** (`game_push_state` exists) **and 2b-ii-client** (scoped fetch so latency gate is meaningful). 2b-i should ship before 2b-iii (isolates enforce regressions). 4b requires 4a.
 
 ## Risk levels
 
-| Phase | Risk | Primary concern |
-|-------|------|-----------------|
-| 1 | Low–Medium | Stops chat push; deletes `notify-chat` |
-| 2a | Low–Medium | First push pipeline + cancel trigger |
-| 2b-i | Low | Enforce refactor — no new push behavior |
-| 2b-ii | Low–Medium | State lifecycle — writes on cycle reset, optional headcount maintenance |
-| 2b-iii | Medium | Badge enqueue on RSVP — **RSVP latency gate** |
-| 3 | Low | `next_live_at` due check on drain (not full-game scan) |
-| 4a | Low–Medium | Chat state on insert — no notifications yet |
-| 4b | Medium | Chatter enqueue — **chat send latency gate** |
-| 5a | Low–Medium | Carousel banner UI |
-| 5b | Low | Admin-only announcement push RPC |
+
+| Phase  | Risk       | Primary concern                                                         |
+| ------ | ---------- | ----------------------------------------------------------------------- |
+| 1      | Low–Medium | Stops chat push; deletes `notify-chat`                                  |
+| 2a     | Low–Medium | First push pipeline + cancel trigger                                    |
+| 2b-i   | Low        | Enforce refactor — no new push behavior                                 |
+| 2b-ii        | Low–Medium | State lifecycle — writes on cycle reset, optional headcount maintenance |
+| 2b-ii-client | Low        | Scoped client fetch — merge per-game RSVP/check-in; no DB changes       |
+| 2b-iii       | Medium     | Badge enqueue on RSVP — **RSVP latency gate**                           |
+| 3      | Low        | `next_live_at` due check on drain (not full-game scan)                  |
+| 4a     | Low–Medium | Chat state on insert — no notifications yet                             |
+| 4b     | Medium     | Chatter enqueue — **chat send latency gate**                            |
+| 5a     | Low–Medium | Carousel banner UI                                                      |
+| 5b     | Low        | Admin-only announcement push RPC                                        |
+
 
 ## Architecture (v2)
 
@@ -282,6 +299,8 @@ flowchart TD
   DueLive --> OutboxDrain
 ```
 
+
+
 **Key changes:** deduped enforce math; badge reads only `game_push_state`; stub outbox on write; no full-game scans; no `COUNT(DISTINCT)` on chat; **one drain** materializes copy + delivers + due live checks.
 
 ---
@@ -294,11 +313,13 @@ flowchart TD
 
 ### Changes
 
-| Area | What |
-|------|------|
-| Client | Remove `notifyChatPush` from [usePresence.js](../src/hooks/usePresence.js) and [push.js](../src/lib/push.js) |
+
+| Area   | What                                                                                                                                                                   |
+| ------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Client | Remove `notifyChatPush` from [usePresence.js](../src/hooks/usePresence.js) and [push.js](../src/lib/push.js)                                                           |
 | Client | Bell copy + `disc-check-push-changed` in [GroupChatPushButton.jsx](../src/components/games/GroupChatPushButton.jsx), [useChatAlerts.js](../src/hooks/useChatAlerts.js) |
-| Edge | Delete [notify-chat](../supabase/functions/notify-chat/index.ts) from repo + Supabase |
+| Edge   | Delete [notify-chat](../supabase/functions/notify-chat/index.ts) from repo + Supabase                                                                                  |
+
 
 ### E2E test
 
@@ -321,14 +342,16 @@ Restore `notifyChatPush` + bell copy; redeploy `notify-chat` + Vercel.
 
 **Ship:** `notify-push`, outbox, drain cron, and first auto-push (`game_cancelled`). Check-in path untouched.
 
-| Area | What |
-|------|------|
-| Edge | [pushSend.ts](../supabase/functions/_shared/pushSend.ts), [notify-push](../supabase/functions/notify-push/index.ts), [process-push-outbox](../supabase/functions/process-push-outbox/index.ts) |
-| DB | `032_push_outbox.sql` — outbox + stub `enqueue_push_event` |
-| DB | `033_game_cancelled_push.sql` — thin `games` status trigger → stub outbox only |
-| DB | `034_push_outbox_cron.sql` — drain cron **materializes copy** then calls `notify-push` |
-| Client | `buildGameDeepLink`, SW gate, deep links, [gameBadge.js](../src/utils/gameBadge.js) |
-| Docs | [.env.example](../.env.example), [phase-2a-cancel-push-runbook.md](phase-2a-cancel-push-runbook.md) |
+
+| Area   | What                                                                                                                                                                                           |
+| ------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Edge   | [pushSend.ts](../supabase/functions/_shared/pushSend.ts), [notify-push](../supabase/functions/notify-push/index.ts), [process-push-outbox](../supabase/functions/process-push-outbox/index.ts) |
+| DB     | `032_push_outbox.sql` — outbox + stub `enqueue_push_event`                                                                                                                                     |
+| DB     | `033_game_cancelled_push.sql` — thin `games` status trigger → stub outbox only                                                                                                                 |
+| DB     | `034_push_outbox_cron.sql` — drain cron **materializes copy** then calls `notify-push`                                                                                                         |
+| Client | `buildGameDeepLink`, SW gate, deep links, [gameBadge.js](../src/utils/gameBadge.js)                                                                                                            |
+| Docs   | [.env.example](../.env.example), [phase-2a-cancel-push-runbook.md](phase-2a-cancel-push-runbook.md)                                                                                            |
+
 
 #### E2E test
 
@@ -340,20 +363,22 @@ See [phase-2a-cancel-push-runbook.md](phase-2a-cancel-push-runbook.md) for step-
 
 ---
 
-### Phase 2b — Pregame badge (three PRs)
+### Phase 2b — Pregame badge (four PRs)
 
-**Ship:** event-based badge via incremental headcount. **No badge cron scan.** Split so enforce hygiene and state lifecycle land before enqueue-on-RSVP.
+**Ship:** event-based badge via incremental headcount. **No badge cron scan.** Split so enforce hygiene, state lifecycle, and client scoped fetch land before enqueue-on-RSVP.
 
 ---
 
 #### Phase 2b-i — Enforce hygiene only
 
-**Risk: Low** · **Migration:** `033_hot_path_triggers.sql`
+**Risk: Low** · **Migration:** `035_hot_path_triggers.sql`
 
-| Area | What |
-|------|------|
-| DB | Deduped `enforce_rsvp_window` + `enforce_check_in_window` (single occurrence per write) |
-| DB | Narrow UPDATE on `rsvps`, `game_check_ins`, `game_guests` (skip name-only [renameRsvps](../src/lib/data.js)) |
+
+| Area | What                                                                                                         |
+| ---- | ------------------------------------------------------------------------------------------------------------ |
+| DB   | Deduped `enforce_rsvp_window` + `enforce_check_in_window` (single occurrence per write)                      |
+| DB   | Narrow UPDATE on `rsvps`, `game_check_ins`, `game_guests` (skip name-only [renameRsvps](../src/lib/data.js)) |
+
 
 **No** `game_push_state` changes. **No** badge trigger. **No** new push behavior.
 
@@ -365,19 +390,21 @@ See [phase-2a-cancel-push-runbook.md](phase-2a-cancel-push-runbook.md) for step-
 
 ##### Rollback
 
-Revert enforce functions + trigger definitions to pre-033.
+Revert enforce functions + trigger definitions to pre-035.
 
 ---
 
 #### Phase 2b-ii — Push state lifecycle (no enqueue)
 
-**Risk: Low–Medium** · **Migration:** `034_game_push_state_lifecycle.sql`
+**Risk: Low–Medium** · **Migration:** `036_game_push_state_lifecycle.sql`
 
-| Area | What |
-|------|------|
-| DB | Extend `game_push_state`: `rsvp_headcount`, `group_id`, `target`, `game_status`, `last_rsvp_badge` (see lifecycle section) |
-| DB | Atomic upsert in `reset_game_rsvp_cycle`; refresh on `admin_upsert_game` + cancel |
-| DB | Optional: `trg_rsvps_maintain_headcount` AFTER trigger — O(1) delta + `last_rsvp_badge` update **only**, no outbox insert |
+
+| Area | What                                                                                                                       |
+| ---- | -------------------------------------------------------------------------------------------------------------------------- |
+| DB   | Extend `game_push_state`: `rsvp_headcount`, `group_id`, `target`, `game_status`, `last_rsvp_badge` (see lifecycle section) |
+| DB   | Atomic upsert in `reset_game_rsvp_cycle`; refresh on `admin_upsert_game` + cancel                                          |
+| DB   | Optional: `trg_rsvps_maintain_headcount` AFTER trigger — O(1) delta + `last_rsvp_badge` update **only**, no outbox insert  |
+
 
 ##### E2E test
 
@@ -391,14 +418,40 @@ Drop headcount trigger if present; leave or drop `game_push_state` columns (forw
 
 ---
 
+#### Phase 2b-ii-client — Scoped client fetch
+
+**Risk: Low** · **Migration:** *(none — client-only PR)*
+
+| Area   | What                                                                                                                                 |
+| ------ | ------------------------------------------------------------------------------------------------------------------------------------ |
+| Client | `fetchRsvpsForGame`, `fetchCheckInsForGame` in [data.js](../src/lib/data.js); write paths return per-game patches, not `fetchAppData()` |
+| Client | `applyGamePatch` merge in [useAppData.js](../src/hooks/useAppData.js); scoped Realtime on `rsvps` / `game_check_ins` (debounced per `game_id`) |
+| Client | Unchanged: `renameRsvps`, guest writes, bootstrap `refresh()`, groups/games Realtime → still full `fetchAppData()`                 |
+
+##### E2E test
+
+- [ ] RSVP upsert/cancel feels instant; Network tab shows **one** `rsvps` write + **one** scoped `rsvps?game_id=eq.…` read (not groups/games/check_ins/guests)
+- [ ] Check-in/check-out same pattern on `game_check_ins`
+- [ ] Device B sees Device A’s RSVP on shared game card (scoped Realtime merge)
+- [ ] `renameRsvps` still works (full fetch path)
+- [ ] Bootstrap / manual refresh unchanged
+
+##### Rollback
+
+Revert [data.js](../src/lib/data.js) + [useAppData.js](../src/hooks/useAppData.js) to `fetchAppData()` on RSVP/check-in writes and full Realtime refresh.
+
+---
+
 #### Phase 2b-iii — Badge enqueue
 
-**Risk: Medium** · **Migration:** `035_badge_push_trigger.sql`
+**Risk: Medium** · **Migration:** `037_badge_push_trigger.sql`
 
-| Area | What |
-|------|------|
-| DB | `trg_rsvps_push_badge` (or extend maintain trigger): upgrade-only stub enqueue; early exits; **no `games` SELECT** |
-| Client | *(orthogonal, recommended before this PR)* scoped post-RSVP fetch — see Client hot path |
+
+| Area   | What                                                                                                               |
+| ------ | ------------------------------------------------------------------------------------------------------------------ |
+| DB     | `trg_rsvps_push_badge` (or extend maintain trigger): upgrade-only stub enqueue; early exits; **no `games` SELECT** |
+| Client | **Requires 2b-ii-client** — latency gate assumes scoped post-RSVP fetch is already shipped                         |
+
 
 ##### RSVP latency gate (required before prod)
 
@@ -419,7 +472,7 @@ On staging, compare **before/after** 2b-iii:
 
 Drop badge enqueue from trigger (keep headcount maintenance from 2b-ii). Fallback: badge cron scan on processor without removing outbox.
 
-**Phase 2 complete** when 2a + 2b-i/ii/iii E2E and **2b-iii** latency gate pass.
+**Phase 2 complete** when 2a + 2b-i/ii/ii-client/iii E2E and **2b-iii** latency gate pass.
 
 ---
 
@@ -449,9 +502,11 @@ WHERE next_live_at <= now()
 → last_phase := 'live'
 ```
 
-| Area | What |
-|------|------|
-| DB | `036_phase_live_scheduled.sql` — `next_live_at` due-live step in processor (lifecycle hooks largely from 2b-ii; extend if needed) |
+
+| Area | What                                                                                                                              |
+| ---- | --------------------------------------------------------------------------------------------------------------------------------- |
+| DB   | `036_phase_live_scheduled.sql` — `next_live_at` due-live step in processor (lifecycle hooks largely from 2b-ii; extend if needed) |
+
 
 Lag is at most one drain interval (~2 min), same as before, but **DB work per tick is O(due games)** not O(all open games).
 
@@ -487,9 +542,11 @@ Maintain incrementally on each `group_chat_messages` INSERT:
 
 **Risk: Low–Medium** · **Migration:** `037_chat_push_state.sql`
 
-| Area | What |
-|------|------|
-| DB | `chat_push_state` columns + AFTER INSERT trigger: update window state **only** — no outbox |
+
+| Area | What                                                                                       |
+| ---- | ------------------------------------------------------------------------------------------ |
+| DB   | `chat_push_state` columns + AFTER INSERT trigger: update window state **only** — no outbox |
+
 
 ##### E2E test
 
@@ -507,9 +564,11 @@ Drop state trigger; keep table.
 
 **Risk: Medium** · **Migration:** `038_chat_chatter_enqueue.sql`
 
-| Area | What |
-|------|------|
-| DB | Extend chatter trigger: if distinct ≥ 2 and `now() - last_push_at > 1h` → stub outbox `chat_chatter`; set `last_push_at` |
+
+| Area | What                                                                                                                     |
+| ---- | ------------------------------------------------------------------------------------------------------------------------ |
+| DB   | Extend chatter trigger: if distinct ≥ 2 and `now() - last_push_at > 1h` → stub outbox `chat_chatter`; set `last_push_at` |
+
 
 **Optional fallback:** processor reconcile for missed groups (off hot path).
 
@@ -540,10 +599,12 @@ Remove enqueue branch from trigger; 4a state maintenance remains.
 
 **Risk: Low–Medium** · **Migration:** `039_game_announcements.sql`
 
-| Area | What |
-|------|------|
-| DB | `game_announcements` table + Realtime publication |
+
+| Area   | What                                                                                                                                            |
+| ------ | ----------------------------------------------------------------------------------------------------------------------------------------------- |
+| DB     | `game_announcements` table + Realtime publication                                                                                               |
 | Client | Focused-slide banner + composer in [GroupGamesScreen.jsx](../src/screens/GroupGamesScreen.jsx); scoped fetch — no 7th full-refetch subscription |
+
 
 ##### E2E test
 
@@ -560,9 +621,11 @@ Drop table + UI.
 
 **Risk: Low** · **Migration:** `040_announcement_push.sql`
 
-| Area | What |
-|------|------|
-| DB | `admin_post_game_announcement` RPC → stub outbox `announcement` |
+
+| Area | What                                                            |
+| ---- | --------------------------------------------------------------- |
+| DB   | `admin_post_game_announcement` RPC → stub outbox `announcement` |
+
 
 ##### E2E test
 
@@ -580,9 +643,11 @@ Drop RPC enqueue; banner from 5a remains.
 
 **Risk: Low–Medium** — anytime after Phase 2a.
 
-| Area | What |
-|------|------|
-| DB | `041_group_game_limits.sql` |
+
+| Area | What                        |
+| ---- | --------------------------- |
+| DB   | `041_group_game_limits.sql` |
+
 
 ---
 
@@ -590,10 +655,12 @@ Drop RPC enqueue; banner from 5a remains.
 
 **Risk: Low** — anytime after Phase 1; **recommended before Phase 2b-iii** so RSVP latency gates measure the real user path.
 
-| Area | What |
-|------|------|
+
+| Area   | What                                                                                                                                          |
+| ------ | --------------------------------------------------------------------------------------------------------------------------------------------- |
 | Client | [data.js](../src/lib/data.js) — `upsertRsvp`, `cancelRsvp`, `upsertCheckIn`, `cancelCheckIn` return scoped data or void; caller applies patch |
-| Client | [useAppData.js](../src/hooks/useAppData.js) — keep optimistic local update; merge Realtime deltas; avoid full `fetchAppData()` on every tap |
+| Client | [useAppData.js](../src/hooks/useAppData.js) — keep optimistic local update; merge Realtime deltas; avoid full `fetchAppData()` on every tap   |
+
 
 #### E2E test
 
@@ -617,23 +684,26 @@ Restore `return fetchAppData()` on write helpers.
 7. **One drain cron** for delivery + due live; no per-feature cron jobs.
 8. **Name-only UPDATE** must not fire enforce or push triggers (RSVP, check-in, guests).
 9. **Per-phase rollback SQL** alongside forward migrations.
-10. **Staging Supabase** required before Phase 2a; **latency gates** for **2b-iii** (RSVP) and **4b** (chat).
-11. **Sub-phase rule:** one layer per PR — hygiene, then state, then enqueue — for medium-risk hot paths.
+10. **Staging Supabase** required before Phase 2a; **2b-ii-client** required before **2b-iii**; **latency gates** for **2b-iii** (RSVP) and **4b** (chat).
+11. **Sub-phase rule:** one layer per PR — hygiene, then state, then client scoped fetch, then enqueue — for medium-risk hot paths.
 
 ## Migration / rollback map
 
-| PR / phase | Migration | Rollback |
-|------------|-----------|----------|
-| 2a | `030`, `031`, `032` | `scripts/supabase-rollback-030-push-outbox.sql` + drop cancel trigger |
-| 2b-i | `033` | Revert enforce functions + trigger definitions |
-| 2b-ii | `034` | Drop headcount trigger; optional column rollback |
-| 2b-iii | `035` | Drop badge enqueue; keep 2b-ii state |
-| 3 | `036` | Drop due-live step in processor |
-| 4a | `037` | Drop state-only chatter trigger |
-| 4b | `038` | Remove enqueue branch from chatter trigger |
-| 5a | `039` | Drop `game_announcements` + UI |
-| 5b | `040` | Drop announcement RPC enqueue |
-| Group limits | `041` | Drop constraint + revert RPC |
+
+| PR / phase     | Migration           | Rollback                                                              |
+| -------------- | ------------------- | --------------------------------------------------------------------- |
+| 2a             | `032`, `033`, `034` | `scripts/supabase-rollback-032-push-outbox.sql` + drop cancel trigger |
+| 2b-i           | `035`               | Revert enforce functions + trigger definitions                        |
+| 2b-ii          | `036`               | Drop headcount trigger; optional column rollback                      |
+| 2b-ii-client   | *(none)*            | Revert [data.js](../src/lib/data.js) + [useAppData.js](../src/hooks/useAppData.js) to full fetch |
+| 2b-iii         | `037`               | Drop badge enqueue; keep 2b-ii state                                  |
+| 3              | `038`               | Drop due-live step in processor                                       |
+| 4a             | `039`               | Drop state-only chatter trigger                                       |
+| 4b             | `040`               | Remove enqueue branch from chatter trigger                            |
+| 5a             | `041`               | Drop `game_announcements` + UI                                        |
+| 5b             | `042`               | Drop announcement RPC enqueue                                         |
+| Group limits   | `043`               | Drop constraint + revert RPC                                          |
+
 
 Use **030+** (026–029 in remote history). One migration file per deployable sub-phase where possible.
 
@@ -645,3 +715,4 @@ Use **030+** (026–029 in remote history). One migration file per deployable su
 - Per-game one-shot pg_cron schedules
 - Full-game `is_game_live` / badge scans on drain tick (except optional off-path reconcile)
 - `game_calls` / host override
+
