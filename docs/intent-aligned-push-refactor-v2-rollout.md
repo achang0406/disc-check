@@ -324,12 +324,15 @@ Restore `notifyChatPush` + bell copy; redeploy `notify-chat` + Vercel.
 | Area | What |
 |------|------|
 | Edge | [pushSend.ts](../supabase/functions/_shared/pushSend.ts), [notify-push](../supabase/functions/notify-push/index.ts), [process-push-outbox](../supabase/functions/process-push-outbox/index.ts) |
-| DB | `030_push_outbox.sql`, `031_push_outbox_cron.sql` — outbox, stub `enqueue_push_event`, drain cron **materializes copy** then calls `notify-push` |
-| DB | `032_game_cancelled_push.sql` — thin `games` status trigger → stub outbox only |
+| DB | `032_push_outbox.sql` — outbox + stub `enqueue_push_event` |
+| DB | `033_game_cancelled_push.sql` — thin `games` status trigger → stub outbox only |
+| DB | `034_push_outbox_cron.sql` — drain cron **materializes copy** then calls `notify-push` |
 | Client | `buildGameDeepLink`, SW gate, deep links, [gameBadge.js](../src/utils/gameBadge.js) |
-| Docs | [.env.example](../.env.example) |
+| Docs | [.env.example](../.env.example), [phase-2a-cancel-push-runbook.md](phase-2a-cancel-push-runbook.md) |
 
 #### E2E test
+
+See [phase-2a-cancel-push-runbook.md](phase-2a-cancel-push-runbook.md) for step-by-step verification, SQL queries, and troubleshooting.
 
 - [ ] Manual `notify-push` + manual `enqueue_push_event` work
 - [ ] **Admin cancel → push (background)**
