@@ -1,6 +1,6 @@
 ---
 name: Intent-aligned push refactor v2 rollout
-overview: Feature-phased rollout with PR sub-phases (2b-i/ii/ii-client/iii, 4a/b, 5a/b) isolating hot-path risk. Thin paths via deduped enforce, denormalized game_push_state, stub outbox + drain copy, single cron. Required client scoped-fetch (2b-ii-client) before 2b-iii.
+overview: Feature-phased rollout with PR sub-phases (2b-i/ii/ii-client/iii, 3a/b, 4a/b, 5a/b) isolating hot-path risk. Badge milestones (pregame + live 1.5×/2×) with latest-only coalescing; thin paths via denormalized game_push_state, stub outbox + drain copy, single cron.
 status: planned
 note: Derisked rollout after v1 revert. Reference spec at docs/intent-aligned-push-refactor-plan.md; rollback template at scripts/supabase-rollback-push-plan.sql.
 ---
@@ -31,7 +31,8 @@ All features share **one** `process-push-outbox` run every 1–2 min. Each tick:
 
 | Feature       | Discovery (ideal)                                    | Delivery   |
 | ------------- | ---------------------------------------------------- | ---------- |
-| Badge         | RSVP AFTER trigger, O(1) headcount delta             | Drain cron |
+| Badge         | RSVP AFTER trigger, O(1) headcount delta; latest-milestone coalescing | Drain cron |
+| Live excitement | Same RSVP trigger in live window (1.5× / 2× target) | Drain cron |
 | Cancel        | `games` status trigger                               | Drain cron |
 | Live          | **Precomputed `next_live_at`** due on drain tick     | Drain cron |
 | Chatter       | **Chat AFTER INSERT**, O(1) `chat_push_state` update | Drain cron |
@@ -122,7 +123,7 @@ Extend `game_push_state` (PK `game_id`, `cycle_at`) with push-hot fields copied 
 | Column            | Purpose                                            |
 | ----------------- | -------------------------------------------------- |
 | `rsvp_headcount`  | Incremental headcount (O(1) delta)                 |
-| `last_rsvp_badge` | `'not' | 'almost' | 'go'` for upgrade-only compare |
+| `last_badge_milestone` | Highest milestone already **sent or superseded** this cycle (see milestone ladder) |
 | `last_phase`      | Live push dedup per cycle                          |
 | `next_live_at`    | Precomputed live push time                         |
 | `group_id`        | Outbox routing — no `games` read in badge trigger  |
@@ -135,11 +136,11 @@ Extend `game_push_state` (PK `game_id`, `cycle_at`) with push-hot fields copied 
 ```sql
 -- After DELETE rsvps / check-ins / guests and UPDATE games.rsvp_cycle_at
 INSERT INTO game_push_state (game_id, cycle_at, group_id, target, game_status,
-  rsvp_headcount, last_rsvp_badge, last_phase, next_live_at, updated_at)
+  rsvp_headcount, last_badge_milestone, last_phase, next_live_at, updated_at)
 VALUES (p_game_id, p_cycle, v_group_id, v_target, v_status,
   0, NULL, NULL, p_cycle, NOW())
 ON CONFLICT (game_id, cycle_at) DO UPDATE SET
-  rsvp_headcount = 0, last_rsvp_badge = NULL, last_phase = NULL,
+  rsvp_headcount = 0, last_badge_milestone = NULL, last_phase = NULL,
   next_live_at = EXCLUDED.next_live_at, target = EXCLUDED.target,
   game_status = EXCLUDED.game_status, updated_at = NOW();
 ```
@@ -153,16 +154,49 @@ Avoids lazy-init races on “first RSVP of cycle”; badge trigger only touches 
 On each headcount-changing RSVP (AFTER trigger):
 
 - INSERT: `+ (1 + NEW.plus_ones)`
-- DELETE: `- (1 + OLD.plus_ones)` (no downgrade push; still update count + `last_rsvp_badge`)
+- DELETE: `- (1 + OLD.plus_ones)` (no downgrade push; still update count + `last_badge_milestone`)
 - UPDATE `plus_ones`: delta only
 
-Derive tier from `rsvp_headcount` + denormalized `target` (same rules as [gameBadge.js](../src/utils/gameBadge.js)).
+Derive milestone from `rsvp_headcount` + denormalized `target` (pregame tiers match [gameBadge.js](../src/utils/gameBadge.js); live tiers extend the ladder below).
+
+### Badge milestone ladder (pregame + live)
+
+Monotonic ranks per cycle — subscriber should only ever **move up** the ladder, never receive downgrade pushes.
+
+
+| Rank | Milestone ID   | Threshold                         | When eligible                          | Push body (draft)                                              |
+| ---- | -------------- | --------------------------------- | -------------------------------------- | -------------------------------------------------------------- |
+| 0    | `not`          | below almost                      | —                                      | *(no push)*                                                    |
+| 1    | `almost`       | `>= max(1, target - 2)`           | **pregame only** (`NOW() < cycle_at`)  | *(existing almost copy — TBD in materialize)*                  |
+| 2    | `go`           | `>= target`                       | **pregame only**                       | *(existing “game on” copy — TBD in materialize)*               |
+| 3    | `live_some`    | `>= ceil(target * 1.5)`           | **live window only** (see Phase 3b)    | Game is on with some subs!                                     |
+| 4    | `live_full`    | `>= ceil(target * 2)`             | **live window only**                   | Game is on with full sub lines! The game is hot!               |
+
+
+Live window: `NOW() >= cycle_at AND NOW() < cycle_at + interval '3 hours'` (same window as check-in). Integer thresholds use `ceil` on `target * multiplier`.
+
+**Headcount source:** same `rsvp_headcount` delta as pregame. Note: RSVP INSERT/DELETE is locked during live, so live crossings usually come from `plus_ones` updates or counts already past threshold at live start — Phase 3b should **catch up** on live-window entry if headcount already qualifies (see Phase 3b).
 
 **Early exits (common path):**
 
 - `game_status = 'cancelled'` → return immediately
-- After delta: if `last_rsvp_badge = 'go'` and new count still `>= target` → update count only, no tier math, no enqueue
-- Enqueue **upgrade only** → stub outbox row (`badge_almost` \| `badge_go`)
+- Compute `new_milestone` from headcount + phase gate (pregame vs live window)
+- If `rank(new_milestone) <= rank(last_badge_milestone)` → update count only, no enqueue
+- Enqueue **upgrade only** → stub outbox row (`badge_almost` \| `badge_go` \| `badge_live_some` \| `badge_live_full`)
+
+### Milestone coalescing (latest-only)
+
+If headcount crosses **multiple milestones** before the outbox drains (e.g. `not` → `almost` → `go` in rapid RSVPs, or `go` → `live_some` → `live_full` during live), the subscriber receives **one** push for the **highest** milestone only — never intermediate tiers.
+
+Applies to **badge-family** events only (`badge_almost`, `badge_go`, `badge_live_some`, `badge_live_full`). Does **not** coalesce `phase_live`, `game_cancelled`, chatter, or announcements.
+
+**Implementation (hot path stays O(1)):**
+
+1. **State:** `last_badge_milestone` stores the highest milestone already handled this cycle (sent or superseded).
+2. **On enqueue:** `supersede_pending_badge(game_id, new_rank)` — delete or skip-drain any **unprocessed** `push_outbox` rows for the same `game_id` + cycle with lower badge rank before inserting the new stub.
+3. **On drain:** if multiple badge rows for the same game survive in one batch, materialize and deliver **max rank only**; mark lower rows skipped.
+
+**Example:** count jumps `not` → `almost` → `go` before drain → user gets **one** `badge_go` push, not `almost` + `go`.
 
 Optional nightly or cron **reconcile** `SUM(rsvps)` vs `rsvp_headcount` (off hot path) if paranoid about drift.
 
@@ -203,8 +237,8 @@ Do **not** add new full-refetch paths on RSVP/check-in. Announcements (Phase 5) 
 | ------ | --------------------------------------------------- | --------------------------------------------------------------------------------- |
 | **1**  | Chat push removal                                   | Send chat → no OS notification; bell still registers subscriptions                |
 | **2a** | Game cancelled push                                 | Admin cancels game → subscriber gets one push (background)                        |
-| **2b** | Pregame badge push *(4 PRs: 2b-i → 2b-ii → 2b-ii-client → 2b-iii)* | RSVP crosses almost/go tier → push after drain (not per-message delay on RSVP UI) |
-| **3**  | Live game push                                      | `next_live_at` due → “Game is live” once per cycle (≤ drain interval lag)         |
+| **2b** | Pregame badge push *(4 PRs: 2b-i → 2b-ii → 2b-ii-client → 2b-iii)* | RSVP crosses almost/go → one coalesced push per burst (latest milestone only)     |
+| **3**  | Live game push *(2 PRs: 3a → 3b)*                   | 3a: “Game is live” at start; 3b: 1.5× / 2× headcount excitement pushes in live window |
 | **4**  | Chat chatter push *(2 PRs: 4a → 4b)*                | 2+ senders in 30 min → ≤1 summary push/hour; chat send stays instant              |
 | **5**  | Announcements *(2 PRs: 5a → 5b)*                    | Admin posts → banner on focused game + OS push to subscribers                     |
 
@@ -214,18 +248,18 @@ Do **not** add new full-refetch paths on RSVP/check-in. Announcements (Phase 5) 
 ### Release order
 
 ```text
-1 → 2a → 2b-i → 2b-ii → 2b-ii-client → 2b-iii → 3 → 4a → 4b → 5a → 5b
+1 → 2a → 2b-i → 2b-ii → 2b-ii-client → 2b-iii → 3a → 3b → 4a → 4b → 5a → 5b
 
-           └─ pregame badge stack ─────────┘              └─ chatter stack ─┘
+           └─ pregame badge stack ─────────┘   └─ live ─┘   └─ chatter stack ─┘
 
 Orthogonal: group limits anytime after 2a
 ```
 
-**Migration numbering:** Phase 2a shipped `032`–`034` (outbox, cancel trigger, cron). Phase 2b DB migrations are `035` (2b-i), `036` (2b-ii), `037` (2b-iii). **2b-ii-client** has no migration.
+**Migration numbering:** Phase 2a shipped `032`–`034` (outbox, cancel trigger, cron). Phase 2b DB migrations are `035` (2b-i), `036` (2b-ii), `037` (2b-iii). **2b-ii-client** has no migration. Phase 3: `038` (3a live start), `039` (3b live milestones).
 
 ### PR sub-phases (isolate risky hot-path changes)
 
-Split **medium-risk** phases so each PR changes **one layer**: hygiene → state → enqueue. Do **not** split Phases 1, 2a, or 3 further (already small or low-risk).
+Split **medium-risk** phases so each PR changes **one layer**: hygiene → state → client fetch → enqueue (2b); live start → live milestones (3a → 3b). Do **not** split Phases **1** or **2a** further (already small). Phase **3** splits only into **3a** (scheduled live start) and **3b** (live headcount milestones).
 
 
 | PR         | Ships                                                                                                            | Risk           | Gate before next PR                                                    |
@@ -233,14 +267,16 @@ Split **medium-risk** phases so each PR changes **one layer**: hygiene → state
 | **2b-i**         | `035` — deduped enforce + narrow RSVP/check-in/guest UPDATE triggers                                             | **Low**        | RSVP/check-in latency unchanged or better; `renameRsvps` skips enforce |
 | **2b-ii**        | `036` — `game_push_state` denorm + `reset_game_rsvp_cycle` hooks; optional headcount-only AFTER (**no enqueue**) | **Low–Medium** | Cycle reset creates correct rows; headcount matches RSVPs              |
 | **2b-ii-client** | *(no migration)* — scoped RSVP/check-in fetch + merge in [data.js](../src/lib/data.js) / [useAppData.js](../src/hooks/useAppData.js) | **Low**        | Network: 1 write + 1 scoped read per tap; two-device same-game sync   |
-| **2b-iii**       | `037` — badge AFTER trigger + stub enqueue                                                                       | **Medium**     | **RSVP latency gate** + badge E2E                                      |
-| **4a**           | `038` — `chat_push_state` + AFTER INSERT state-only trigger                                                      | **Low–Medium** | Chat send instant; window state correct                                |
-| **4b**           | `039` — enqueue branch on chatter trigger                                                                        | **Medium**     | **Chat latency gate** + chatter E2E                                    |
-| **5a**           | `040` — announcements table + banner/composer UI                                                                 | **Low–Medium** | Banner E2E; no push yet                                                |
-| **5b**           | `041` — announcement push RPC                                                                                    | **Low**        | Admin post → banner + OS push                                          |
+| **2b-iii**       | `037` — badge AFTER trigger + stub enqueue + milestone coalescing (pregame `almost`/`go` only)                 | **Medium**     | **RSVP latency gate** + pregame badge E2E + coalescing burst test      |
+| **3a**           | `038` — `next_live_at` due-live step in processor → `phase_live`                                               | **Low**        | One “Game is live” push per cycle                                      |
+| **3b**           | `039` — live-window milestone branches (`badge_live_some`, `badge_live_full`) + live-entry catch-up            | **Low–Medium** | 1.5× / 2× pushes; rapid crossing → latest only; check-in path instant  |
+| **4a**           | `040` — `chat_push_state` + AFTER INSERT state-only trigger                                                      | **Low–Medium** | Chat send instant; window state correct                                |
+| **4b**           | `041` — enqueue branch on chatter trigger                                                                        | **Medium**     | **Chat latency gate** + chatter E2E                                    |
+| **5a**           | `042` — announcements table + banner/composer UI                                                                 | **Low–Medium** | Banner E2E; no push yet                                                |
+| **5b**           | `043` — announcement push RPC                                                                                    | **Low**        | Admin post → banner + OS push                                          |
 
 
-**Dependency rule:** 2b-iii requires **2b-ii** (`game_push_state` exists) **and 2b-ii-client** (scoped fetch so latency gate is meaningful). 2b-i should ship before 2b-iii (isolates enforce regressions). 4b requires 4a.
+**Dependency rule:** 2b-iii requires **2b-ii** (`game_push_state` exists) **and 2b-ii-client** (scoped fetch so latency gate is meaningful). 2b-i should ship before 2b-iii (isolates enforce regressions). **3b** requires **2b-iii** (badge trigger + coalescing); **3a** can ship before 3b. 4b requires 4a.
 
 ## Risk levels
 
@@ -253,7 +289,8 @@ Split **medium-risk** phases so each PR changes **one layer**: hygiene → state
 | 2b-ii        | Low–Medium | State lifecycle — writes on cycle reset, optional headcount maintenance |
 | 2b-ii-client | Low        | Scoped client fetch — merge per-game RSVP/check-in; no DB changes       |
 | 2b-iii       | Medium     | Badge enqueue on RSVP — **RSVP latency gate**                           |
-| 3      | Low        | `next_live_at` due check on drain (not full-game scan)                  |
+| 3a     | Low        | `next_live_at` due check on drain (not full-game scan)                  |
+| 3b     | Low–Medium | Live headcount milestones on RSVP trigger — same coalescing rules       |
 | 4a     | Low–Medium | Chat state on insert — no notifications yet                             |
 | 4b     | Medium     | Chatter enqueue — **chat send latency gate**                            |
 | 5a     | Low–Medium | Carousel banner UI                                                      |
@@ -401,9 +438,9 @@ Revert enforce functions + trigger definitions to pre-035.
 
 | Area | What                                                                                                                       |
 | ---- | -------------------------------------------------------------------------------------------------------------------------- |
-| DB   | Extend `game_push_state`: `rsvp_headcount`, `group_id`, `target`, `game_status`, `last_rsvp_badge` (see lifecycle section) |
+| DB   | Extend `game_push_state`: `rsvp_headcount`, `group_id`, `target`, `game_status`, `last_badge_milestone` (see lifecycle section) |
 | DB   | Atomic upsert in `reset_game_rsvp_cycle`; refresh on `admin_upsert_game` + cancel                                          |
-| DB   | Optional: `trg_rsvps_maintain_headcount` AFTER trigger — O(1) delta + `last_rsvp_badge` update **only**, no outbox insert  |
+| DB   | Optional: `trg_rsvps_maintain_headcount` AFTER trigger — O(1) delta + `last_badge_milestone` update **only**, no outbox insert  |
 
 
 ##### E2E test
@@ -449,7 +486,8 @@ Revert [data.js](../src/lib/data.js) + [useAppData.js](../src/hooks/useAppData.j
 
 | Area   | What                                                                                                               |
 | ------ | ------------------------------------------------------------------------------------------------------------------ |
-| DB     | `trg_rsvps_push_badge` (or extend maintain trigger): upgrade-only stub enqueue; early exits; **no `games` SELECT** |
+| DB     | `trg_rsvps_push_badge` (or extend maintain trigger): pregame milestones only; upgrade-only; coalescing helper; **no `games` SELECT** |
+| Edge   | [pushMaterialize.ts](../supabase/functions/_shared/pushMaterialize.ts) — `badge_almost`, `badge_go` copy |
 | Client | **Requires 2b-ii-client** — latency gate assumes scoped post-RSVP fetch is already shipped                         |
 
 
@@ -464,9 +502,10 @@ On staging, compare **before/after** 2b-iii:
 ##### E2E test
 
 - [ ] **RSVP crosses almost or go → one badge push** (after outbox drain)
-- [ ] No badge push when tier unchanged (extra RSVP at same tier)
-- [ ] No badge push during live/ended/cancelled game
-- [ ] No duplicate push same tier/cycle
+- [ ] **Rapid burst** `not` → `almost` → `go` before drain → **one** `go` push (coalescing)
+- [ ] No badge push when milestone unchanged (extra RSVP at same tier)
+- [ ] No pregame badge push during live/ended/cancelled game
+- [ ] No duplicate push same milestone/cycle
 
 ##### Rollback
 
@@ -476,11 +515,11 @@ Drop badge enqueue from trigger (keep headcount maintenance from 2b-ii). Fallbac
 
 ---
 
-## Phase 3 — Live game status push
+## Phase 3 — Live game pushes (two PRs)
 
-**Risk: Low**
+**Ship:** (3a) scheduled “Game is live” at start; (3b) excitement pushes when headcount crosses **1.5×** and **2×** target during the live window. Both use existing drain cron — **not** `is_game_live()` scan of all games, **not** per-game pg_cron jobs, **not** on check-in writes.
 
-**Ship:** precomputed schedule + due check on existing drain tick — **not** `is_game_live()` scan of all games, **not** per-game pg_cron jobs, **not** on check-in writes.
+**Requires:** 2b-iii (badge trigger + milestone coalescing). 3b extends the same RSVP AFTER trigger with live-window gates.
 
 ### How `next_live_at` is set
 
@@ -491,6 +530,12 @@ Write `game_push_state.next_live_at = get_current_occurrence_start(weekday, star
 - After a live push fires → schedule **next** occurrence for the following cycle
 - Status → `cancelled` → clear or skip `next_live_at` on current-cycle row
 
+---
+
+#### Phase 3a — “Game is live” at start
+
+**Risk: Low** · **Migration:** `038_phase_live_scheduled.sql`
+
 ### Drain tick (inside `process-push-outbox`)
 
 ```sql
@@ -500,17 +545,19 @@ WHERE next_live_at <= now()
   AND cycle_at = current_cycle_for_game
 → stub enqueue `phase_live` (copy materialized on drain)
 → last_phase := 'live'
+-- optional hook for 3b: evaluate live milestone catch-up if headcount already >= 1.5x/2x
 ```
 
 
 | Area | What                                                                                                                              |
 | ---- | --------------------------------------------------------------------------------------------------------------------------------- |
-| DB   | `036_phase_live_scheduled.sql` — `next_live_at` due-live step in processor (lifecycle hooks largely from 2b-ii; extend if needed) |
+| DB   | `038_phase_live_scheduled.sql` — `next_live_at` due-live step in processor (lifecycle hooks largely from 2b-ii; extend if needed) |
+| Edge | [pushMaterialize.ts](../supabase/functions/_shared/pushMaterialize.ts) — `phase_live` title/body                                  |
 
 
-Lag is at most one drain interval (~2 min), same as before, but **DB work per tick is O(due games)** not O(all open games).
+Lag is at most one drain interval (~2 min). **DB work per tick is O(due games)** not O(all open games).
 
-#### E2E test
+##### E2E test
 
 - [ ] At scheduled start → one “Game is live” push per cycle
 - [ ] Admin changes `start_time` → `next_live_at` updates; push follows new time
@@ -518,9 +565,41 @@ Lag is at most one drain interval (~2 min), same as before, but **DB work per ti
 - [ ] Check-in during live window still instant
 - [ ] Deep link `?game=` works
 
-#### Rollback
+##### Rollback
 
 Drop `next_live_at` logic from processor; remove schedule hooks.
+
+---
+
+#### Phase 3b — Live headcount excitement pushes
+
+**Risk: Low–Medium** · **Migration:** `039_live_badge_milestones.sql`
+
+| Area | What                                                                                                                                 |
+| ---- | ------------------------------------------------------------------------------------------------------------------------------------ |
+| DB   | Extend badge AFTER trigger: when in **live window**, evaluate `live_some` (`ceil(target * 1.5)`) and `live_full` (`ceil(target * 2)`) |
+| DB   | **Live-entry catch-up:** when `last_phase` becomes `live` or on first headcount eval in live window, enqueue highest uncrossed live milestone if headcount already qualifies |
+| DB   | Reuse milestone coalescing — rapid `live_some` + `live_full` before drain → **one** `live_full` push                                 |
+| Edge | [pushMaterialize.ts](../supabase/functions/_shared/pushMaterialize.ts) — `badge_live_some`, `badge_live_full` bodies (see ladder)    |
+
+**Copy (draft):**
+
+- `badge_live_some` — “Game is on with some subs!”
+- `badge_live_full` — “Game is on with full sub lines! The game is hot!”
+
+##### E2E test
+
+- [ ] During live window, headcount crosses 1.5× → one `badge_live_some` push (after drain)
+- [ ] During live window, headcount crosses 2× → one `badge_live_full` push
+- [ ] Already at 2× when live starts → catch-up sends appropriate live milestone (not pregame `go` again)
+- [ ] Rapid burst crosses 1.5× and 2× before drain → **one** `live_full` push only
+- [ ] No live milestone push outside live window (pregame stops at `go`)
+- [ ] `phase_live` and live milestone pushes can both occur same cycle (separate event types)
+- [ ] Check-in tap latency unchanged
+
+##### Rollback
+
+Drop live-milestone branches from badge trigger; remove materialize cases. Keep 3a `phase_live`.
 
 ---
 
@@ -646,7 +725,7 @@ Drop RPC enqueue; banner from 5a remains.
 
 | Area | What                        |
 | ---- | --------------------------- |
-| DB   | `041_group_game_limits.sql` |
+| DB   | `044_group_game_limits.sql` |
 
 
 ---
@@ -679,7 +758,7 @@ Restore `return fetchAppData()` on write helpers.
 2. **Hot path rule:** triggers on `rsvps`, `game_check_ins`, or `group_chat_messages` must be O(1) or bounded — never full-table aggregates.
 3. **Enforce rule:** one `get_current_occurrence_start` per enforce invocation — no nested `is_rsvp_locked` / `is_game_live` recompute.
 4. **State rule:** `game_push_state` is the single source for badge hot path; reset atomically on cycle rollover; denormalize `group_id`, `target`, `game_status`.
-5. **Outbox rule:** stub row on write; materialize push copy on drain — never block taps on string formatting.
+5. **Outbox rule:** stub row on write; materialize push copy on drain — never block taps on string formatting; badge-family rows **coalesce to latest milestone** when multiple tiers cross before drain (pregame and live).
 6. **Discovery rule:** use events or precomputed `next_*_at` due checks — not scans of all games/groups.
 7. **One drain cron** for delivery + due live; no per-feature cron jobs.
 8. **Name-only UPDATE** must not fire enforce or push triggers (RSVP, check-in, guests).
@@ -696,13 +775,14 @@ Restore `return fetchAppData()` on write helpers.
 | 2b-i           | `035`               | Revert enforce functions + trigger definitions                        |
 | 2b-ii          | `036`               | Drop headcount trigger; optional column rollback                      |
 | 2b-ii-client   | *(none)*            | Revert [data.js](../src/lib/data.js) + [useAppData.js](../src/hooks/useAppData.js) to full fetch |
-| 2b-iii         | `037`               | Drop badge enqueue; keep 2b-ii state                                  |
-| 3              | `038`               | Drop due-live step in processor                                       |
-| 4a             | `039`               | Drop state-only chatter trigger                                       |
-| 4b             | `040`               | Remove enqueue branch from chatter trigger                            |
-| 5a             | `041`               | Drop `game_announcements` + UI                                        |
-| 5b             | `042`               | Drop announcement RPC enqueue                                         |
-| Group limits   | `043`               | Drop constraint + revert RPC                                          |
+| 2b-iii         | `037`               | Drop badge enqueue + coalescing; keep 2b-ii state                     |
+| 3a             | `038`               | Drop due-live step in processor                                       |
+| 3b             | `039`               | Drop live-milestone branches from badge trigger                       |
+| 4a             | `040`               | Drop state-only chatter trigger                                       |
+| 4b             | `041`               | Remove enqueue branch from chatter trigger                            |
+| 5a             | `042`               | Drop `game_announcements` + UI                                        |
+| 5b             | `043`               | Drop announcement RPC enqueue                                         |
+| Group limits   | `044`               | Drop constraint + revert RPC                                          |
 
 
 Use **030+** (026–029 in remote history). One migration file per deployable sub-phase where possible.
@@ -711,6 +791,7 @@ Use **030+** (026–029 in remote history). One migration file per deployable su
 
 - `phase_starting_soon` push
 - Badge downgrade push on RSVP cancel
+- Separate push per intermediate milestone when a higher milestone is also crossed before drain (coalescing sends latest only)
 - Push triggers on `game_check_ins` (live uses `next_live_at`, not check-in)
 - Per-game one-shot pg_cron schedules
 - Full-game `is_game_live` / badge scans on drain tick (except optional off-path reconcile)
