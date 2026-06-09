@@ -1,7 +1,7 @@
 ---
 description: Strict TypeScript standards — types, safety, and when to use TS over JS
 globs: **/*.{ts,tsx}
-alwaysApply: false
+alwaysApply: true
 ---
 
 # TypeScript Standards

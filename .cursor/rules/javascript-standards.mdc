@@ -1,7 +1,7 @@
 ---
 description: JavaScript coding standards — readability, composition, and maintainability
 globs: **/*.{js,jsx,mjs,cjs}
-alwaysApply: false
+alwaysApply: true
 ---
 
 # JavaScript Coding Standards
