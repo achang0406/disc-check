@@ -443,7 +443,7 @@ See [phase-2a-cancel-push-runbook.md](phase-2a-cancel-push-runbook.md) for step-
 
 ##### Rollback
 
-Revert enforce functions + trigger definitions to pre-035.
+[scripts/supabase-rollback-035-hot-path-triggers.sql](../scripts/supabase-rollback-035-hot-path-triggers.sql)
 
 ---
 
@@ -789,7 +789,7 @@ Restore `return fetchAppData()` on write helpers.
 | -------------- | ------- | ------------------- | --------------------------------------------------------------------- |
 | 1              | **Done** | *(client + edge)*   | Restore `notifyChatPush` + redeploy `notify-chat`                     |
 | 2a             | **Done** | `032`, `033`, `034` | `scripts/supabase-rollback-032-push-outbox.sql` + drop cancel trigger |
-| 2b-i           | Pending | `035`               | Revert enforce functions + trigger definitions                        |
+| 2b-i           | Pending | `035`               | [scripts/supabase-rollback-035-hot-path-triggers.sql](../scripts/supabase-rollback-035-hot-path-triggers.sql) |
 | 2b-ii          | Pending | `036`               | Drop headcount trigger; optional column rollback                      |
 | 2b-ii-client   | Pending | *(none)*            | Revert [data.js](../src/lib/data.js) + [useAppData.js](../src/hooks/useAppData.js) to full fetch |
 | 2b-iii         | Pending | `037`               | Drop badge enqueue + coalescing; keep 2b-ii state                     |

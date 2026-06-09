@@ -238,7 +238,7 @@ DECLARE
   v_timezone TEXT;
   v_game_id TEXT;
   v_stored_cycle TIMESTAMPTZ;
-  v_expected_cycle TIMESTAMPTZ;
+  v_occurrence TIMESTAMPTZ;
 BEGIN
   IF is_cycle_reset_in_progress() THEN
     RETURN COALESCE(NEW, OLD);
@@ -250,13 +250,15 @@ BEGIN
   FROM games
   WHERE id = v_game_id;
 
-  v_expected_cycle := get_current_occurrence_start(v_weekday, v_start_time, v_timezone);
+  v_occurrence := get_current_occurrence_start(v_weekday, v_start_time, v_timezone, NOW());
 
-  IF v_stored_cycle IS NOT NULL AND v_stored_cycle IS DISTINCT FROM v_expected_cycle THEN
+  IF v_stored_cycle IS NOT NULL AND v_stored_cycle IS DISTINCT FROM v_occurrence THEN
     RAISE EXCEPTION 'RSVP is locked until the weekly reset';
   END IF;
 
-  IF is_rsvp_locked(v_weekday, v_start_time, v_timezone) THEN
+  IF v_occurrence IS NOT NULL
+     AND NOW() >= v_occurrence
+     AND NOW() < v_occurrence + INTERVAL '12 hours' THEN
     RAISE EXCEPTION 'RSVP is locked while the game is live';
   END IF;
 
@@ -299,7 +301,7 @@ DECLARE
   v_weekday SMALLINT;
   v_start_time TIME;
   v_timezone TEXT;
-  v_expected_cycle TIMESTAMPTZ;
+  v_occurrence TIMESTAMPTZ;
 BEGIN
   IF is_cycle_reset_in_progress() THEN
     RETURN NEW;
@@ -310,12 +312,14 @@ BEGIN
   FROM games
   WHERE id = NEW.game_id;
 
-  IF NOT is_game_live(v_weekday, v_start_time, v_timezone) THEN
+  v_occurrence := get_current_occurrence_start(v_weekday, v_start_time, v_timezone, NOW());
+
+  IF v_occurrence IS NULL
+     OR NOT (NOW() >= v_occurrence AND NOW() < v_occurrence + INTERVAL '3 hours') THEN
     RAISE EXCEPTION 'Check-in opens when the game starts';
   END IF;
 
-  v_expected_cycle := get_current_occurrence_start(v_weekday, v_start_time, v_timezone);
-  IF NEW.cycle_at IS DISTINCT FROM v_expected_cycle THEN
+  IF NEW.cycle_at IS DISTINCT FROM v_occurrence THEN
     RAISE EXCEPTION 'Check-in cycle mismatch';
   END IF;
 
@@ -331,6 +335,7 @@ DECLARE
   v_weekday SMALLINT;
   v_start_time TIME;
   v_timezone TEXT;
+  v_occurrence TIMESTAMPTZ;
 BEGIN
   IF is_cycle_reset_in_progress() THEN
     RETURN OLD;
@@ -341,7 +346,10 @@ BEGIN
   FROM games
   WHERE id = OLD.game_id;
 
-  IF NOT is_game_live(v_weekday, v_start_time, v_timezone) THEN
+  v_occurrence := get_current_occurrence_start(v_weekday, v_start_time, v_timezone, NOW());
+
+  IF v_occurrence IS NULL
+     OR NOT (NOW() >= v_occurrence AND NOW() < v_occurrence + INTERVAL '3 hours') THEN
     RAISE EXCEPTION 'Check-in is closed';
   END IF;
 
@@ -357,7 +365,7 @@ DECLARE
   v_weekday SMALLINT;
   v_start_time TIME;
   v_timezone TEXT;
-  v_expected_cycle TIMESTAMPTZ;
+  v_occurrence TIMESTAMPTZ;
 BEGIN
   IF is_cycle_reset_in_progress() THEN
     RETURN COALESCE(NEW, OLD);
@@ -368,12 +376,14 @@ BEGIN
   FROM games
   WHERE id = COALESCE(NEW.game_id, OLD.game_id);
 
-  IF NOT is_game_live(v_weekday, v_start_time, v_timezone) THEN
+  v_occurrence := get_current_occurrence_start(v_weekday, v_start_time, v_timezone, NOW());
+
+  IF v_occurrence IS NULL
+     OR NOT (NOW() >= v_occurrence AND NOW() < v_occurrence + INTERVAL '3 hours') THEN
     RAISE EXCEPTION 'Walk-in guests can only be added while the game is live';
   END IF;
 
-  v_expected_cycle := get_current_occurrence_start(v_weekday, v_start_time, v_timezone);
-  IF COALESCE(NEW.cycle_at, OLD.cycle_at) IS DISTINCT FROM v_expected_cycle THEN
+  IF COALESCE(NEW.cycle_at, OLD.cycle_at) IS DISTINCT FROM v_occurrence THEN
     RAISE EXCEPTION 'Walk-in guest cycle mismatch';
   END IF;
 
@@ -382,14 +392,30 @@ END;
 $$;
 
 DROP TRIGGER IF EXISTS rsvps_enforce_window ON rsvps;
-CREATE TRIGGER rsvps_enforce_window
-  BEFORE INSERT OR UPDATE OR DELETE ON rsvps
+DROP TRIGGER IF EXISTS rsvps_enforce_window_insert_delete ON rsvps;
+DROP TRIGGER IF EXISTS rsvps_enforce_window_update ON rsvps;
+
+CREATE TRIGGER rsvps_enforce_window_insert_delete
+  BEFORE INSERT OR DELETE ON rsvps
+  FOR EACH ROW
+  EXECUTE FUNCTION enforce_rsvp_window();
+
+CREATE TRIGGER rsvps_enforce_window_update
+  BEFORE UPDATE OF plus_ones, bringing_kit, game_id, user_id ON rsvps
   FOR EACH ROW
   EXECUTE FUNCTION enforce_rsvp_window();
 
 DROP TRIGGER IF EXISTS game_check_ins_enforce_window ON game_check_ins;
-CREATE TRIGGER game_check_ins_enforce_window
-  BEFORE INSERT OR UPDATE ON game_check_ins
+DROP TRIGGER IF EXISTS game_check_ins_enforce_insert ON game_check_ins;
+DROP TRIGGER IF EXISTS game_check_ins_enforce_update ON game_check_ins;
+
+CREATE TRIGGER game_check_ins_enforce_insert
+  BEFORE INSERT ON game_check_ins
+  FOR EACH ROW
+  EXECUTE FUNCTION enforce_check_in_window();
+
+CREATE TRIGGER game_check_ins_enforce_update
+  BEFORE UPDATE OF plus_ones, bringing_kit, game_id, user_id, cycle_at ON game_check_ins
   FOR EACH ROW
   EXECUTE FUNCTION enforce_check_in_window();
 
@@ -400,8 +426,16 @@ CREATE TRIGGER game_check_ins_enforce_delete
   EXECUTE FUNCTION enforce_check_in_delete();
 
 DROP TRIGGER IF EXISTS game_guests_enforce_window ON game_guests;
-CREATE TRIGGER game_guests_enforce_window
-  BEFORE INSERT OR UPDATE OR DELETE ON game_guests
+DROP TRIGGER IF EXISTS game_guests_enforce_insert_delete ON game_guests;
+DROP TRIGGER IF EXISTS game_guests_enforce_update ON game_guests;
+
+CREATE TRIGGER game_guests_enforce_insert_delete
+  BEFORE INSERT OR DELETE ON game_guests
+  FOR EACH ROW
+  EXECUTE FUNCTION enforce_guest_window();
+
+CREATE TRIGGER game_guests_enforce_update
+  BEFORE UPDATE OF game_id, cycle_at ON game_guests
   FOR EACH ROW
   EXECUTE FUNCTION enforce_guest_window();
 
