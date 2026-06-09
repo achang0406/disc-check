@@ -106,6 +106,21 @@ function shouldApplyServerData(data, latestFetchSeqRef) {
   return true;
 }
 
+function isFullAppData(result) {
+  return Boolean(result?.fetchSeq);
+}
+
+function applyPersistResult(result, applyServerData, applyGamePatch) {
+  if (!result) return;
+  if (isFullAppData(result)) {
+    applyServerData(result);
+    return;
+  }
+  if (result.patch) {
+    applyGamePatch(result.patch);
+  }
+}
+
 export function useAppData(showToast) {
   const [profile, setProfile] = useState(null);
   const [groupsMeta, setGroupsMeta] = useState([]);
@@ -124,16 +139,50 @@ export function useAppData(showToast) {
 
   const useSupabaseRef = useRef(isSupabaseConfigured());
   const profileRef = useRef(null);
+  const gamesMetaRef = useRef([]);
   const latestFetchSeqRef = useRef(0);
-
   const applyServerData = useCallback((data) => {
     if (!shouldApplyServerData(data, latestFetchSeqRef)) return;
     applyData(data, setGroupsMeta, setGamesMeta, setRsvps, setCheckIns, setGuests);
   }, []);
 
+  const applyGamePatch = useCallback((patch) => {
+    if (!patch?.gameId || !patch.kind) return;
+
+    if (patch.kind === "rsvps") {
+      setRsvps((prev) => {
+        const next = { ...prev, [patch.gameId]: patch.entries };
+        localStorage.setItem(STORAGE_KEYS.RSVPS, JSON.stringify(next));
+        return next;
+      });
+      return;
+    }
+
+    if (patch.kind === "checkIns") {
+      setCheckIns((prev) => {
+        const next = { ...prev, [patch.gameId]: patch.entries };
+        localStorage.setItem(STORAGE_KEYS.CHECK_INS, JSON.stringify(next));
+        return next;
+      });
+    }
+  }, []);
+
   useEffect(() => {
     profileRef.current = profile;
   }, [profile]);
+
+  useEffect(() => {
+    gamesMetaRef.current = gamesMeta;
+  }, [gamesMeta]);
+
+  const getGameFromMeta = useCallback((gameId) => {
+    return gamesMetaRef.current.find((game) => game.id === gameId) ?? null;
+  }, []);
+
+  const getCheckInCycleAt = useCallback((gameId, game = null) => {
+    const resolved = game ?? getGameFromMeta(gameId);
+    return resolved ? getOccurrenceStartUtc(resolved) : null;
+  }, [getGameFromMeta]);
 
   useEffect(() => {
     let cancelled = false;
@@ -173,40 +222,24 @@ export function useAppData(showToast) {
   useEffect(() => {
     if (!useSupabaseRef.current) return undefined;
 
-    return subscribeToRsvps((data) => {
-      applyServerData(data);
-      const local = profileRef.current;
-      if (!local?.id) return;
-      syncProfileFromServer(local).then((merged) => {
-        if (
-          merged.name !== local.name ||
-          merged.phone !== local.phone ||
-          merged.bubbleColor !== local.bubbleColor
-        ) {
-          setProfile(merged);
-        }
-      });
-    });
-  }, []);
+    return subscribeToRsvps(
+      (patch) => {
+        applyGamePatch(patch);
+      },
+      { getGame: getGameFromMeta },
+    );
+  }, [applyGamePatch, getGameFromMeta]);
 
   useEffect(() => {
     if (!useSupabaseRef.current) return undefined;
 
-    return subscribeToCheckIns((data) => {
-      applyServerData(data);
-      const local = profileRef.current;
-      if (!local?.id) return;
-      syncProfileFromServer(local).then((merged) => {
-        if (
-          merged.name !== local.name ||
-          merged.phone !== local.phone ||
-          merged.bubbleColor !== local.bubbleColor
-        ) {
-          setProfile(merged);
-        }
-      });
-    });
-  }, []);
+    return subscribeToCheckIns(
+      (patch) => {
+        applyGamePatch(patch);
+      },
+      { getGame: getGameFromMeta, getCycleAt: getCheckInCycleAt },
+    );
+  }, [applyGamePatch, getCheckInCycleAt, getGameFromMeta]);
 
   useEffect(() => {
     if (!useSupabaseRef.current) return undefined;
@@ -276,8 +309,8 @@ export function useAppData(showToast) {
     setSavingGameId(gameIdForSaving);
     try {
       if (useSupabaseRef.current) {
-        const data = await handleRsvpAction(payload);
-        applyServerData(data);
+        const result = await handleRsvpAction(payload);
+        applyPersistResult(result, applyServerData, applyGamePatch);
       }
       return true;
     } catch {
@@ -292,8 +325,8 @@ export function useAppData(showToast) {
     setSavingGameId(gameIdForSaving);
     try {
       if (useSupabaseRef.current) {
-        const data = await handleCheckInAction(payload);
-        applyServerData(data);
+        const result = await handleCheckInAction(payload);
+        applyPersistResult(result, applyServerData, applyGamePatch);
       }
       return true;
     } catch {
@@ -328,6 +361,7 @@ export function useAppData(showToast) {
       {
         action: "rsvp",
         gameId: game.id,
+        game,
         userId: rsvpProfile.id,
         name: rsvpProfile.name,
         plusOnes,
@@ -530,7 +564,7 @@ export function useAppData(showToast) {
     setRsvps({ ...current });
 
     const ok = await persistRsvpChange(
-      { action: "cancel", gameId, userId: profile.id },
+      { action: "cancel", gameId, game, userId: profile.id },
       gameId,
     );
 
@@ -681,12 +715,7 @@ export function useAppData(showToast) {
     setSavingGameId("profile");
 
     try {
-      if (normalizedPhone && useSupabaseRef.current) {
-        const existing = await findProfileByPhone(normalizedPhone);
-        if (existing && existing.id !== profile.id) {
-          throw new Error("phone already linked to another profile");
-        }
-      }
+      const nameChanged = trimmedName !== profile.name.trim();
 
       let nextProfile = {
         ...profile,
@@ -705,43 +734,45 @@ export function useAppData(showToast) {
       saveProfile(nextProfile);
       setProfile(nextProfile);
 
-      const currentRsvps = getStoredJson(STORAGE_KEYS.RSVPS) || {};
-      const nextRsvps = Object.fromEntries(
-        Object.entries(currentRsvps).map(([gameId, entries]) => [
-          gameId,
-          entries.map((entry) =>
-            entry.userId === profile.id ? { ...entry, name: trimmedName } : entry,
-          ),
-        ]),
-      );
-      localStorage.setItem(STORAGE_KEYS.RSVPS, JSON.stringify(nextRsvps));
-      setRsvps(nextRsvps);
+      if (nameChanged) {
+        const currentRsvps = getStoredJson(STORAGE_KEYS.RSVPS) || {};
+        const nextRsvps = Object.fromEntries(
+          Object.entries(currentRsvps).map(([gameId, entries]) => [
+            gameId,
+            entries.map((entry) =>
+              entry.userId === profile.id ? { ...entry, name: trimmedName } : entry,
+            ),
+          ]),
+        );
+        localStorage.setItem(STORAGE_KEYS.RSVPS, JSON.stringify(nextRsvps));
+        setRsvps(nextRsvps);
 
-      const currentCheckIns = getStoredJson(STORAGE_KEYS.CHECK_INS) || {};
-      const nextCheckIns = Object.fromEntries(
-        Object.entries(currentCheckIns).map(([gameId, entries]) => [
-          gameId,
-          entries.map((entry) =>
-            entry.userId === profile.id ? { ...entry, name: trimmedName } : entry,
-          ),
-        ]),
-      );
-      localStorage.setItem(STORAGE_KEYS.CHECK_INS, JSON.stringify(nextCheckIns));
-      setCheckIns(nextCheckIns);
+        const currentCheckIns = getStoredJson(STORAGE_KEYS.CHECK_INS) || {};
+        const nextCheckIns = Object.fromEntries(
+          Object.entries(currentCheckIns).map(([gameId, entries]) => [
+            gameId,
+            entries.map((entry) =>
+              entry.userId === profile.id ? { ...entry, name: trimmedName } : entry,
+            ),
+          ]),
+        );
+        localStorage.setItem(STORAGE_KEYS.CHECK_INS, JSON.stringify(nextCheckIns));
+        setCheckIns(nextCheckIns);
 
-      if (useSupabaseRef.current) {
-        const data = await handleRsvpAction({
-          action: "rename",
-          userId: profile.id,
-          name: trimmedName,
-        });
-        applyServerData(data);
+        if (useSupabaseRef.current) {
+          await handleRsvpAction({
+            action: "rename",
+            userId: profile.id,
+            name: trimmedName,
+          });
+        }
       }
 
       setShowEditProfile(false);
       showToast(removedPhone ? "Phone removed" : "Profile updated");
     } catch (error) {
-      const message = error?.message?.includes("phone already linked")
+      const rawMessage = error?.message ?? "";
+      const message = rawMessage.includes("phone already linked")
         ? "That phone is linked to another profile"
         : "Couldn't save — try again";
       showToast(message, "error");
@@ -754,15 +785,6 @@ export function useAppData(showToast) {
     const normalized = normalizePhone(phone);
     if (!normalized) return null;
     return findProfileByPhone(normalized);
-  }, []);
-
-  const validatePhoneForProfile = useCallback(async (phone, profileId) => {
-    if (!useSupabaseRef.current) return true;
-    const normalized = normalizePhone(phone);
-    if (!normalized) return true;
-    const existing = await findProfileByPhone(normalized);
-    if (!existing) return true;
-    return existing.id === profileId;
   }, []);
 
   return {
@@ -791,7 +813,6 @@ export function useAppData(showToast) {
     handleRecoverProfile,
     handleUpdateProfile,
     lookupProfileByPhone,
-    validatePhoneForProfile,
     isRsvpd,
     isCheckedIn,
     refresh,

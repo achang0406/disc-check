@@ -128,7 +128,6 @@ function AppRoutes() {
               saving={app.savingGameId === "profile"}
               onSubmit={app.handleUpdateProfile}
               onClose={app.closeEditProfile}
-              onValidatePhone={app.validatePhoneForProfile}
               onLookupPhone={app.lookupProfileByPhone}
               onRecoverProfile={app.handleRecoverProfile}
             />

@@ -255,6 +255,83 @@ export async function deleteGame(secret, id) {
 
 let appDataFetchSeq = 0;
 
+async function loadGameMeta(gameId) {
+  const supabase = getSupabase();
+  const { data, error } = await supabase.from("games").select("*").eq("id", gameId).maybeSingle();
+  if (error) throw error;
+  return data ? formatGame(data) : null;
+}
+
+export async function fetchRsvpsForGame(gameId, game = null) {
+  const supabase = getSupabase();
+  const { data, error } = await supabase
+    .from("rsvps")
+    .select("game_id, user_id, name, plus_ones, bringing_kit")
+    .eq("game_id", gameId)
+    .order("created_at", { ascending: true });
+
+  if (error) throw error;
+
+  let gameMeta = game;
+  if (!gameMeta) {
+    gameMeta = await loadGameMeta(gameId);
+  }
+
+  let rows = data || [];
+  if (gameMeta && isGameCycleStale(gameMeta)) {
+    rows = [];
+  }
+
+  return {
+    patch: {
+      kind: "rsvps",
+      gameId,
+      entries: groupRsvps(rows)[gameId] || [],
+    },
+  };
+}
+
+export async function fetchCheckInsForGame(gameId, cycleAt = null) {
+  const supabase = getSupabase();
+  let expectedCycle = cycleAt ? normalizeCycleAt(cycleAt) : null;
+
+  if (!expectedCycle) {
+    const gameMeta = await loadGameMeta(gameId);
+    expectedCycle = gameMeta ? getGameDisplayCycle(gameMeta) : null;
+  }
+
+  if (!expectedCycle) {
+    return {
+      patch: {
+        kind: "checkIns",
+        gameId,
+        entries: [],
+      },
+    };
+  }
+
+  const { data, error } = await supabase
+    .from("game_check_ins")
+    .select("game_id, user_id, name, plus_ones, bringing_kit, cycle_at")
+    .eq("game_id", gameId)
+    .eq("cycle_at", expectedCycle)
+    .order("created_at", { ascending: true });
+
+  if (error) throw error;
+
+  const rows = (data || []).filter(
+    (row) => normalizeCycleAt(row.cycle_at) === expectedCycle,
+  );
+
+  return {
+    patch: {
+      kind: "checkIns",
+      gameId,
+      entries: groupCheckIns(rows)[gameId] || [],
+    },
+  };
+}
+
 export async function fetchAppData() {
   const fetchSeq = ++appDataFetchSeq;
   const supabase = getSupabase();
@@ -331,7 +408,7 @@ export function gamesForGroup(games, groupId) {
   return games.filter((game) => game.groupId === groupId);
 }
 
-export async function upsertRsvp({ gameId, userId, name, plusOnes, bringingKit = false }) {
+export async function upsertRsvp({ gameId, userId, name, plusOnes, bringingKit = false, game = null }) {
   const supabase = getSupabase();
   const { error } = await supabase.from("rsvps").upsert(
     {
@@ -345,15 +422,15 @@ export async function upsertRsvp({ gameId, userId, name, plusOnes, bringingKit =
   );
 
   if (error) throw error;
-  return fetchAppData();
+  return fetchRsvpsForGame(gameId, game);
 }
 
-export async function cancelRsvp({ gameId, userId }) {
+export async function cancelRsvp({ gameId, userId, game = null }) {
   const supabase = getSupabase();
   const { error } = await supabase.from("rsvps").delete().eq("game_id", gameId).eq("user_id", userId);
 
   if (error) throw error;
-  return fetchAppData();
+  return fetchRsvpsForGame(gameId, game);
 }
 
 export async function renameRsvps({ userId, name }) {
@@ -365,7 +442,8 @@ export async function renameRsvps({ userId, name }) {
   const checkInRename = await supabase.from("game_check_ins").update({ name }).eq("user_id", userId);
   if (checkInRename.error) throw checkInRename.error;
 
-  return fetchAppData();
+  // Caller already patches local RSVP/check-in names; skip full fetchAppData().
+  return { renamed: true };
 }
 
 export async function upsertCheckIn({
@@ -390,7 +468,7 @@ export async function upsertCheckIn({
   );
 
   if (error) throw error;
-  return fetchAppData();
+  return fetchCheckInsForGame(gameId, cycleAt);
 }
 
 export async function cancelCheckIn({ gameId, userId, cycleAt }) {
@@ -403,7 +481,7 @@ export async function cancelCheckIn({ gameId, userId, cycleAt }) {
     .eq("cycle_at", cycleAt);
 
   if (error) throw error;
-  return fetchAppData();
+  return fetchCheckInsForGame(gameId, cycleAt);
 }
 
 export async function handleRsvpAction(body) {
@@ -419,6 +497,7 @@ export async function handleRsvpAction(body) {
       name: body.name,
       plusOnes: body.plusOnes,
       bringingKit: body.bringingKit,
+      game: body.game ?? null,
     });
   }
 
@@ -426,7 +505,7 @@ export async function handleRsvpAction(body) {
     if (!body.gameId || !body.userId) {
       throw new Error("Missing cancel fields");
     }
-    return cancelRsvp({ gameId: body.gameId, userId: body.userId });
+    return cancelRsvp({ gameId: body.gameId, userId: body.userId, game: body.game ?? null });
   }
 
   if (action === "rename") {
@@ -529,6 +608,24 @@ function createDebouncedAppDataRefresh(onChange, delayMs = 250) {
   };
 }
 
+function createDebouncedGameRefresh(runForGame, delayMs = 250) {
+  const timers = new Map();
+
+  return (gameId, ...args) => {
+    if (!gameId) return;
+    clearTimeout(timers.get(gameId));
+    timers.set(
+      gameId,
+      setTimeout(() => {
+        timers.delete(gameId);
+        runForGame(gameId, ...args).catch(() => {
+          // Keep last known data if a scoped refresh fails temporarily.
+        });
+      }, delayMs),
+    );
+  };
+}
+
 export function subscribeToGroups(onChange) {
   const supabase = getSupabase();
   const refresh = createDebouncedAppDataRefresh(onChange);
@@ -565,16 +662,23 @@ export function subscribeToGames(onChange) {
   };
 }
 
-export function subscribeToRsvps(onChange) {
+export function subscribeToRsvps(onPatch, { getGame } = {}) {
   const supabase = getSupabase();
-  const refresh = createDebouncedAppDataRefresh(onChange);
+  const schedule = createDebouncedGameRefresh(async (gameId) => {
+    const game = getGame?.(gameId) ?? null;
+    const { patch } = await fetchRsvpsForGame(gameId, game);
+    onPatch(patch);
+  });
 
   const channel = supabase
     .channel("disc-check:rsvps")
     .on(
       "postgres_changes",
       { event: "*", schema: "public", table: "rsvps" },
-      refresh,
+      (payload) => {
+        const row = payload.new ?? payload.old;
+        if (row?.game_id) schedule(row.game_id);
+      },
     )
     .subscribe();
 
@@ -583,16 +687,24 @@ export function subscribeToRsvps(onChange) {
   };
 }
 
-export function subscribeToCheckIns(onChange) {
+export function subscribeToCheckIns(onPatch, { getGame, getCycleAt } = {}) {
   const supabase = getSupabase();
-  const refresh = createDebouncedAppDataRefresh(onChange);
+  const schedule = createDebouncedGameRefresh(async (gameId) => {
+    const game = getGame?.(gameId) ?? null;
+    const cycleAt = getCycleAt?.(gameId, game) ?? null;
+    const { patch } = await fetchCheckInsForGame(gameId, cycleAt);
+    onPatch(patch);
+  });
 
   const channel = supabase
     .channel("disc-check:check-ins")
     .on(
       "postgres_changes",
       { event: "*", schema: "public", table: "game_check_ins" },
-      refresh,
+      (payload) => {
+        const row = payload.new ?? payload.old;
+        if (row?.game_id) schedule(row.game_id);
+      },
     )
     .subscribe();
 

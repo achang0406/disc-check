@@ -2,8 +2,8 @@
 name: Intent-aligned push refactor v2 rollout
 overview: Feature-phased rollout with PR sub-phases (2b-i/ii/ii-client/iii, 3a/b, 4a/b, 5a/b) isolating hot-path risk. Badge milestones (pregame + live 1.5×/2×) with latest-only coalescing; thin paths via denormalized game_push_state, stub outbox + drain copy, single cron.
 status: in-progress
-completed_phases: [1, 2a, 2b-i, 2b-ii]
-next: 2b-ii-client
+completed_phases: [1, 2a, 2b-i, 2b-ii, 2b-ii-client]
+next: 2b-iii
 note: Derisked rollout after v1 revert. Reference spec at docs/intent-aligned-push-refactor-plan.md; rollback template at scripts/supabase-rollback-push-plan.sql.
 ---
 
@@ -19,13 +19,14 @@ Reference: archived spec in [intent-aligned-push-refactor-plan.md](intent-aligne
 | **2a** — Cancel push + outbox infra | **Done** | `3c7ad9f` — migrations `032`–`034`; [phase-2a-cancel-push-runbook.md](phase-2a-cancel-push-runbook.md) |
 | **2b-i** — Enforce hygiene | **Done** | `b9ec2aa` — migration `035` |
 | **2b-ii** — Push state lifecycle | **Done** | migration `036`; `npm run verify:2b-ii-push-state` |
-| **2b** *(ii-client → iii remaining)* | In progress | — |
+| **2b-ii-client** — Scoped client fetch | **Done** | `fetchRsvpsForGame` / `fetchCheckInsForGame`; patch merge in `useAppData` |
+| **2b** *(iii remaining)* | In progress | — |
 | **3** — Live pushes *(3a → 3b)* | Pending | — |
 | **4** — Chatter *(4a → 4b)* | Pending | — |
 | **5** — Announcements *(5a → 5b)* | Pending | — |
 | Group limits *(orthogonal)* | Pending | — |
 
-**Next up:** 2b-ii-client (scoped RSVP/check-in fetch).
+**Next up:** 2b-iii (badge enqueue + milestone coalescing, migration `037`).
 
 ## Goals
 
@@ -266,7 +267,7 @@ Do **not** add new full-refetch paths on RSVP/check-in. Announcements (Phase 5) 
 ### Release order
 
 ```text
-[✓ 1] → [✓ 2a] → [✓ 2b-i] → [✓ 2b-ii] → 2b-ii-client → 2b-iii → 3a → 3b → 4a → 4b → 5a → 5b
+[✓ 1] → [✓ 2a] → [✓ 2b-i] → [✓ 2b-ii] → [✓ 2b-ii-client] → 2b-iii → 3a → 3b → 4a → 4b → 5a → 5b
 
                  └─ pregame badge stack ─────────┘   └─ live ─┘   └─ chatter stack ─┘
 
@@ -513,14 +514,14 @@ ORDER BY gps.cycle_at DESC;
 | ------ | ------------------------------------------------------------------------------------------------------------------------------------ |
 | Client | `fetchRsvpsForGame`, `fetchCheckInsForGame` in [data.js](../src/lib/data.js); write paths return per-game patches, not `fetchAppData()` |
 | Client | `applyGamePatch` merge in [useAppData.js](../src/hooks/useAppData.js); scoped Realtime on `rsvps` / `game_check_ins` (debounced per `game_id`) |
-| Client | Unchanged: `renameRsvps`, guest writes, bootstrap `refresh()`, groups/games Realtime → still full `fetchAppData()`                 |
+| Client | Unchanged: guest writes, bootstrap `refresh()`, groups/games Realtime → full `fetchAppData()`; `renameRsvps` → 2 writes + local patch only |
 
 ##### E2E test
 
 - [ ] RSVP upsert/cancel feels instant; Network tab shows **one** `rsvps` write + **one** scoped `rsvps?game_id=eq.…` read (not groups/games/check_ins/guests)
 - [ ] Check-in/check-out same pattern on `game_check_ins`
 - [ ] Device B sees Device A’s RSVP on shared game card (scoped Realtime merge)
-- [ ] `renameRsvps` still works (full fetch path)
+- [ ] `renameRsvps` still works (2 writes only; local name patch — no `fetchAppData`)
 - [ ] Bootstrap / manual refresh unchanged
 
 ##### Rollback

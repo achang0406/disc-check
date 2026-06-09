@@ -11,7 +11,6 @@ export default function EditProfileModal({
   saving,
   onSubmit,
   onClose,
-  onValidatePhone,
   onLookupPhone,
   onRecoverProfile,
 }) {
@@ -19,7 +18,6 @@ export default function EditProfileModal({
   const [phone, setPhone] = useState(formatPhoneDisplay(profile.phone));
   const [error, setError] = useState("");
   const [phoneError, setPhoneError] = useState("");
-  const [checkingPhone, setCheckingPhone] = useState(false);
   const [lookup, setLookup] = useState(null);
   const lookupRequestId = useRef(0);
 
@@ -90,26 +88,16 @@ export default function EditProfileModal({
       return;
     }
 
-    if (lookup === "loading") {
-      setPhoneError("checking phone…");
-      return;
-    }
+    const phoneChanged = Boolean(normalizedNew && normalizedNew !== normalizedCurrent);
 
-    if (normalizedNew && normalizedNew !== normalizedCurrent && onValidatePhone) {
-      setCheckingPhone(true);
-      try {
-        const available = await onValidatePhone(phone, profile.id);
-        if (!available) {
-          setPhoneError("That phone is linked to another profile");
-          return;
-        }
-      } catch {
-        setPhoneError("Couldn't verify phone — try again");
+    if (phoneChanged) {
+      if (lookup === "loading" || lookup === null) {
+        setPhoneError("checking phone…");
         return;
-      } finally {
-        setCheckingPhone(false);
       }
     }
+
+    lookupRequestId.current += 1;
 
     setError("");
     setPhoneError("");
@@ -125,7 +113,7 @@ export default function EditProfileModal({
     onRecoverProfile?.(linkedProfile);
   };
 
-  const busy = saving || checkingPhone || lookup === "loading";
+  const busy = saving || lookup === "loading";
 
   return (
     <ModalShell
@@ -144,7 +132,7 @@ export default function EditProfileModal({
         ) : (
           <>
             <Button variant="primary" block disabled={busy} onClick={handleSubmit}>
-              {checkingPhone || lookup === "loading" ? "checking phone…" : saving ? "Saving..." : "Save"}
+              {lookup === "loading" ? "checking phone…" : saving ? "Saving..." : "Save"}
             </Button>
             <Button variant="secondary" disabled={busy} onClick={onClose}>
               Cancel
