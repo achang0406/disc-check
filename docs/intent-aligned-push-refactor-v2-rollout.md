@@ -701,7 +701,7 @@ Drop `next_live_at` logic from processor; remove schedule hooks.
 - `badge_live_some` — “Game is on with some subs!”
 - `badge_live_full` — “Game is on with full sub lines! The game is hot!”
 
-**Deploy:** apply `040` → `npm run verify:3b-live-badge` (edge materialize already in 2b-iii; no redeploy required for SQL-only 3b).
+**Deploy:** apply `040` → **redeploy `process-push-outbox`** (adds `badge_live_some` / `badge_live_full` materialize) → `npm run verify:3b-live-badge`. Without the redeploy, live rows enqueue but drain skips them as unknown event types.
 
 ##### E2E test
 
