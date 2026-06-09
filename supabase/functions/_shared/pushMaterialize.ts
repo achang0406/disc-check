@@ -131,6 +131,20 @@ export async function materializePushPayload(
         tag: `disc-check-phase-${row.game_id}`,
         url,
       };
+    case "badge_live_some":
+      return {
+        title,
+        body: `${gameName ?? "Game"} — Game is on with some subs!`,
+        tag: `disc-check-badge-${row.game_id}`,
+        url,
+      };
+    case "badge_live_full":
+      return {
+        title,
+        body: `${gameName ?? "Game"} — Game is on with full sub lines! The game is hot!`,
+        tag: `disc-check-badge-${row.game_id}`,
+        url,
+      };
     default:
       console.warn("Unknown push event type — skipping", row.event_type, row.id);
       return null;

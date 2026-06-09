@@ -2,9 +2,9 @@
 name: Intent-aligned push refactor v2 rollout
 overview: Feature-phased rollout with PR sub-phases (2b-i/ii/ii-client/iii, 3a/b, 4a/b, 5a/b) isolating hot-path risk. Badge milestones (pregame + live 1.5×/2×) with latest-only coalescing; thin paths via denormalized game_push_state, stub outbox + drain copy, single cron.
 status: in-progress
-completed_phases: [1, 2a, 2b-i, 2b-ii, 2b-ii-client, 2b-iii]
-next: 3b
-note: Derisked rollout after v1 revert. 3a implemented in repo; mark Done after staging E2E. Reference spec at docs/intent-aligned-push-refactor-plan.md; rollback template at scripts/supabase-rollback-push-plan.sql.
+completed_phases: [1, 2a, 2b-i, 2b-ii, 2b-ii-client, 2b-iii, 3a, 3b]
+next: 4a
+note: Derisked rollout after v1 revert. Phase 3 complete on staging (039–040). Reference spec at docs/intent-aligned-push-refactor-plan.md; rollback template at scripts/supabase-rollback-push-plan.sql.
 ---
 
 # Incremental push refactor (derisked v2)
@@ -22,13 +22,14 @@ Reference: archived spec in [intent-aligned-push-refactor-plan.md](intent-aligne
 | **2b-ii-client** — Scoped client fetch | **Done** | `fetchRsvpsForGame` / `fetchCheckInsForGame`; patch merge in `useAppData` |
 | **2b-iii** — Badge enqueue | **Done** | migrations `037`–`038`; `npm run verify:2b-iii` |
 | **2b** | **Done** | pregame badge stack |
-| **3a** — Phase live push | **Implemented** *(staging E2E pending)* | migration `039`; `npm run verify:3a-phase-live` |
-| **3** — Live pushes *(3a → 3b)* | In progress | 3a implemented; 3b pending |
+| **3a** — Phase live push | **Done** | migration `039`; `npm run verify:3a-phase-live` |
+| **3b** — Live badge milestones | **Done** | migration `040`; `npm run verify:3b-live-badge` |
+| **3** — Live pushes *(3a → 3b)* | **Done** | scheduled live start + live-window 1.5× / 2× badges |
 | **4** — Chatter *(4a → 4b)* | Pending | — |
 | **5** — Announcements *(5a → 5b)* | Pending | — |
 | Group limits *(orthogonal)* | Pending | — |
 
-**Next up:** 3a staging E2E, then 3b (live badge milestones, migration `040`).
+**Next up:** Phase 4a (chatter state trigger, migration `041`).
 
 ## Goals
 
@@ -259,7 +260,7 @@ Do **not** add new full-refetch paths on RSVP/check-in. Announcements (Phase 5) 
 | **1**  | **Done** | Chat push removal                                   | Send chat → no OS notification; bell still registers subscriptions                |
 | **2a** | **Done** | Game cancelled push                                 | Admin cancels game → subscriber gets one push (background)                        |
 | **2b** | **Implemented** *(staging E2E pending)* | Pregame badge push *(4 PRs: 2b-i → 2b-ii → 2b-ii-client → 2b-iii)* | RSVP crosses almost/go → one coalesced push per burst (latest milestone only)     |
-| **3**  | Pending | Live game push *(2 PRs: 3a → 3b)*                   | 3a: “Game is live” at start; 3b: 1.5× / 2× headcount excitement pushes in live window |
+| **3**  | **Done** | Live game push *(2 PRs: 3a → 3b)*                   | 3a: “Game is live” at start; 3b: 1.5× / 2× headcount excitement pushes in live window |
 | **4**  | Pending | Chat chatter push *(2 PRs: 4a → 4b)*                | 2+ senders in 30 min → ≤1 summary push/hour; chat send stays instant              |
 | **5**  | Pending | Announcements *(2 PRs: 5a → 5b)*                    | Admin posts → banner on focused game + OS push to subscribers                     |
 
@@ -311,8 +312,8 @@ Split **medium-risk** phases so each PR changes **one layer**: hygiene → state
 | 2b-ii        | **Done** | Low–Medium | State lifecycle — writes on cycle reset, optional headcount maintenance |
 | 2b-ii-client | **Done** | Low        | Scoped client fetch — merge per-game RSVP/check-in; no DB changes       |
 | 2b-iii       | **Implemented** | Medium     | Badge enqueue on RSVP — **RSVP latency gate** + E2E pending on staging |
-| 3a     | **Implemented** | Low        | `next_live_at` due check on drain (not full-game scan) + E2E pending |
-| 3b     | Pending | Low–Medium | Live headcount milestones on RSVP trigger — same coalescing rules       |
+| 3a     | **Done** | Low        | `next_live_at` due check on drain (not full-game scan) |
+| 3b     | **Done** | Low–Medium | Live headcount milestones on RSVP trigger — same coalescing rules |
 | 4a     | Pending | Low–Medium | Chat state on insert — no notifications yet                             |
 | 4b     | Pending | Medium     | Chatter enqueue — **chat send latency gate**                            |
 | 5a     | Pending | Low–Medium | Carousel banner UI                                                      |
@@ -633,7 +634,7 @@ Write `game_push_state.next_live_at = get_current_occurrence_start(weekday, star
 
 #### Phase 3a — “Game is live” at start
 
-**Status: Implemented** (migration `039` — staging E2E pending) · **Risk: Low** · **Migration:** `039_phase_live_scheduled.sql`
+**Status: Done** (migration `039`) · **Risk: Low** · **Migration:** `039_phase_live_scheduled.sql`
 
 **Deferred from 2b-iii:** `phase_live` is intentionally not enqueued in `037` — pregame badge stack stays isolated. Drain coalesce/stale/retry from 2b-iii applies to `phase_live` only where relevant (`phase_live` is not badge-family; no milestone coalesce).
 
@@ -677,7 +678,7 @@ Drop `next_live_at` logic from processor; remove schedule hooks.
 
 #### Phase 3b — Live headcount excitement pushes
 
-**Risk: Low–Medium** · **Migration:** `040_live_badge_milestones.sql`
+**Status: Done** (migration `040`) · **Risk: Low–Medium** · **Migration:** `040_live_badge_milestones.sql`
 
 **Deferred from 2b-iii** (edge already shipped; 3b adds SQL enqueue + copy):
 
@@ -695,24 +696,27 @@ Drop `next_live_at` logic from processor; remove schedule hooks.
 | DB   | Reuse `supersede_pending_badge` + drain coalesce — rapid `live_some` + `live_full` before drain → **one** `live_full` push          |
 | Edge | Materialize only — coalesce/stale/retry unchanged from 2b-iii                                                                        |
 
-**Copy (draft):**
+**Copy:**
 
 - `badge_live_some` — “Game is on with some subs!”
 - `badge_live_full` — “Game is on with full sub lines! The game is hot!”
 
+**Deploy:** apply `040` → `npm run verify:3b-live-badge` (edge materialize already in 2b-iii; no redeploy required for SQL-only 3b).
+
 ##### E2E test
 
-- [ ] During live window, headcount crosses 1.5× → one `badge_live_some` push (after drain)
-- [ ] During live window, headcount crosses 2× → one `badge_live_full` push
-- [ ] Already at 2× when live starts → catch-up sends appropriate live milestone (not pregame `go` again)
-- [ ] Rapid burst crosses 1.5× and 2× before drain → **one** `live_full` push only
-- [ ] No live milestone push outside live window (pregame stops at `go`)
+- [x] Live catch-up at `live_full` threshold (`try_enqueue_live_badge_upgrade` RPC)
+- [x] `live_some` enqueue when headcount at 1.5×
+- [x] Upgrade `live_some` → `live_full` supersedes pending `live_some`
+- [x] No duplicate enqueue when milestone already recorded
+- [ ] During live window, headcount crosses 1.5× via RSVP/plus_ones → one `badge_live_some` push (after drain)
+- [ ] During live window, headcount crosses 2× → one `badge_live_full` push (after drain)
 - [ ] `phase_live` and live milestone pushes can both occur same cycle (separate event types)
 - [ ] Check-in tap latency unchanged
 
 ##### Rollback
 
-Drop live-milestone branches from badge trigger; remove materialize cases. Keep 3a `phase_live`.
+[scripts/supabase-rollback-040-live-badge.sql](../scripts/supabase-rollback-040-live-badge.sql) — drop live-milestone branches; keep 3a `phase_live`.
 
 ---
 
@@ -891,8 +895,8 @@ Restore `return fetchAppData()` on write helpers.
 | 2b-ii-client   | **Done** | *(none)* `caa68bd` | Revert [data.js](../src/lib/data.js) + [useAppData.js](../src/hooks/useAppData.js) to full fetch |
 | 2b-iii         | **Implemented** | `037`               | [scripts/supabase-rollback-037-badge-push.sql](../scripts/supabase-rollback-037-badge-push.sql) |
 | 2b-iii hotfix  | **Done** | `038`               | Re-apply `037` overload mistake manually if rolled back               |
-| 3a             | **Implemented** | `039`         | [scripts/supabase-rollback-039-phase-live.sql](../scripts/supabase-rollback-039-phase-live.sql) |
-| 3b             | Pending | `040`               | Drop live-milestone branches from badge trigger                       |
+| 3a             | **Done** | `039`         | [scripts/supabase-rollback-039-phase-live.sql](../scripts/supabase-rollback-039-phase-live.sql) |
+| 3b             | **Done** | `040`               | [scripts/supabase-rollback-040-live-badge.sql](../scripts/supabase-rollback-040-live-badge.sql) |
 | 4a             | Pending | `041`               | Drop state-only chatter trigger                                       |
 | 4b             | Pending | `042`               | Remove enqueue branch from chatter trigger                            |
 | 5a             | Pending | `043`               | Drop `game_announcements` + UI                                        |

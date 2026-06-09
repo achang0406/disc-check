@@ -644,6 +644,90 @@ BEGIN
 END;
 $$;
 
+CREATE OR REPLACE FUNCTION compute_live_badge_milestone(p_headcount INTEGER, p_target INTEGER)
+RETURNS TEXT
+LANGUAGE plpgsql
+IMMUTABLE
+AS $$
+DECLARE
+  v_live_some INTEGER;
+  v_live_full INTEGER;
+BEGIN
+  v_live_some := CEIL(p_target * 1.5)::INTEGER;
+  v_live_full := CEIL(p_target * 2.0)::INTEGER;
+
+  IF p_headcount >= v_live_full THEN
+    RETURN 'live_full';
+  END IF;
+
+  IF p_headcount >= v_live_some THEN
+    RETURN 'live_some';
+  END IF;
+
+  RETURN 'not';
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION try_enqueue_live_badge_upgrade(p_game_id TEXT, p_cycle TIMESTAMPTZ)
+RETURNS BOOLEAN
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_group_id TEXT;
+  v_target INTEGER;
+  v_headcount INTEGER;
+  v_last_milestone TEXT;
+  v_new_milestone TEXT;
+  v_last_rank INTEGER;
+  v_new_rank INTEGER;
+BEGIN
+  IF p_game_id IS NULL OR p_cycle IS NULL THEN
+    RETURN FALSE;
+  END IF;
+
+  IF NOW() < p_cycle OR NOW() >= p_cycle + INTERVAL '3 hours' THEN
+    RETURN FALSE;
+  END IF;
+
+  SELECT group_id, target, rsvp_headcount, last_badge_milestone
+  INTO v_group_id, v_target, v_headcount, v_last_milestone
+  FROM game_push_state
+  WHERE game_id = p_game_id
+    AND cycle_at = p_cycle;
+
+  IF NOT FOUND OR v_group_id IS NULL THEN
+    RETURN FALSE;
+  END IF;
+
+  v_new_milestone := compute_live_badge_milestone(v_headcount, v_target);
+  v_last_rank := badge_milestone_rank(COALESCE(v_last_milestone, 'not'));
+  v_new_rank := badge_milestone_rank(v_new_milestone);
+
+  IF v_new_rank <= v_last_rank OR v_new_milestone = 'not' THEN
+    RETURN FALSE;
+  END IF;
+
+  PERFORM supersede_pending_badge(p_game_id, v_new_rank);
+
+  IF v_new_milestone = 'live_some' THEN
+    PERFORM enqueue_push_event('badge_live_some', v_group_id, p_game_id, '{}', NULL);
+  ELSIF v_new_milestone = 'live_full' THEN
+    PERFORM enqueue_push_event('badge_live_full', v_group_id, p_game_id, '{}', NULL);
+  END IF;
+
+  UPDATE game_push_state
+  SET
+    last_badge_milestone = v_new_milestone,
+    updated_at = NOW()
+  WHERE game_id = p_game_id
+    AND cycle_at = p_cycle;
+
+  RETURN TRUE;
+END;
+$$;
+
 CREATE OR REPLACE FUNCTION supersede_pending_badge(p_game_id TEXT, p_new_rank INTEGER)
 RETURNS void
 LANGUAGE plpgsql
@@ -752,37 +836,39 @@ BEGIN
     v_group_id,
     v_target;
 
-  v_new_milestone := compute_pregame_badge_milestone(v_headcount, v_target);
-  v_last_rank := badge_milestone_rank(COALESCE(v_last_milestone, 'not'));
-  v_new_rank := badge_milestone_rank(v_new_milestone);
+  IF NOW() < v_cycle THEN
+    v_new_milestone := compute_pregame_badge_milestone(v_headcount, v_target);
+    v_last_rank := badge_milestone_rank(COALESCE(v_last_milestone, 'not'));
+    v_new_rank := badge_milestone_rank(v_new_milestone);
 
-  IF v_new_rank <= v_last_rank OR v_new_milestone = 'not' OR NOW() >= v_cycle THEN
-    RETURN COALESCE(NEW, OLD);
+    IF v_new_rank > v_last_rank AND v_new_milestone <> 'not' THEN
+      PERFORM supersede_pending_badge(v_game_id, v_new_rank);
+
+      IF v_new_milestone = 'almost' THEN
+        PERFORM enqueue_push_event(
+          'badge_almost',
+          v_group_id,
+          v_game_id,
+          '{}',
+          jsonb_build_object(
+            'headcount_at_enqueue', v_headcount,
+            'target_at_enqueue', v_target
+          )
+        );
+      ELSIF v_new_milestone = 'go' THEN
+        PERFORM enqueue_push_event('badge_go', v_group_id, v_game_id, '{}', NULL);
+      END IF;
+
+      UPDATE game_push_state
+      SET
+        last_badge_milestone = v_new_milestone,
+        updated_at = NOW()
+      WHERE game_id = v_game_id
+        AND cycle_at = v_cycle;
+    END IF;
+  ELSIF NOW() < v_cycle + INTERVAL '3 hours' THEN
+    PERFORM try_enqueue_live_badge_upgrade(v_game_id, v_cycle);
   END IF;
-
-  PERFORM supersede_pending_badge(v_game_id, v_new_rank);
-
-  IF v_new_milestone = 'almost' THEN
-    PERFORM enqueue_push_event(
-      'badge_almost',
-      v_group_id,
-      v_game_id,
-      '{}',
-      jsonb_build_object(
-        'headcount_at_enqueue', v_headcount,
-        'target_at_enqueue', v_target
-      )
-    );
-  ELSIF v_new_milestone = 'go' THEN
-    PERFORM enqueue_push_event('badge_go', v_group_id, v_game_id, '{}', NULL);
-  END IF;
-
-  UPDATE game_push_state
-  SET
-    last_badge_milestone = v_new_milestone,
-    updated_at = NOW()
-  WHERE game_id = v_game_id
-    AND cycle_at = v_cycle;
 
   RETURN COALESCE(NEW, OLD);
 END;
@@ -861,6 +947,8 @@ BEGIN
     WHERE game_id = v_row.game_id
       AND cycle_at = v_row.cycle_at;
 
+    PERFORM try_enqueue_live_badge_upgrade(v_row.game_id, v_row.cycle_at);
+
     v_count := v_count + 1;
   END LOOP;
 
@@ -875,6 +963,9 @@ REVOKE ALL ON FUNCTION badge_milestone_rank(TEXT) FROM PUBLIC;
 REVOKE ALL ON FUNCTION compute_pregame_badge_milestone(INTEGER, INTEGER) FROM PUBLIC;
 REVOKE ALL ON FUNCTION supersede_pending_badge(TEXT, INTEGER) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION supersede_pending_badge(TEXT, INTEGER) TO service_role;
+REVOKE ALL ON FUNCTION compute_live_badge_milestone(INTEGER, INTEGER) FROM PUBLIC;
+REVOKE ALL ON FUNCTION try_enqueue_live_badge_upgrade(TEXT, TIMESTAMPTZ) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION try_enqueue_live_badge_upgrade(TEXT, TIMESTAMPTZ) TO service_role;
 REVOKE ALL ON FUNCTION enqueue_due_phase_live_events() FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION enqueue_due_phase_live_events() TO service_role;
 REVOKE ALL ON FUNCTION upsert_game_push_state_for_cycle(TEXT, TIMESTAMPTZ) FROM PUBLIC;
