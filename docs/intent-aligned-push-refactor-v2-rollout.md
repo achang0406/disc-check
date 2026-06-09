@@ -18,7 +18,7 @@ Reference: archived spec in [intent-aligned-push-refactor-plan.md](intent-aligne
 | **1** — Chat push removal | **Done** | `8e637d5` — no per-message push; bell “Game alerts”; `notify-chat` removed |
 | **2a** — Cancel push + outbox infra | **Done** | `3c7ad9f` — migrations `032`–`034`; [phase-2a-cancel-push-runbook.md](phase-2a-cancel-push-runbook.md) |
 | **2b-i** — Enforce hygiene | **Done** | `b9ec2aa` — migration `035` |
-| **2b-ii** — Push state lifecycle | **Done** | migration `036` — `game_push_state`, headcount trigger |
+| **2b-ii** — Push state lifecycle | **Done** | migration `036`; `npm run verify:2b-ii-push-state` |
 | **2b** *(ii-client → iii remaining)* | In progress | — |
 | **3** — Live pushes *(3a → 3b)* | Pending | — |
 | **4** — Chatter *(4a → 4b)* | Pending | — |
@@ -463,9 +463,41 @@ See [phase-2a-cancel-push-runbook.md](phase-2a-cancel-push-runbook.md) for step-
 
 ##### E2E test
 
-- [ ] Weekly cycle reset creates/zeros correct `game_push_state` row per game
-- [ ] `rsvp_headcount` matches `SUM(1 + plus_ones)` (spot-check or off-path reconcile)
-- [ ] RSVP latency still passes gate (headcount maintenance is cheap)
+**Automated (Phase 2b-ii):** read-only headcount sync against live Supabase ([`scripts/verify-2b-ii-push-state.mjs`](../scripts/verify-2b-ii-push-state.mjs)).
+
+Prerequisites: migration `036` applied; `.env.local` with `VITE_SUPABASE_URL` + `SUPABASE_SERVICE_ROLE_KEY`.
+
+```bash
+# All games with rsvp_cycle_at
+npm run verify:2b-ii-push-state
+
+# Single game
+VERIFY_GAME_ID=g1 npm run verify:2b-ii-push-state
+```
+
+Pass: every game prints `OK … headcount=N` and script exits 0. Fails if current-cycle `game_push_state` row is missing or `rsvp_headcount` ≠ live `SUM(1 + plus_ones)`.
+
+**Manual**
+
+- [ ] Weekly cycle reset / admin save creates or zeros the **current** `game_push_state` row (`rsvp_headcount = 0`, milestones `NULL`); older `cycle_at` rows may keep historical headcounts
+- [ ] After RSVP, re-run `npm run verify:2b-ii-push-state` — headcount matches
+- [ ] RSVP latency unchanged (headcount maintenance is cheap)
+
+**SQL spot-check** (current cycle only — `actual_headcount` repeats per joined row; compare `push_headcount` where `is_current`):
+
+```sql
+SELECT
+  gps.cycle_at,
+  (gps.cycle_at = g.rsvp_cycle_at) AS is_current,
+  gps.rsvp_headcount AS push_headcount,
+  CASE WHEN gps.cycle_at = g.rsvp_cycle_at THEN
+    (SELECT COALESCE(SUM(1 + plus_ones), 0) FROM rsvps r WHERE r.game_id = g.id)
+  END AS actual_headcount
+FROM games g
+JOIN game_push_state gps ON gps.game_id = g.id
+WHERE g.id = 'YOUR_GAME_ID'
+ORDER BY gps.cycle_at DESC;
+```
 
 ##### Rollback
 
