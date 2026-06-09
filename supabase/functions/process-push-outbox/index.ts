@@ -78,6 +78,15 @@ Deno.serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
     );
 
+    const { data: phaseLiveEnqueued, error: phaseLiveError } = await supabase.rpc(
+      "enqueue_due_phase_live_events",
+    );
+
+    if (phaseLiveError) {
+      console.error("Due phase_live enqueue failed", phaseLiveError.message);
+      return jsonResponse({ error: phaseLiveError.message }, 500);
+    }
+
     const { data: rows, error: fetchError } = await supabase
       .from("push_outbox")
       .select("id, group_id, game_id, event_type, payload, exclude_subscriber_ids")
@@ -164,6 +173,7 @@ Deno.serve(async (req) => {
     }
 
     return jsonResponse({
+      phase_live_enqueued: phaseLiveEnqueued ?? 0,
       processed,
       sent: sentTotal,
       skipped,

@@ -12,6 +12,7 @@
     "verify:schedule": "node scripts/verify-game-schedule.mjs",
     "verify:2b-ii-push-state": "node scripts/verify-2b-ii-push-state.mjs",
     "verify:2b-iii": "node scripts/verify-2b-iii.mjs",
+    "verify:3a-phase-live": "node scripts/verify-3a-phase-live.mjs",
     "verify:2b-iii-badge-outbox": "node scripts/verify-2b-iii-badge-outbox.mjs"
   },
   "dependencies": {

@@ -59,15 +59,18 @@ export async function materializePushPayload(
   let gameTarget: number | null = null;
   let gameCycleAt: string | null = null;
 
+  let gameStatus: string | null = null;
+
   if (row.game_id) {
     const { data: game } = await supabase
       .from("games")
-      .select("name, target, rsvp_cycle_at")
+      .select("name, target, rsvp_cycle_at, status")
       .eq("id", row.game_id)
       .maybeSingle();
     gameName = game?.name ?? null;
     gameTarget = game?.target ?? null;
     gameCycleAt = game?.rsvp_cycle_at ?? null;
+    gameStatus = game?.status ?? null;
   }
 
   const { data: group } = await supabase
@@ -116,6 +119,16 @@ export async function materializePushPayload(
         title,
         body: `${gameName ?? "Game"} — Game on. See you there!`,
         tag: `disc-check-badge-${row.game_id}`,
+        url,
+      };
+    case "phase_live":
+      if (gameStatus === "cancelled") {
+        return null;
+      }
+      return {
+        title,
+        body: `${gameName ?? "Game"} — Game is live — tap I'm here when you arrive`,
+        tag: `disc-check-phase-${row.game_id}`,
         url,
       };
     default:
