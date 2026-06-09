@@ -87,10 +87,12 @@ export const globalStyles = `
   html, body, #root {
     margin: 0;
     padding: 0;
-    height: var(--app-height, 100dvh);
     min-height: var(--app-height, 100dvh);
-    overflow: hidden;
-    overscroll-behavior: none;
+    height: auto;
+    overflow-x: hidden;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior-y: none;
   }
 
   html {
@@ -104,9 +106,9 @@ export const globalStyles = `
   }
 
   .app-shell {
-    height: var(--app-height, 100%);
-    min-height: var(--app-height, 100%);
-    overflow: hidden;
+    min-height: var(--app-height, 100dvh);
+    height: auto;
+    overflow: visible;
   }
 
   .loading-screen {
@@ -461,44 +463,31 @@ export const globalStyles = `
     z-index: 1;
     width: 100%;
     color: var(--text);
-    height: 100%;
+    min-height: var(--app-height, 100dvh);
+    height: auto;
     display: flex;
     flex-direction: column;
-    overflow: hidden;
+    overflow: visible;
     box-sizing: border-box;
   }
 
-  .games-screen--landing {
-    overflow: hidden;
-  }
-
   .games-screen--landing .games-screen__main--landing {
-    flex: 1;
+    flex: 0 1 auto;
     min-height: 0;
   }
 
   .games-screen--detail {
-    height: 100%;
-    min-height: 0;
-    overflow: hidden;
-  }
-
-  html:has(.games-screen--detail),
-  html:has(.games-screen--detail) body,
-  html:has(.games-screen--detail) #root,
-  html:has(.games-screen--detail) .app-shell {
-    height: var(--app-height, 100dvh);
     min-height: var(--app-height, 100dvh);
-    overflow: hidden;
+    height: auto;
   }
 
   .games-screen--detail .games-screen__main--detail {
-    flex: 1 1 0;
+    flex: 0 1 auto;
     min-height: 0;
   }
 
   .games-screen--detail .game-detail-layout--responsive {
-    flex: 1 1 0;
+    flex: 0 1 auto;
     min-height: 0;
   }
 
@@ -516,16 +505,6 @@ export const globalStyles = `
     min-height: 0;
     gap: var(--chat-thread-gap);
     justify-content: flex-start;
-  }
-
-  .games-screen--detail .games-screen__main--detail {
-    flex: 1 1 0;
-    min-height: 0;
-  }
-
-  .games-screen--detail .game-detail-layout--responsive {
-    flex: 1 1 0;
-    min-height: 0;
   }
 
   .game-detail-panel {
@@ -1015,14 +994,12 @@ export const globalStyles = `
   }
 
   .games-screen__main {
-    flex: 1;
+    flex: 0 1 auto;
     min-height: 0;
     display: flex;
     align-items: center;
     justify-content: center;
-    overflow: auto;
-    -webkit-overflow-scrolling: touch;
-    overscroll-behavior: contain;
+    overflow: visible;
     padding: var(--layout-gutter);
     width: 100%;
     box-sizing: border-box;
@@ -1291,7 +1268,7 @@ export const globalStyles = `
     padding-top: var(--layout-gutter-detail);
     padding-bottom: 0;
     padding-inline: var(--game-carousel-edge-pad);
-    overflow: hidden;
+    overflow: visible;
   }
 
   .games-screen__empty {
