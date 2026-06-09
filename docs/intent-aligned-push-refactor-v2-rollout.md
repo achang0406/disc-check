@@ -1,13 +1,29 @@
 ---
 name: Intent-aligned push refactor v2 rollout
 overview: Feature-phased rollout with PR sub-phases (2b-i/ii/ii-client/iii, 3a/b, 4a/b, 5a/b) isolating hot-path risk. Badge milestones (pregame + live 1.5×/2×) with latest-only coalescing; thin paths via denormalized game_push_state, stub outbox + drain copy, single cron.
-status: planned
+status: in-progress
+completed_phases: [1, 2a]
+next: 2b-i
 note: Derisked rollout after v1 revert. Reference spec at docs/intent-aligned-push-refactor-plan.md; rollback template at scripts/supabase-rollback-push-plan.sql.
 ---
 
 # Incremental push refactor (derisked v2)
 
 Reference: archived spec in [intent-aligned-push-refactor-plan.md](intent-aligned-push-refactor-plan.md), lessons from revert + [scripts/supabase-rollback-push-plan.sql](../scripts/supabase-rollback-push-plan.sql).
+
+## Progress
+
+| Phase | Status | Shipped |
+| ----- | ------ | ------- |
+| **1** — Chat push removal | **Done** | `8e637d5` — no per-message push; bell “Game alerts”; `notify-chat` removed |
+| **2a** — Cancel push + outbox infra | **Done** | `3c7ad9f` — migrations `032`–`034`; [phase-2a-cancel-push-runbook.md](phase-2a-cancel-push-runbook.md) |
+| **2b** — Pregame badge *(i → ii → ii-client → iii)* | Pending | — |
+| **3** — Live pushes *(3a → 3b)* | Pending | — |
+| **4** — Chatter *(4a → 4b)* | Pending | — |
+| **5** — Announcements *(5a → 5b)* | Pending | — |
+| Group limits *(orthogonal)* | Pending | — |
+
+**Next up:** 2b-i (enforce hygiene).
 
 ## Goals
 
@@ -233,14 +249,14 @@ Do **not** add new full-refetch paths on RSVP/check-in. Announcements (Phase 5) 
 ## Feature phases at a glance
 
 
-| Phase  | Feature                                             | E2E pass criterion                                                                |
-| ------ | --------------------------------------------------- | --------------------------------------------------------------------------------- |
-| **1**  | Chat push removal                                   | Send chat → no OS notification; bell still registers subscriptions                |
-| **2a** | Game cancelled push                                 | Admin cancels game → subscriber gets one push (background)                        |
-| **2b** | Pregame badge push *(4 PRs: 2b-i → 2b-ii → 2b-ii-client → 2b-iii)* | RSVP crosses almost/go → one coalesced push per burst (latest milestone only)     |
-| **3**  | Live game push *(2 PRs: 3a → 3b)*                   | 3a: “Game is live” at start; 3b: 1.5× / 2× headcount excitement pushes in live window |
-| **4**  | Chat chatter push *(2 PRs: 4a → 4b)*                | 2+ senders in 30 min → ≤1 summary push/hour; chat send stays instant              |
-| **5**  | Announcements *(2 PRs: 5a → 5b)*                    | Admin posts → banner on focused game + OS push to subscribers                     |
+| Phase  | Status  | Feature                                             | E2E pass criterion                                                                |
+| ------ | ------- | --------------------------------------------------- | --------------------------------------------------------------------------------- |
+| **1**  | **Done** | Chat push removal                                   | Send chat → no OS notification; bell still registers subscriptions                |
+| **2a** | **Done** | Game cancelled push                                 | Admin cancels game → subscriber gets one push (background)                        |
+| **2b** | Pending | Pregame badge push *(4 PRs: 2b-i → 2b-ii → 2b-ii-client → 2b-iii)* | RSVP crosses almost/go → one coalesced push per burst (latest milestone only)     |
+| **3**  | Pending | Live game push *(2 PRs: 3a → 3b)*                   | 3a: “Game is live” at start; 3b: 1.5× / 2× headcount excitement pushes in live window |
+| **4**  | Pending | Chat chatter push *(2 PRs: 4a → 4b)*                | 2+ senders in 30 min → ≤1 summary push/hour; chat send stays instant              |
+| **5**  | Pending | Announcements *(2 PRs: 5a → 5b)*                    | Admin posts → banner on focused game + OS push to subscribers                     |
 
 
 **Orthogonal (anytime after Phase 2a):** group limits.
@@ -248,9 +264,9 @@ Do **not** add new full-refetch paths on RSVP/check-in. Announcements (Phase 5) 
 ### Release order
 
 ```text
-1 → 2a → 2b-i → 2b-ii → 2b-ii-client → 2b-iii → 3a → 3b → 4a → 4b → 5a → 5b
+[✓ 1] → [✓ 2a] → 2b-i → 2b-ii → 2b-ii-client → 2b-iii → 3a → 3b → 4a → 4b → 5a → 5b
 
-           └─ pregame badge stack ─────────┘   └─ live ─┘   └─ chatter stack ─┘
+                 └─ pregame badge stack ─────────┘   └─ live ─┘   └─ chatter stack ─┘
 
 Orthogonal: group limits anytime after 2a
 ```
@@ -281,20 +297,20 @@ Split **medium-risk** phases so each PR changes **one layer**: hygiene → state
 ## Risk levels
 
 
-| Phase  | Risk       | Primary concern                                                         |
-| ------ | ---------- | ----------------------------------------------------------------------- |
-| 1      | Low–Medium | Stops chat push; deletes `notify-chat`                                  |
-| 2a     | Low–Medium | First push pipeline + cancel trigger                                    |
-| 2b-i   | Low        | Enforce refactor — no new push behavior                                 |
-| 2b-ii        | Low–Medium | State lifecycle — writes on cycle reset, optional headcount maintenance |
-| 2b-ii-client | Low        | Scoped client fetch — merge per-game RSVP/check-in; no DB changes       |
-| 2b-iii       | Medium     | Badge enqueue on RSVP — **RSVP latency gate**                           |
-| 3a     | Low        | `next_live_at` due check on drain (not full-game scan)                  |
-| 3b     | Low–Medium | Live headcount milestones on RSVP trigger — same coalescing rules       |
-| 4a     | Low–Medium | Chat state on insert — no notifications yet                             |
-| 4b     | Medium     | Chatter enqueue — **chat send latency gate**                            |
-| 5a     | Low–Medium | Carousel banner UI                                                      |
-| 5b     | Low        | Admin-only announcement push RPC                                        |
+| Phase  | Status  | Risk       | Primary concern                                                         |
+| ------ | ------- | ---------- | ----------------------------------------------------------------------- |
+| 1      | **Done** | Low–Medium | Stops chat push; deletes `notify-chat`                                  |
+| 2a     | **Done** | Low–Medium | First push pipeline + cancel trigger                                    |
+| 2b-i   | Pending | Low        | Enforce refactor — no new push behavior                                 |
+| 2b-ii        | Pending | Low–Medium | State lifecycle — writes on cycle reset, optional headcount maintenance |
+| 2b-ii-client | Pending | Low        | Scoped client fetch — merge per-game RSVP/check-in; no DB changes       |
+| 2b-iii       | Pending | Medium     | Badge enqueue on RSVP — **RSVP latency gate**                           |
+| 3a     | Pending | Low        | `next_live_at` due check on drain (not full-game scan)                  |
+| 3b     | Pending | Low–Medium | Live headcount milestones on RSVP trigger — same coalescing rules       |
+| 4a     | Pending | Low–Medium | Chat state on insert — no notifications yet                             |
+| 4b     | Pending | Medium     | Chatter enqueue — **chat send latency gate**                            |
+| 5a     | Pending | Low–Medium | Carousel banner UI                                                      |
+| 5b     | Pending | Low        | Admin-only announcement push RPC                                        |
 
 
 ## Architecture (v2)
@@ -342,9 +358,9 @@ flowchart TD
 
 ---
 
-## Phase 1 — Chat push removal
+## Phase 1 — Chat push removal ✅
 
-**Risk: Low–Medium**
+**Status: Done** (`8e637d5`) · **Risk: Low–Medium**
 
 **Ship:** stop per-message push; rename bell to “Game alerts”; delete `notify-chat`. Subscriptions still register; nothing auto-sends until Phase 2a.
 
@@ -373,9 +389,9 @@ Restore `notifyChatPush` + bell copy; redeploy `notify-chat` + Vercel.
 
 ## Phase 2 — Pregame status pushes
 
-### Phase 2a — Game cancelled (+ shared push infrastructure)
+### Phase 2a — Game cancelled (+ shared push infrastructure) ✅
 
-**Risk: Low–Medium**
+**Status: Done** (`3c7ad9f`, migrations `032`–`034`) · **Risk: Low–Medium**
 
 **Ship:** `notify-push`, outbox, drain cron, and first auto-push (`game_cancelled`). Check-in path untouched.
 
@@ -769,20 +785,21 @@ Restore `return fetchAppData()` on write helpers.
 ## Migration / rollback map
 
 
-| PR / phase     | Migration           | Rollback                                                              |
-| -------------- | ------------------- | --------------------------------------------------------------------- |
-| 2a             | `032`, `033`, `034` | `scripts/supabase-rollback-032-push-outbox.sql` + drop cancel trigger |
-| 2b-i           | `035`               | Revert enforce functions + trigger definitions                        |
-| 2b-ii          | `036`               | Drop headcount trigger; optional column rollback                      |
-| 2b-ii-client   | *(none)*            | Revert [data.js](../src/lib/data.js) + [useAppData.js](../src/hooks/useAppData.js) to full fetch |
-| 2b-iii         | `037`               | Drop badge enqueue + coalescing; keep 2b-ii state                     |
-| 3a             | `038`               | Drop due-live step in processor                                       |
-| 3b             | `039`               | Drop live-milestone branches from badge trigger                       |
-| 4a             | `040`               | Drop state-only chatter trigger                                       |
-| 4b             | `041`               | Remove enqueue branch from chatter trigger                            |
-| 5a             | `042`               | Drop `game_announcements` + UI                                        |
-| 5b             | `043`               | Drop announcement RPC enqueue                                         |
-| Group limits   | `044`               | Drop constraint + revert RPC                                          |
+| PR / phase     | Status  | Migration           | Rollback                                                              |
+| -------------- | ------- | ------------------- | --------------------------------------------------------------------- |
+| 1              | **Done** | *(client + edge)*   | Restore `notifyChatPush` + redeploy `notify-chat`                     |
+| 2a             | **Done** | `032`, `033`, `034` | `scripts/supabase-rollback-032-push-outbox.sql` + drop cancel trigger |
+| 2b-i           | Pending | `035`               | Revert enforce functions + trigger definitions                        |
+| 2b-ii          | Pending | `036`               | Drop headcount trigger; optional column rollback                      |
+| 2b-ii-client   | Pending | *(none)*            | Revert [data.js](../src/lib/data.js) + [useAppData.js](../src/hooks/useAppData.js) to full fetch |
+| 2b-iii         | Pending | `037`               | Drop badge enqueue + coalescing; keep 2b-ii state                     |
+| 3a             | Pending | `038`               | Drop due-live step in processor                                       |
+| 3b             | Pending | `039`               | Drop live-milestone branches from badge trigger                       |
+| 4a             | Pending | `040`               | Drop state-only chatter trigger                                       |
+| 4b             | Pending | `041`               | Remove enqueue branch from chatter trigger                            |
+| 5a             | Pending | `042`               | Drop `game_announcements` + UI                                        |
+| 5b             | Pending | `043`               | Drop announcement RPC enqueue                                         |
+| Group limits   | Pending | `044`               | Drop constraint + revert RPC                                          |
 
 
 Use **030+** (026–029 in remote history). One migration file per deployable sub-phase where possible.
