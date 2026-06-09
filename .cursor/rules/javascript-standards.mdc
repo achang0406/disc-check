@@ -1,0 +1,107 @@
+---
+description: JavaScript coding standards — readability, composition, and maintainability
+globs: **/*.{js,jsx,mjs,cjs}
+alwaysApply: false
+---
+
+# JavaScript Coding Standards
+
+## Optimal Approach Over Shortcuts
+
+- Prefer the best solution when one exists. When tradeoffs are unavoidable, state them briefly and justify the choice.
+- Avoid hacky workarounds. If one is truly unavoidable, add a comment that labels it as a hack and explains why.
+
+```javascript
+// ❌ BAD — silent workaround
+setTimeout(() => refetch(), 100);
+
+// ✅ GOOD — explicit tradeoff
+// Poll until SW activates; no reliable event on iOS Safari.
+await waitForServiceWorkerReady({ timeoutMs: 3000 });
+```
+
+## DRY & Single Responsibility
+
+Extract shared logic when the same task appears twice or more — utility, hook, or small module — not copy-paste.
+
+Each function, hook, and component should do one thing. Split catch-all modules that mix unrelated concerns.
+
+```javascript
+// ❌ BAD — duplicated formatting in two components
+// ✅ GOOD — shared helper: formatGameTime(game) in utils/
+```
+
+## Composition Over Inheritance
+
+Prefer composing small functions, hooks, and components over class hierarchies or deep `extends` chains.
+
+Skip classes that are data-only (use plain objects), behavior-only (use functions), or do everything (split them).
+
+```javascript
+// ✅ GOOD
+function GameCard({ game, actions }) {
+  return <Card header={<GameHeader game={game} />} footer={actions} />;
+}
+```
+
+## Variables & Scope
+
+- `const` by default; `let` when reassigned; never `var`.
+- Prefer block scope. Avoid globals and mutable module-level state unless truly shared.
+
+## Separation of Concerns
+
+Keep styling out of business logic. Use CSS classes and design tokens (`ui.css.js`, `--*` vars) — not ad-hoc `element.style` changes.
+
+Toggle classes or React state for visual changes. Imperative DOM styling is acceptable only for theme/CSS custom properties (e.g. `--app-height`) or documented one-off hacks.
+
+```javascript
+// ❌ BAD
+node.style.color = isActive ? "green" : "gray";
+
+// ✅ GOOD
+<button className={isActive ? "btn btn--active" : "btn"} />
+```
+
+## Iteration
+
+Prefer `for...of`, `map`, `filter`, and `find` over manual index loops. If an index loop is required, cache the length.
+
+```javascript
+// ❌ BAD
+for (let i = 0; i < items.length; i++) { … }
+
+// ✅ GOOD
+for (const item of items) { … }
+```
+
+## Shorthands
+
+Use modern syntax (`?.`, `??`, arrow functions) when it stays readable. Avoid clever one-liners that hide behavior — clarity beats brevity.
+
+## Comments
+
+Add brief, scannable comments only where logic is abstract or non-obvious. One line when possible.
+
+For exported functions and shared types in JS files, use concise JSDoc (`@param`, `@returns`, `@typedef`) at module boundaries.
+
+```javascript
+// Tie-break: earliest RSVP wins when counts are equal.
+const sorted = [...players].sort(byRsvpThenJoinedAt);
+```
+
+## File Size
+
+Keep files focused. Split when a file mixes unrelated concerns or grows hard to navigate (~300+ lines is a signal to extract).
+
+## Readability & Naming
+
+- **camelCase** — variables, functions, hooks (`fetchGroupGames`, `useGameClock`).
+- **PascalCase** — React components and classes if used (`GameDetailHeader`).
+- **Boolean prefixes** — `is`, `has`, `can` (`isGameLive`, `hasRsvp`).
+- Prefer early returns over deep nesting.
+- Match existing project patterns for imports, hooks, and file layout — consistency over personal preference.
+
+## TypeScript When Possible
+
+Prefer `.ts` / `.tsx` for new modules where types help (shared logic, APIs, complex utils). See the TypeScript standards rule for strict typing requirements.

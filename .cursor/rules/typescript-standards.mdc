@@ -1,0 +1,78 @@
+---
+description: Strict TypeScript standards — types, safety, and when to use TS over JS
+globs: **/*.{ts,tsx}
+alwaysApply: false
+---
+
+# TypeScript Standards
+
+## Prefer TypeScript When Possible
+
+- Use `.ts` / `.tsx` for new modules where types add clarity (shared libs, API layers, Supabase functions, complex utils).
+- Keep existing `.js` / `.jsx` unless a change already touches the file heavily — migrate incrementally, not drive-by.
+- In JS files that must stay JS, use JSDoc (`@param`, `@returns`, `@typedef`) to approximate strict typing.
+
+## Strict Mode Is Non-Negotiable
+
+Enable full strictness in `tsconfig.json` (or Deno equivalent):
+
+```json
+{
+  "compilerOptions": {
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "noImplicitOverride": true
+  }
+}
+```
+
+Never disable strict flags to silence errors — fix the types instead.
+
+## No Escape Hatches Without Justification
+
+```typescript
+// ❌ BAD
+const data = (await res.json()) as Game;
+function handle(payload: any) {}
+
+// ✅ GOOD
+const data: unknown = await res.json();
+if (!isGame(data)) throw new InvalidPayloadError();
+function handle(payload: PushSendRequest) {}
+```
+
+- Avoid `any`. Use `unknown` and narrow with type guards or schema validation.
+- Avoid `as` assertions. Prefer `satisfies`, generics, or runtime checks.
+- Avoid `@ts-ignore` / `@ts-expect-error`. If unavoidable, comment why and scope narrowly.
+
+## Explicit Public Types
+
+Export named types for shared data shapes. Annotate return types on exported functions and hooks.
+
+```typescript
+export type PushSendResult = { sent: number; stale: number };
+
+export async function sendPush(request: PushSendRequest): Promise<PushSendResult> {
+  // ...
+}
+```
+
+Infer types locally when the initializer is self-documenting; be explicit at module boundaries.
+
+## Null Safety
+
+- Handle `null` / `undefined` explicitly — no assumed presence.
+- Prefer optional chaining and nullish coalescing over non-null assertions (`!`).
+
+```typescript
+// ❌ BAD
+const key = Deno.env.get("API_KEY")!;
+
+// ✅ GOOD
+const key = Deno.env.get("API_KEY");
+if (!key) throw new Error("API_KEY is not set");
+```
+
+## Shared Standards
+
+Follow the JavaScript coding standards rule for DRY, composition, readability, file size, and comments.
