@@ -213,6 +213,90 @@ AS $$
   SELECT COALESCE(current_setting('disc_check.resetting_cycle', true), '') = 'true';
 $$;
 
+CREATE TABLE IF NOT EXISTS game_push_state (
+  game_id TEXT NOT NULL REFERENCES games(id) ON DELETE CASCADE,
+  cycle_at TIMESTAMPTZ NOT NULL,
+  group_id TEXT NOT NULL REFERENCES groups(id) ON DELETE CASCADE,
+  target INTEGER NOT NULL,
+  game_status TEXT NOT NULL,
+  rsvp_headcount INTEGER NOT NULL DEFAULT 0,
+  last_badge_milestone TEXT,
+  last_phase TEXT,
+  next_live_at TIMESTAMPTZ,
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  PRIMARY KEY (game_id, cycle_at)
+);
+
+CREATE INDEX IF NOT EXISTS game_push_state_next_live_at_idx
+  ON game_push_state (next_live_at)
+  WHERE next_live_at IS NOT NULL AND game_status <> 'cancelled';
+
+CREATE OR REPLACE FUNCTION upsert_game_push_state_for_cycle(p_game_id TEXT, p_cycle TIMESTAMPTZ)
+RETURNS void
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_group_id TEXT;
+  v_target INTEGER;
+  v_status TEXT;
+  v_next_live TIMESTAMPTZ;
+BEGIN
+  IF p_cycle IS NULL THEN
+    RETURN;
+  END IF;
+
+  SELECT group_id, target, status
+  INTO v_group_id, v_target, v_status
+  FROM games
+  WHERE id = p_game_id;
+
+  IF v_group_id IS NULL THEN
+    RETURN;
+  END IF;
+
+  IF v_status = 'cancelled' THEN
+    v_next_live := NULL;
+  ELSE
+    v_next_live := p_cycle;
+  END IF;
+
+  INSERT INTO game_push_state (
+    game_id,
+    cycle_at,
+    group_id,
+    target,
+    game_status,
+    rsvp_headcount,
+    last_badge_milestone,
+    last_phase,
+    next_live_at,
+    updated_at
+  ) VALUES (
+    p_game_id,
+    p_cycle,
+    v_group_id,
+    v_target,
+    v_status,
+    0,
+    NULL,
+    NULL,
+    v_next_live,
+    NOW()
+  )
+  ON CONFLICT (game_id, cycle_at) DO UPDATE SET
+    group_id = EXCLUDED.group_id,
+    target = EXCLUDED.target,
+    game_status = EXCLUDED.game_status,
+    rsvp_headcount = 0,
+    last_badge_milestone = NULL,
+    last_phase = NULL,
+    next_live_at = EXCLUDED.next_live_at,
+    updated_at = NOW();
+END;
+$$;
+
 CREATE OR REPLACE FUNCTION reset_game_rsvp_cycle(p_game_id TEXT, p_cycle TIMESTAMPTZ)
 RETURNS void
 LANGUAGE plpgsql
@@ -225,6 +309,7 @@ BEGIN
   DELETE FROM game_check_ins WHERE game_id = p_game_id;
   DELETE FROM rsvps WHERE game_id = p_game_id;
   UPDATE games SET rsvp_cycle_at = p_cycle WHERE id = p_game_id;
+  PERFORM upsert_game_push_state_for_cycle(p_game_id, p_cycle);
 END;
 $$;
 
@@ -439,6 +524,143 @@ CREATE TRIGGER game_guests_enforce_update
   FOR EACH ROW
   EXECUTE FUNCTION enforce_guest_window();
 
+CREATE OR REPLACE FUNCTION sync_game_push_state_denorm()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_next_live TIMESTAMPTZ;
+BEGIN
+  IF NEW.rsvp_cycle_at IS NULL THEN
+    RETURN NEW;
+  END IF;
+
+  IF NEW.status = 'cancelled' THEN
+    v_next_live := NULL;
+  ELSE
+    v_next_live := NEW.rsvp_cycle_at;
+  END IF;
+
+  INSERT INTO game_push_state (
+    game_id,
+    cycle_at,
+    group_id,
+    target,
+    game_status,
+    next_live_at,
+    updated_at
+  ) VALUES (
+    NEW.id,
+    NEW.rsvp_cycle_at,
+    NEW.group_id,
+    NEW.target,
+    NEW.status,
+    v_next_live,
+    NOW()
+  )
+  ON CONFLICT (game_id, cycle_at) DO UPDATE SET
+    group_id = EXCLUDED.group_id,
+    target = EXCLUDED.target,
+    game_status = EXCLUDED.game_status,
+    next_live_at = EXCLUDED.next_live_at,
+    updated_at = NOW();
+
+  RETURN NEW;
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION maintain_rsvp_push_headcount()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_game_id TEXT;
+  v_delta INTEGER;
+  v_cycle TIMESTAMPTZ;
+  v_group_id TEXT;
+  v_target INTEGER;
+  v_status TEXT;
+  v_next_live TIMESTAMPTZ;
+BEGIN
+  IF is_cycle_reset_in_progress() THEN
+    RETURN COALESCE(NEW, OLD);
+  END IF;
+
+  v_game_id := COALESCE(NEW.game_id, OLD.game_id);
+
+  IF TG_OP = 'INSERT' THEN
+    v_delta := 1 + NEW.plus_ones;
+  ELSIF TG_OP = 'DELETE' THEN
+    v_delta := -(1 + OLD.plus_ones);
+  ELSE
+    v_delta := (1 + NEW.plus_ones) - (1 + OLD.plus_ones);
+    IF v_delta = 0 THEN
+      RETURN NEW;
+    END IF;
+  END IF;
+
+  SELECT rsvp_cycle_at, group_id, target, status
+  INTO v_cycle, v_group_id, v_target, v_status
+  FROM games
+  WHERE id = v_game_id;
+
+  IF v_cycle IS NULL OR v_status = 'cancelled' THEN
+    RETURN COALESCE(NEW, OLD);
+  END IF;
+
+  v_next_live := v_cycle;
+
+  INSERT INTO game_push_state (
+    game_id,
+    cycle_at,
+    group_id,
+    target,
+    game_status,
+    rsvp_headcount,
+    next_live_at,
+    updated_at
+  ) VALUES (
+    v_game_id,
+    v_cycle,
+    v_group_id,
+    v_target,
+    v_status,
+    v_delta,
+    v_next_live,
+    NOW()
+  )
+  ON CONFLICT (game_id, cycle_at) DO UPDATE SET
+    rsvp_headcount = game_push_state.rsvp_headcount + EXCLUDED.rsvp_headcount,
+    updated_at = NOW();
+
+  RETURN COALESCE(NEW, OLD);
+END;
+$$;
+
+DROP TRIGGER IF EXISTS rsvps_maintain_push_headcount ON rsvps;
+DROP TRIGGER IF EXISTS rsvps_maintain_push_headcount_ins_del ON rsvps;
+DROP TRIGGER IF EXISTS rsvps_maintain_push_headcount_update ON rsvps;
+
+CREATE TRIGGER rsvps_maintain_push_headcount_ins_del
+  AFTER INSERT OR DELETE ON rsvps
+  FOR EACH ROW
+  EXECUTE FUNCTION maintain_rsvp_push_headcount();
+
+CREATE TRIGGER rsvps_maintain_push_headcount_update
+  AFTER UPDATE OF plus_ones ON rsvps
+  FOR EACH ROW
+  EXECUTE FUNCTION maintain_rsvp_push_headcount();
+
+DROP TRIGGER IF EXISTS games_sync_push_state ON games;
+CREATE TRIGGER games_sync_push_state
+  AFTER UPDATE OF status, target, weekday, start_time, timezone, group_id ON games
+  FOR EACH ROW
+  EXECUTE FUNCTION sync_game_push_state_denorm();
+
 CREATE TABLE IF NOT EXISTS app_config (
   key TEXT PRIMARY KEY,
   value TEXT NOT NULL
@@ -447,6 +669,8 @@ CREATE TABLE IF NOT EXISTS app_config (
 ALTER TABLE app_config ENABLE ROW LEVEL SECURITY;
 
 GRANT EXECUTE ON FUNCTION reset_game_rsvp_cycle(TEXT, TIMESTAMPTZ) TO service_role;
+REVOKE ALL ON FUNCTION upsert_game_push_state_for_cycle(TEXT, TIMESTAMPTZ) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION upsert_game_push_state_for_cycle(TEXT, TIMESTAMPTZ) TO service_role;
 GRANT EXECUTE ON FUNCTION reset_stale_game_cycles() TO service_role;
 
 CREATE OR REPLACE FUNCTION normalize_phone(p_phone TEXT)
@@ -720,6 +944,8 @@ BEGIN
       v_status,
       v_cycle
     );
+
+    PERFORM upsert_game_push_state_for_cycle(v_id, v_cycle);
   END IF;
 END;
 $$;

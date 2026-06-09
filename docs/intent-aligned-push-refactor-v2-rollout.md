@@ -2,8 +2,8 @@
 name: Intent-aligned push refactor v2 rollout
 overview: Feature-phased rollout with PR sub-phases (2b-i/ii/ii-client/iii, 3a/b, 4a/b, 5a/b) isolating hot-path risk. Badge milestones (pregame + live 1.5×/2×) with latest-only coalescing; thin paths via denormalized game_push_state, stub outbox + drain copy, single cron.
 status: in-progress
-completed_phases: [1, 2a]
-next: 2b-i
+completed_phases: [1, 2a, 2b-i, 2b-ii]
+next: 2b-ii-client
 note: Derisked rollout after v1 revert. Reference spec at docs/intent-aligned-push-refactor-plan.md; rollback template at scripts/supabase-rollback-push-plan.sql.
 ---
 
@@ -17,13 +17,15 @@ Reference: archived spec in [intent-aligned-push-refactor-plan.md](intent-aligne
 | ----- | ------ | ------- |
 | **1** — Chat push removal | **Done** | `8e637d5` — no per-message push; bell “Game alerts”; `notify-chat` removed |
 | **2a** — Cancel push + outbox infra | **Done** | `3c7ad9f` — migrations `032`–`034`; [phase-2a-cancel-push-runbook.md](phase-2a-cancel-push-runbook.md) |
-| **2b** — Pregame badge *(i → ii → ii-client → iii)* | Pending | — |
+| **2b-i** — Enforce hygiene | **Done** | `b9ec2aa` — migration `035` |
+| **2b-ii** — Push state lifecycle | **Done** | migration `036` — `game_push_state`, headcount trigger |
+| **2b** *(ii-client → iii remaining)* | In progress | — |
 | **3** — Live pushes *(3a → 3b)* | Pending | — |
 | **4** — Chatter *(4a → 4b)* | Pending | — |
 | **5** — Announcements *(5a → 5b)* | Pending | — |
 | Group limits *(orthogonal)* | Pending | — |
 
-**Next up:** 2b-i (enforce hygiene).
+**Next up:** 2b-ii-client (scoped RSVP/check-in fetch).
 
 ## Goals
 
@@ -264,7 +266,7 @@ Do **not** add new full-refetch paths on RSVP/check-in. Announcements (Phase 5) 
 ### Release order
 
 ```text
-[✓ 1] → [✓ 2a] → 2b-i → 2b-ii → 2b-ii-client → 2b-iii → 3a → 3b → 4a → 4b → 5a → 5b
+[✓ 1] → [✓ 2a] → [✓ 2b-i] → [✓ 2b-ii] → 2b-ii-client → 2b-iii → 3a → 3b → 4a → 4b → 5a → 5b
 
                  └─ pregame badge stack ─────────┘   └─ live ─┘   └─ chatter stack ─┘
 
@@ -301,8 +303,8 @@ Split **medium-risk** phases so each PR changes **one layer**: hygiene → state
 | ------ | ------- | ---------- | ----------------------------------------------------------------------- |
 | 1      | **Done** | Low–Medium | Stops chat push; deletes `notify-chat`                                  |
 | 2a     | **Done** | Low–Medium | First push pipeline + cancel trigger                                    |
-| 2b-i   | Pending | Low        | Enforce refactor — no new push behavior                                 |
-| 2b-ii        | Pending | Low–Medium | State lifecycle — writes on cycle reset, optional headcount maintenance |
+| 2b-i   | **Done** | Low        | Enforce refactor — no new push behavior                                 |
+| 2b-ii        | **Done** | Low–Medium | State lifecycle — writes on cycle reset, optional headcount maintenance |
 | 2b-ii-client | Pending | Low        | Scoped client fetch — merge per-game RSVP/check-in; no DB changes       |
 | 2b-iii       | Pending | Medium     | Badge enqueue on RSVP — **RSVP latency gate**                           |
 | 3a     | Pending | Low        | `next_live_at` due check on drain (not full-game scan)                  |
@@ -422,9 +424,9 @@ See [phase-2a-cancel-push-runbook.md](phase-2a-cancel-push-runbook.md) for step-
 
 ---
 
-#### Phase 2b-i — Enforce hygiene only
+#### Phase 2b-i — Enforce hygiene only ✅
 
-**Risk: Low** · **Migration:** `035_hot_path_triggers.sql`
+**Status: Done** (`b9ec2aa`, migration `035`) · **Risk: Low**
 
 
 | Area | What                                                                                                         |
@@ -447,9 +449,9 @@ See [phase-2a-cancel-push-runbook.md](phase-2a-cancel-push-runbook.md) for step-
 
 ---
 
-#### Phase 2b-ii — Push state lifecycle (no enqueue)
+#### Phase 2b-ii — Push state lifecycle (no enqueue) ✅
 
-**Risk: Low–Medium** · **Migration:** `036_game_push_state_lifecycle.sql`
+**Status: Done** (migration `036`) · **Risk: Low–Medium**
 
 
 | Area | What                                                                                                                       |
@@ -467,7 +469,7 @@ See [phase-2a-cancel-push-runbook.md](phase-2a-cancel-push-runbook.md) for step-
 
 ##### Rollback
 
-Drop headcount trigger if present; leave or drop `game_push_state` columns (forward-only OK if 2b-iii not shipped).
+[scripts/supabase-rollback-036-game-push-state.sql](../scripts/supabase-rollback-036-game-push-state.sql)
 
 ---
 
@@ -789,8 +791,8 @@ Restore `return fetchAppData()` on write helpers.
 | -------------- | ------- | ------------------- | --------------------------------------------------------------------- |
 | 1              | **Done** | *(client + edge)*   | Restore `notifyChatPush` + redeploy `notify-chat`                     |
 | 2a             | **Done** | `032`, `033`, `034` | `scripts/supabase-rollback-032-push-outbox.sql` + drop cancel trigger |
-| 2b-i           | Pending | `035`               | [scripts/supabase-rollback-035-hot-path-triggers.sql](../scripts/supabase-rollback-035-hot-path-triggers.sql) |
-| 2b-ii          | Pending | `036`               | Drop headcount trigger; optional column rollback                      |
+| 2b-i           | **Done** | `035`               | [scripts/supabase-rollback-035-hot-path-triggers.sql](../scripts/supabase-rollback-035-hot-path-triggers.sql) |
+| 2b-ii          | **Done** | `036`               | [scripts/supabase-rollback-036-game-push-state.sql](../scripts/supabase-rollback-036-game-push-state.sql) |
 | 2b-ii-client   | Pending | *(none)*            | Revert [data.js](../src/lib/data.js) + [useAppData.js](../src/hooks/useAppData.js) to full fetch |
 | 2b-iii         | Pending | `037`               | Drop badge enqueue + coalescing; keep 2b-ii state                     |
 | 3a             | Pending | `038`               | Drop due-live step in processor                                       |
