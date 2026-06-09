@@ -306,7 +306,7 @@ Split **medium-risk** phases so each PR changes **one layer**: hygiene → state
 | 2a     | **Done** | Low–Medium | First push pipeline + cancel trigger                                    |
 | 2b-i   | **Done** | Low        | Enforce refactor — no new push behavior                                 |
 | 2b-ii        | **Done** | Low–Medium | State lifecycle — writes on cycle reset, optional headcount maintenance |
-| 2b-ii-client | Pending | Low        | Scoped client fetch — merge per-game RSVP/check-in; no DB changes       |
+| 2b-ii-client | **Done** | Low        | Scoped client fetch — merge per-game RSVP/check-in; no DB changes       |
 | 2b-iii       | Pending | Medium     | Badge enqueue on RSVP — **RSVP latency gate**                           |
 | 3a     | Pending | Low        | `next_live_at` due check on drain (not full-game scan)                  |
 | 3b     | Pending | Low–Medium | Live headcount milestones on RSVP trigger — same coalescing rules       |
@@ -506,9 +506,9 @@ ORDER BY gps.cycle_at DESC;
 
 ---
 
-#### Phase 2b-ii-client — Scoped client fetch
+#### Phase 2b-ii-client — Scoped client fetch ✅
 
-**Risk: Low** · **Migration:** *(none — client-only PR)*
+**Status: Done** (`caa68bd`) · **Risk: Low** · **Migration:** *(none — client-only PR)*
 
 | Area   | What                                                                                                                                 |
 | ------ | ------------------------------------------------------------------------------------------------------------------------------------ |
@@ -518,11 +518,13 @@ ORDER BY gps.cycle_at DESC;
 
 ##### E2E test
 
+**Code-complete** (shipped in `caa68bd`). **Staging sign-off** still recommended before 2b-iii latency gate:
+
 - [ ] RSVP upsert/cancel feels instant; Network tab shows **one** `rsvps` write + **one** scoped `rsvps?game_id=eq.…` read (not groups/games/check_ins/guests)
 - [ ] Check-in/check-out same pattern on `game_check_ins`
 - [ ] Device B sees Device A’s RSVP on shared game card (scoped Realtime merge)
-- [ ] `renameRsvps` still works (2 writes only; local name patch — no `fetchAppData`)
-- [ ] Bootstrap / manual refresh unchanged
+- [x] `renameRsvps` still works (2 writes only; local name patch — no `fetchAppData`) — verified in code
+- [x] Bootstrap / manual refresh unchanged — verified in code
 
 ##### Rollback
 
@@ -534,12 +536,36 @@ Revert [data.js](../src/lib/data.js) + [useAppData.js](../src/hooks/useAppData.j
 
 **Risk: Medium** · **Migration:** `037_badge_push_trigger.sql`
 
+##### Pre-implementation sanity check (2026-06)
+
+Reviewed against `036`, `032`–`034`, [pushMaterialize.ts](../supabase/functions/_shared/pushMaterialize.ts), [gameBadge.js](../src/utils/gameBadge.js), and 2b-ii-client (`caa68bd`). **Plan is sound** — proceed with 2b-iii as scoped below.
+
+| Check | Verdict |
+| ----- | ------- |
+| Prerequisites (2b-ii state + 2b-ii-client scoped fetch) | **Met** — `game_push_state` + headcount trigger shipped; client hot path no longer full-refetches |
+| Hot-path O(1) headcount + milestone compare | **Sound** — tiers match `gameBadge.js` (`almost` = `max(1, target - 2)`, `go` = `target`) |
+| Pregame-only scope in 2b-iii; live tiers in 3b | **Sound** — keeps 2b-iii PR medium-risk; avoids live-window edge cases in first enqueue PR |
+| Stub outbox + drain materialize | **Sound** — matches cancel push pattern; copy stays off RSVP transaction |
+| Milestone coalescing (latest-only) | **Required** — not implemented yet; must ship in `037` (see implementation notes) |
+| Website / client integrity | **OK** — no client changes required; RSVP enforce (035) unchanged; scoped fetch isolates latency gate |
+
+**Implementation notes (optimize without integrity loss):**
+
+1. **Extend `maintain_rsvp_push_headcount()`** in `037` — do **not** add a second AFTER trigger on `rsvps`. One function: headcount delta (already in `036`) + pregame milestone compare + conditional `enqueue_push_event`. Avoids double trigger invocation and duplicate `games` reads.
+2. **`games` read honesty** — `036` already does one indexed `SELECT` from `games` per headcount-changing RSVP to resolve `rsvp_cycle_at`. 2b-iii should add **no second** `games` read. Latency gate: confirm total stays at one PK lookup (or refactor to `game_push_state` JOIN `games` once and reuse `target` / `game_status` / `group_id` from denorm).
+3. **`last_badge_milestone`** — column exists but is not updated in `036`; `037` must set it on upgrade (and when superseding), not on downgrade/cancel-only count changes.
+4. **`supersede_pending_badge(game_id, new_rank)`** — implement on enqueue: delete or mark skipped unprocessed `push_outbox` badge rows for same `game_id` with lower rank **before** inserting stub. Add **drain-side safety net** in [process-push-outbox](../supabase/functions/process-push-outbox/index.ts): per batch, for badge-family `event_type`s, deliver max rank per `game_id` only.
+5. **`enqueue_push_event` from trigger** — same `SECURITY DEFINER` pattern as [033_game_cancelled_push.sql](../supabase/migrations/033_game_cancelled_push.sql); pregame gate: `game_status <> 'cancelled'` and `NOW() < cycle_at` (occurrence / `rsvp_cycle_at`).
+6. **Edge** — add `badge_almost` / `badge_go` to [pushMaterialize.ts](../supabase/functions/_shared/pushMaterialize.ts) (currently only `game_cancelled`). Tag: `disc-check-badge-{gameId}` per archived spec.
+7. **Rollback** — drop enqueue + supersede helper + milestone updates from maintain function; headcount-only path from `036` remains.
+
+**Out of scope for 2b-iii** (defer integrity): `live_some` / `live_full` (3b), `phase_live` (3a), nightly headcount reconcile (optional).
 
 | Area   | What                                                                                                               |
 | ------ | ------------------------------------------------------------------------------------------------------------------ |
-| DB     | `trg_rsvps_push_badge` (or extend maintain trigger): pregame milestones only; upgrade-only; coalescing helper; **no `games` SELECT** |
-| Edge   | [pushMaterialize.ts](../supabase/functions/_shared/pushMaterialize.ts) — `badge_almost`, `badge_go` copy |
-| Client | **Requires 2b-ii-client** — latency gate assumes scoped post-RSVP fetch is already shipped                         |
+| DB     | Extend `maintain_rsvp_push_headcount` → badge enqueue: pregame `almost`/`go` only; upgrade-only; `supersede_pending_badge`; **no extra `games` SELECT** |
+| Edge   | [pushMaterialize.ts](../supabase/functions/_shared/pushMaterialize.ts) — `badge_almost`, `badge_go` copy; optional drain batch coalesce |
+| Client | **Requires 2b-ii-client** (`caa68bd`) — latency gate assumes scoped post-RSVP fetch is already shipped             |
 
 
 ##### RSVP latency gate (required before prod)
@@ -548,7 +574,7 @@ On staging, compare **before/after** 2b-iii:
 
 - [ ] RSVP upsert/cancel UI feels instant (subjective + no new errors)
 - [ ] Check-in tap latency unchanged
-- [ ] Badge trigger does not `SELECT` from `games`
+- [ ] Badge path adds **no second** `games` SELECT beyond the existing headcount maintain lookup (one PK read total)
 
 ##### E2E test
 
@@ -826,7 +852,7 @@ Restore `return fetchAppData()` on write helpers.
 | 2a             | **Done** | `032`, `033`, `034` | `scripts/supabase-rollback-032-push-outbox.sql` + drop cancel trigger |
 | 2b-i           | **Done** | `035`               | [scripts/supabase-rollback-035-hot-path-triggers.sql](../scripts/supabase-rollback-035-hot-path-triggers.sql) |
 | 2b-ii          | **Done** | `036`               | [scripts/supabase-rollback-036-game-push-state.sql](../scripts/supabase-rollback-036-game-push-state.sql) |
-| 2b-ii-client   | Pending | *(none)*            | Revert [data.js](../src/lib/data.js) + [useAppData.js](../src/hooks/useAppData.js) to full fetch |
+| 2b-ii-client   | **Done** | *(none)* `caa68bd` | Revert [data.js](../src/lib/data.js) + [useAppData.js](../src/hooks/useAppData.js) to full fetch |
 | 2b-iii         | Pending | `037`               | Drop badge enqueue + coalescing; keep 2b-ii state                     |
 | 3a             | Pending | `038`               | Drop due-live step in processor                                       |
 | 3b             | Pending | `039`               | Drop live-milestone branches from badge trigger                       |
