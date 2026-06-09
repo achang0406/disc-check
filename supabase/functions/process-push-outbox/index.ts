@@ -1,5 +1,10 @@
-import { createClient } from "jsr:@supabase/supabase-js@2";
-import { materializePushPayload } from "../_shared/pushMaterialize.ts";
+import { createClient, SupabaseClient } from "jsr:@supabase/supabase-js@2";
+import {
+  isBadgeEventType,
+  isStaleBadgeOutboxRow,
+  winningBadgeRowIds,
+} from "../_shared/badgePush.ts";
+import { materializePushPayload, type OutboxRow } from "../_shared/pushMaterialize.ts";
 import { isPushConfigured, sendPush } from "../_shared/pushSend.ts";
 
 const corsHeaders = {
@@ -8,6 +13,7 @@ const corsHeaders = {
 };
 
 const BATCH_LIMIT = 50;
+const MAX_DELIVERY_ATTEMPTS = 12;
 
 function jsonResponse(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
@@ -17,6 +23,40 @@ function jsonResponse(body: unknown, status = 200) {
       "Content-Type": "application/json",
     },
   });
+}
+
+async function markProcessed(supabase: SupabaseClient, rowId: number) {
+  await supabase
+    .from("push_outbox")
+    .update({ processed_at: new Date().toISOString() })
+    .eq("id", rowId);
+}
+
+function readAttemptCount(payload: Record<string, unknown> | null) {
+  const attempts = payload?.attempts;
+  return typeof attempts === "number" && Number.isFinite(attempts) ? attempts : 0;
+}
+
+async function recordDeliveryFailure(supabase: SupabaseClient, row: OutboxRow) {
+  const attempts = readAttemptCount(row.payload) + 1;
+  const payload = {
+    ...(row.payload ?? {}),
+    attempts,
+    last_failed_at: new Date().toISOString(),
+  };
+
+  if (attempts >= MAX_DELIVERY_ATTEMPTS) {
+    console.error("Abandoning outbox row after max delivery attempts", row.id, row.event_type);
+    await markProcessed(supabase, row.id);
+    return "abandoned" as const;
+  }
+
+  await supabase
+    .from("push_outbox")
+    .update({ payload })
+    .eq("id", row.id);
+
+  return "retry" as const;
 }
 
 Deno.serve(async (req) => {
@@ -49,19 +89,40 @@ Deno.serve(async (req) => {
       return jsonResponse({ error: fetchError.message }, 500);
     }
 
+    const batch = rows ?? [];
+    const deliverRowIds = winningBadgeRowIds(batch);
+
     let processed = 0;
     let sentTotal = 0;
     let skipped = 0;
+    let retrying = 0;
+    let abandoned = 0;
 
-    for (const row of rows ?? []) {
+    for (const row of batch) {
+      const isSupersededBadge =
+        row.game_id &&
+        isBadgeEventType(row.event_type) &&
+        !deliverRowIds.has(row.id);
+
+      if (isSupersededBadge) {
+        skipped += 1;
+        await markProcessed(supabase, row.id);
+        processed += 1;
+        continue;
+      }
+
+      if (await isStaleBadgeOutboxRow(supabase, row)) {
+        skipped += 1;
+        await markProcessed(supabase, row.id);
+        processed += 1;
+        continue;
+      }
+
       const payload = await materializePushPayload(supabase, row);
 
       if (!payload) {
         skipped += 1;
-        await supabase
-          .from("push_outbox")
-          .update({ processed_at: new Date().toISOString() })
-          .eq("id", row.id);
+        await markProcessed(supabase, row.id);
         processed += 1;
         continue;
       }
@@ -76,22 +137,39 @@ Deno.serve(async (req) => {
           excludeSubscriberIds: row.exclude_subscriber_ids ?? [],
         });
         sentTotal += result.sent;
+
+        if (result.sent > 0 || result.attempted === 0) {
+          await markProcessed(supabase, row.id);
+          processed += 1;
+          continue;
+        }
+
+        const outcome = await recordDeliveryFailure(supabase, row);
+        if (outcome === "retry") {
+          retrying += 1;
+        } else {
+          abandoned += 1;
+          processed += 1;
+        }
       } catch (error) {
         console.error("Outbox push failed", row.id, error);
+        const outcome = await recordDeliveryFailure(supabase, row);
+        if (outcome === "retry") {
+          retrying += 1;
+        } else {
+          abandoned += 1;
+          processed += 1;
+        }
       }
-
-      await supabase
-        .from("push_outbox")
-        .update({ processed_at: new Date().toISOString() })
-        .eq("id", row.id);
-      processed += 1;
     }
 
     return jsonResponse({
       processed,
       sent: sentTotal,
       skipped,
-      pending: (rows ?? []).length,
+      retrying,
+      abandoned,
+      pending: batch.length,
     });
   } catch (error) {
     return jsonResponse(

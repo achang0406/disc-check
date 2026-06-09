@@ -29,6 +29,23 @@ function gameDeepLink(groupId: string, gameId: string) {
   return `/groups/${groupId}?game=${gameId}`;
 }
 
+async function readGameHeadcount(
+  supabase: SupabaseClient,
+  gameId: string,
+  cycleAt: string | null,
+): Promise<number> {
+  if (!cycleAt) return 0;
+
+  const { data: state } = await supabase
+    .from("game_push_state")
+    .select("rsvp_headcount")
+    .eq("game_id", gameId)
+    .eq("cycle_at", cycleAt)
+    .maybeSingle();
+
+  return state?.rsvp_headcount ?? 0;
+}
+
 export async function materializePushPayload(
   supabase: SupabaseClient,
   row: OutboxRow,
@@ -39,14 +56,18 @@ export async function materializePushPayload(
 
   let gameName: string | null = null;
   let groupName: string | null = null;
+  let gameTarget: number | null = null;
+  let gameCycleAt: string | null = null;
 
   if (row.game_id) {
     const { data: game } = await supabase
       .from("games")
-      .select("name")
+      .select("name, target, rsvp_cycle_at")
       .eq("id", row.game_id)
       .maybeSingle();
     gameName = game?.name ?? null;
+    gameTarget = game?.target ?? null;
+    gameCycleAt = game?.rsvp_cycle_at ?? null;
   }
 
   const { data: group } = await supabase
@@ -67,6 +88,34 @@ export async function materializePushPayload(
         title,
         body: `${gameName ?? "Game"} — Cancelled this week`,
         tag: `disc-check-cancel-${row.game_id}`,
+        url,
+      };
+    case "badge_almost": {
+      const snapshotHeadcount = row.payload?.headcount_at_enqueue;
+      const snapshotTarget = row.payload?.target_at_enqueue;
+      const headcount =
+        typeof snapshotHeadcount === "number" && Number.isFinite(snapshotHeadcount)
+          ? snapshotHeadcount
+          : row.game_id
+            ? await readGameHeadcount(supabase, row.game_id, gameCycleAt)
+            : 0;
+      const target =
+        typeof snapshotTarget === "number" && Number.isFinite(snapshotTarget)
+          ? snapshotTarget
+          : gameTarget ?? 0;
+      const need = Math.max(0, target - headcount);
+      return {
+        title,
+        body: `${gameName ?? "Game"} — Almost there — need ${need} more`,
+        tag: `disc-check-badge-${row.game_id}`,
+        url,
+      };
+    }
+    case "badge_go":
+      return {
+        title,
+        body: `${gameName ?? "Game"} — Game on. See you there!`,
+        tag: `disc-check-badge-${row.game_id}`,
         url,
       };
     default:

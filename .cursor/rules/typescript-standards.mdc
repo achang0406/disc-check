@@ -50,7 +50,7 @@ function handle(payload: PushSendRequest) {}
 Export named types for shared data shapes. Annotate return types on exported functions and hooks.
 
 ```typescript
-export type PushSendResult = { sent: number; stale: number };
+export type PushSendResult = { sent: number; stale: number; attempted: number };
 
 export async function sendPush(request: PushSendRequest): Promise<PushSendResult> {
   // ...

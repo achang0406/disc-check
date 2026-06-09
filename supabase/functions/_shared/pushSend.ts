@@ -17,6 +17,7 @@ export type PushSendRequest = {
 export type PushSendResult = {
   sent: number;
   stale: number;
+  attempted: number;
 };
 
 function getServiceClient(): SupabaseClient {
@@ -52,6 +53,7 @@ export async function sendPush(request: PushSendRequest): Promise<PushSendResult
   webpush.setVapidDetails(vapidSubject, vapidPublicKey!, vapidPrivateKey!);
 
   let sent = 0;
+  let attempted = 0;
   const staleEndpoints: string[] = [];
 
   for (const row of subscriptions ?? []) {
@@ -63,7 +65,9 @@ export async function sendPush(request: PushSendRequest): Promise<PushSendResult
       typeof row.subscription === "string" ? JSON.parse(row.subscription) : row.subscription;
 
     if (!subscription?.endpoint || !subscription?.keys) {
-      staleEndpoints.push(row.endpoint);
+      if (row.endpoint) {
+        staleEndpoints.push(row.endpoint);
+      }
       continue;
     }
 
@@ -74,6 +78,8 @@ export async function sendPush(request: PushSendRequest): Promise<PushSendResult
       url,
       groupId,
     });
+
+    attempted += 1;
 
     try {
       await webpush.sendNotification(subscription, payload, {
@@ -94,5 +100,5 @@ export async function sendPush(request: PushSendRequest): Promise<PushSendResult
     await supabase.from("push_subscriptions").delete().in("endpoint", staleEndpoints);
   }
 
-  return { sent, stale: staleEndpoints.length };
+  return { sent, stale: staleEndpoints.length, attempted };
 }
