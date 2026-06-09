@@ -11,6 +11,7 @@
     "db:seed": "node scripts/seed.mjs",
     "verify:schedule": "node scripts/verify-game-schedule.mjs",
     "verify:2b-ii-push-state": "node scripts/verify-2b-ii-push-state.mjs",
+    "verify:2b-iii": "node scripts/verify-2b-iii.mjs",
     "verify:2b-iii-badge-outbox": "node scripts/verify-2b-iii-badge-outbox.mjs"
   },
   "dependencies": {
