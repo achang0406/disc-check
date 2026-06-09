@@ -24,6 +24,7 @@ export function useAppResume() {
 
     const onViewportChange = () => syncAppHeight();
     window.visualViewport?.addEventListener("resize", onViewportChange);
+    window.visualViewport?.addEventListener("scroll", onViewportChange);
     window.addEventListener("resize", onViewportChange);
 
     const onVisible = () => {
@@ -48,6 +49,7 @@ export function useAppResume() {
 
     return () => {
       window.visualViewport?.removeEventListener("resize", onViewportChange);
+      window.visualViewport?.removeEventListener("scroll", onViewportChange);
       window.removeEventListener("resize", onViewportChange);
       document.removeEventListener("visibilitychange", onVisible);
       window.removeEventListener("pageshow", onPageShow);

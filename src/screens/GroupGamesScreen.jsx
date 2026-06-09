@@ -135,35 +135,35 @@ export default function GroupGamesScreen({
       />
 
       <main className="games-screen__main games-screen__main--detail">
-        <div className="group-games-screen__intro">
-          <div className="group-games-screen__title-row">
-            <h1 className="group-games-screen__title">{group.name}</h1>
-            {canShowChatPushBell() && (
-              <div className="group-games-screen__bell">
-                <GroupChatPushButton
-                  groupId={group.id}
-                  subscriberId={presence?.self?.id ?? ""}
-                />
-              </div>
-            )}
-            {isAdmin && (
-              <Button
-                variant="icon"
-                className="game-card__edit-btn"
-                onClick={onEditGroup}
-                aria-label={`Edit ${group.name}`}
-                title={`Edit ${group.name}`}
-              >
-                <EditIcon />
-              </Button>
-            )}
+        <div className="group-games-screen__top">
+          <div className="group-games-screen__intro">
+            <div className="group-games-screen__title-row">
+              <h1 className="group-games-screen__title">{group.name}</h1>
+              {canShowChatPushBell() && (
+                <div className="group-games-screen__bell">
+                  <GroupChatPushButton
+                    groupId={group.id}
+                    subscriberId={presence?.self?.id ?? ""}
+                  />
+                </div>
+              )}
+              {isAdmin && (
+                <Button
+                  variant="icon"
+                  className="game-card__edit-btn"
+                  onClick={onEditGroup}
+                  aria-label={`Edit ${group.name}`}
+                  title={`Edit ${group.name}`}
+                >
+                  <EditIcon />
+                </Button>
+              )}
+            </div>
+            {group.description ? (
+              <p className="group-games-screen__description">{group.description}</p>
+            ) : null}
           </div>
-          {group.description ? (
-            <p className="group-games-screen__description">{group.description}</p>
-          ) : null}
-        </div>
 
-        <div className="game-detail-layout game-detail-layout--responsive group-games-screen__layout">
           <div className="group-games-screen__cards">
             {groupGames.length === 0 ? (
               <p className="group-games-screen__empty">
@@ -203,7 +203,9 @@ export default function GroupGamesScreen({
               />
             )}
           </div>
+        </div>
 
+        <div className="group-games-screen__chat-zone game-detail-layout game-detail-layout--responsive">
           <div className="game-detail-layout__thread-wrap">
             {presence && (
               <GameChatThread

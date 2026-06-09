@@ -481,6 +481,54 @@ export const globalStyles = `
     height: auto;
   }
 
+  /*
+   * Group detail: at least viewport-tall so the chat thread can flex with screen size.
+   * Page scroll stays enabled; only the message list scrolls inside the thread.
+   */
+  .games-screen.games-screen--group {
+    min-height: var(--app-height, 100dvh);
+    height: auto;
+    overflow: visible;
+  }
+
+  .games-screen.games-screen--group .games-screen__main--detail {
+    flex: 1 1 0;
+    min-height: 0;
+    overflow: visible;
+  }
+
+  .group-games-screen__top {
+    flex-shrink: 0;
+    width: 100%;
+  }
+
+  .games-screen.games-screen--group .group-games-screen__chat-zone {
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 0;
+    min-height: var(--chat-zone-min-height, 10rem);
+    width: 100%;
+    max-width: var(--content-rail-width);
+    margin-inline: auto;
+  }
+
+  .group-games-screen__chat-zone .game-detail-layout__thread-wrap {
+    flex: 1 1 0;
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  .group-games-screen__chat-zone .game-detail-layout__thread {
+    flex: 1 1 0;
+    min-height: 0;
+    max-height: none;
+    height: auto;
+  }
+
+  .group-games-screen__chat-zone .chat-bar-anchor--detail {
+    flex-shrink: 0;
+  }
+
   .games-screen--detail .games-screen__main--detail {
     flex: 0 1 auto;
     min-height: 0;
@@ -681,7 +729,7 @@ export const globalStyles = `
     z-index: 1;
   }
 
-  .group-games-screen__layout .game-detail-layout__thread-wrap {
+  .group-games-screen__chat-zone .game-detail-layout__thread-wrap {
     z-index: 2;
   }
 
@@ -1031,7 +1079,7 @@ export const globalStyles = `
     margin-bottom: var(--space-3);
   }
 
-  .group-games-screen__intro:has(+ .group-games-screen__layout .game-cards-carousel__dots) {
+  .group-games-screen__intro:has(+ .group-games-screen__cards .game-cards-carousel__dots) {
     margin-bottom: 0;
   }
 
