@@ -774,7 +774,7 @@ BEGIN
       )
     );
   ELSIF v_new_milestone = 'go' THEN
-    PERFORM enqueue_push_event('badge_go', v_group_id, v_game_id);
+    PERFORM enqueue_push_event('badge_go', v_group_id, v_game_id, '{}', NULL);
   END IF;
 
   UPDATE game_push_state

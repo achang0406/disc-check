@@ -1,4 +1,7 @@
--- Phase 2b-iii: pregame badge enqueue on RSVP milestone upgrade (almost/go).
+-- Hotfix: 037 added a 5-arg enqueue_push_event without dropping the 032 4-arg overload.
+-- 3-arg calls (badge_go, game_cancelled) fail with "function is not unique".
+
+DROP FUNCTION IF EXISTS enqueue_push_event(TEXT, TEXT, TEXT, TEXT[]);
 
 CREATE OR REPLACE FUNCTION enqueue_push_event(
   p_event_type TEXT,
@@ -37,66 +40,17 @@ BEGIN
 END;
 $$;
 
-CREATE OR REPLACE FUNCTION badge_milestone_rank(p_milestone TEXT)
-RETURNS INTEGER
-LANGUAGE sql
-IMMUTABLE
-AS $$
-  SELECT CASE p_milestone
-    WHEN 'almost' THEN 1
-    WHEN 'go' THEN 2
-    WHEN 'live_some' THEN 3
-    WHEN 'live_full' THEN 4
-    ELSE 0
-  END;
-$$;
-
-CREATE OR REPLACE FUNCTION compute_pregame_badge_milestone(p_headcount INTEGER, p_target INTEGER)
-RETURNS TEXT
-LANGUAGE plpgsql
-IMMUTABLE
-AS $$
-DECLARE
-  v_almost_threshold INTEGER;
-BEGIN
-  IF p_headcount >= p_target THEN
-    RETURN 'go';
-  END IF;
-
-  v_almost_threshold := GREATEST(1, p_target - 2);
-
-  IF p_headcount >= v_almost_threshold THEN
-    RETURN 'almost';
-  END IF;
-
-  RETURN 'not';
-END;
-$$;
-
-CREATE OR REPLACE FUNCTION supersede_pending_badge(p_game_id TEXT, p_new_rank INTEGER)
-RETURNS void
+CREATE OR REPLACE FUNCTION trg_games_push_cancelled()
+RETURNS TRIGGER
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = public
 AS $$
 BEGIN
-  IF p_game_id IS NULL OR trim(p_game_id) = '' THEN
-    RETURN;
+  IF OLD.status = 'open' AND NEW.status = 'cancelled' THEN
+    PERFORM enqueue_push_event('game_cancelled', NEW.group_id, NEW.id, '{}', NULL);
   END IF;
-
-  DELETE FROM push_outbox
-  WHERE game_id = p_game_id
-    AND processed_at IS NULL
-    AND event_type IN ('badge_almost', 'badge_go', 'badge_live_some', 'badge_live_full')
-    AND badge_milestone_rank(
-      CASE event_type
-        WHEN 'badge_almost' THEN 'almost'
-        WHEN 'badge_go' THEN 'go'
-        WHEN 'badge_live_some' THEN 'live_some'
-        WHEN 'badge_live_full' THEN 'live_full'
-        ELSE 'not'
-      END
-    ) < p_new_rank;
+  RETURN NEW;
 END;
 $$;
 
@@ -219,7 +173,3 @@ $$;
 
 REVOKE ALL ON FUNCTION enqueue_push_event(TEXT, TEXT, TEXT, TEXT[], JSONB) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION enqueue_push_event(TEXT, TEXT, TEXT, TEXT[], JSONB) TO service_role;
-REVOKE ALL ON FUNCTION badge_milestone_rank(TEXT) FROM PUBLIC;
-REVOKE ALL ON FUNCTION compute_pregame_badge_milestone(INTEGER, INTEGER) FROM PUBLIC;
-REVOKE ALL ON FUNCTION supersede_pending_badge(TEXT, INTEGER) FROM PUBLIC;
-GRANT EXECUTE ON FUNCTION supersede_pending_badge(TEXT, INTEGER) TO service_role;

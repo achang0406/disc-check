@@ -27,7 +27,7 @@ Reference: archived spec in [intent-aligned-push-refactor-plan.md](intent-aligne
 | **5** — Announcements *(5a → 5b)* | Pending | — |
 | Group limits *(orthogonal)* | Pending | — |
 
-**Next up:** 2b-iii staging sign-off (E2E + latency gate), then 3a (`next_live_at` due-live step in processor, migration `038`).
+**Next up:** 2b-iii staging sign-off (E2E + latency gate), then 3a (`next_live_at` due-live step in processor, migration `039`).
 
 ## Goals
 
@@ -275,7 +275,7 @@ Do **not** add new full-refetch paths on RSVP/check-in. Announcements (Phase 5) 
 Orthogonal: group limits anytime after 2a
 ```
 
-**Migration numbering:** Phase 2a shipped `032`–`034` (outbox, cancel trigger, cron). Phase 2b DB migrations are `035` (2b-i), `036` (2b-ii), `037` (2b-iii). **2b-ii-client** has no migration. Phase 3: `038` (3a live start), `039` (3b live milestones).
+**Migration numbering:** Phase 2a shipped `032`–`034` (outbox, cancel trigger, cron). Phase 2b DB migrations are `035` (2b-i), `036` (2b-ii), `037` (2b-iii), `038` (enqueue overload hotfix). **2b-ii-client** has no migration. Phase 3: `039` (3a live start), `040` (3b live milestones).
 
 ### PR sub-phases (isolate risky hot-path changes)
 
@@ -288,12 +288,13 @@ Split **medium-risk** phases so each PR changes **one layer**: hygiene → state
 | **2b-ii**        | `036` — `game_push_state` denorm + `reset_game_rsvp_cycle` hooks; optional headcount-only AFTER (**no enqueue**) | **Low–Medium** | Cycle reset creates correct rows; headcount matches RSVPs              |
 | **2b-ii-client** | *(no migration)* — scoped RSVP/check-in fetch + merge in [data.js](../src/lib/data.js) / [useAppData.js](../src/hooks/useAppData.js) | **Low**        | Network: 1 write + 1 scoped read per tap; two-device same-game sync   |
 | **2b-iii**       | `037` — badge AFTER trigger + stub enqueue + milestone coalescing (pregame `almost`/`go` only)                 | **Medium**     | **RSVP latency gate** + pregame badge E2E + coalescing burst test      |
-| **3a**           | `038` — `next_live_at` due-live step in processor → `phase_live`                                               | **Low**        | One “Game is live” push per cycle                                      |
-| **3b**           | `039` — live-window milestone branches (`badge_live_some`, `badge_live_full`) + live-entry catch-up            | **Low–Medium** | 1.5× / 2× pushes; rapid crossing → latest only; check-in path instant  |
-| **4a**           | `040` — `chat_push_state` + AFTER INSERT state-only trigger                                                      | **Low–Medium** | Chat send instant; window state correct                                |
-| **4b**           | `041` — enqueue branch on chatter trigger                                                                        | **Medium**     | **Chat latency gate** + chatter E2E                                    |
-| **5a**           | `042` — announcements table + banner/composer UI                                                                 | **Low–Medium** | Banner E2E; no push yet                                                |
-| **5b**           | `043` — announcement push RPC                                                                                    | **Low**        | Admin post → banner + OS push                                          |
+| **2b-iii hotfix** | `038` — drop duplicate `enqueue_push_event` overload; explicit 5-arg calls for `badge_go` / `game_cancelled` | **Low**        | RSVP at `go` threshold (headcount ≥ target) succeeds                    |
+| **3a**           | `039` — `next_live_at` due-live step in processor → `phase_live`                                               | **Low**        | One “Game is live” push per cycle                                      |
+| **3b**           | `040` — live-window milestone branches (`badge_live_some`, `badge_live_full`) + live-entry catch-up            | **Low–Medium** | 1.5× / 2× pushes; rapid crossing → latest only; check-in path instant  |
+| **4a**           | `041` — `chat_push_state` + AFTER INSERT state-only trigger                                                      | **Low–Medium** | Chat send instant; window state correct                                |
+| **4b**           | `042` — enqueue branch on chatter trigger                                                                        | **Medium**     | **Chat latency gate** + chatter E2E                                    |
+| **5a**           | `043` — announcements table + banner/composer UI                                                                 | **Low–Medium** | Banner E2E; no push yet                                                |
+| **5b**           | `044` — announcement push RPC                                                                                    | **Low**        | Admin post → banner + OS push                                          |
 
 
 **Dependency rule:** 2b-iii requires **2b-ii** (`game_push_state` exists) **and 2b-ii-client** (scoped fetch so latency gate is meaningful). 2b-i should ship before 2b-iii (isolates enforce regressions). **3b** requires **2b-iii** (badge trigger + coalescing); **3a** can ship before 3b. 4b requires 4a.
@@ -580,7 +581,9 @@ Reviewed against `036`, `032`–`034`, [pushMaterialize.ts](../supabase/function
 | Edge   | [pushMaterialize.ts](../supabase/functions/_shared/pushMaterialize.ts) — `badge_almost`, `badge_go`; [process-push-outbox](../supabase/functions/process-push-outbox/index.ts) — batch coalesce, stale skip (fail-closed on stale-read errors), delivery retry (max 12 attempts) |
 | Client | **Requires 2b-ii-client** (`caa68bd`) — no client changes in this PR                                   |
 
-**Deploy:** apply `037` on staging → redeploy `process-push-outbox` edge function → run E2E + latency gate below.
+**Deploy:** apply `037` + `038` on staging → redeploy `process-push-outbox` edge function → run E2E + latency gate below.
+
+**Hotfix `038`:** `037` added a 5-arg `enqueue_push_event` without dropping the `032` 4-arg overload — RSVP at `go` (headcount ≥ target) failed with `function enqueue_push_event is not unique`. `038` drops the old overload and uses explicit 5-arg calls for `badge_go` and `game_cancelled`.
 
 **Delivery retry:** drain leaves `processed_at` null when all subscription sends fail; stores `payload.attempts` and retries on next cron tick (~2 min per cron tick, not back-to-back). Rows with `attempts >= 12` are abandoned (marked processed). No subscribers (`attempted === 0`) counts as success. **Stale badge rows** (cancelled game, outside pregame/live window, wrong phase for event type, or row tier ≠ **current computed milestone** from `rsvp_headcount` + `target` — pregame `almost`/`go`, live `live_some`/`live_full`) are marked processed without send. Stale-read DB errors fail **closed** (skip send, mark processed).
 
@@ -629,7 +632,7 @@ Write `game_push_state.next_live_at = get_current_occurrence_start(weekday, star
 
 #### Phase 3a — “Game is live” at start
 
-**Risk: Low** · **Migration:** `038_phase_live_scheduled.sql`
+**Risk: Low** · **Migration:** `039_phase_live_scheduled.sql`
 
 **Deferred from 2b-iii:** `phase_live` is intentionally not enqueued in `037` — pregame badge stack stays isolated. Drain coalesce/stale/retry from 2b-iii applies to `phase_live` only where relevant (`phase_live` is not badge-family; no milestone coalesce).
 
@@ -650,7 +653,7 @@ WHERE next_live_at <= now()
 
 | Area | What                                                                                                                              |
 | ---- | --------------------------------------------------------------------------------------------------------------------------------- |
-| DB   | `038_phase_live_scheduled.sql` — `next_live_at` due-live step in processor (lifecycle hooks largely from 2b-ii; extend if needed) |
+| DB   | `039_phase_live_scheduled.sql` — `next_live_at` due-live step in processor (lifecycle hooks largely from 2b-ii; extend if needed) |
 | Edge | [pushMaterialize.ts](../supabase/functions/_shared/pushMaterialize.ts) — `phase_live` title/body                                  |
 
 
@@ -672,7 +675,7 @@ Drop `next_live_at` logic from processor; remove schedule hooks.
 
 #### Phase 3b — Live headcount excitement pushes
 
-**Risk: Low–Medium** · **Migration:** `039_live_badge_milestones.sql`
+**Risk: Low–Medium** · **Migration:** `040_live_badge_milestones.sql`
 
 **Deferred from 2b-iii** (edge already shipped; 3b adds SQL enqueue + copy):
 
@@ -749,7 +752,7 @@ Drop state trigger; keep table.
 
 #### Phase 4b — Chatter enqueue
 
-**Risk: Medium** · **Migration:** `038_chat_chatter_enqueue.sql`
+**Risk: Medium** · **Migration:** `042_chat_chatter_enqueue.sql`
 
 
 | Area | What                                                                                                                     |
@@ -784,7 +787,7 @@ Remove enqueue branch from trigger; 4a state maintenance remains.
 
 #### Phase 5a — Banner UI
 
-**Risk: Low–Medium** · **Migration:** `039_game_announcements.sql`
+**Risk: Low–Medium** · **Migration:** `043_game_announcements.sql`
 
 
 | Area   | What                                                                                                                                            |
@@ -806,7 +809,7 @@ Drop table + UI.
 
 #### Phase 5b — Announcement push
 
-**Risk: Low** · **Migration:** `040_announcement_push.sql`
+**Risk: Low** · **Migration:** `044_announcement_push.sql`
 
 
 | Area | What                                                            |
@@ -833,7 +836,7 @@ Drop RPC enqueue; banner from 5a remains.
 
 | Area | What                        |
 | ---- | --------------------------- |
-| DB   | `044_group_game_limits.sql` |
+| DB   | `045_group_game_limits.sql` |
 
 
 ---
@@ -885,13 +888,14 @@ Restore `return fetchAppData()` on write helpers.
 | 2b-ii          | **Done** | `036`               | [scripts/supabase-rollback-036-game-push-state.sql](../scripts/supabase-rollback-036-game-push-state.sql) |
 | 2b-ii-client   | **Done** | *(none)* `caa68bd` | Revert [data.js](../src/lib/data.js) + [useAppData.js](../src/hooks/useAppData.js) to full fetch |
 | 2b-iii         | **Implemented** | `037`               | [scripts/supabase-rollback-037-badge-push.sql](../scripts/supabase-rollback-037-badge-push.sql) |
-| 3a             | Pending | `038`               | Drop due-live step in processor                                       |
-| 3b             | Pending | `039`               | Drop live-milestone branches from badge trigger                       |
-| 4a             | Pending | `040`               | Drop state-only chatter trigger                                       |
-| 4b             | Pending | `041`               | Remove enqueue branch from chatter trigger                            |
-| 5a             | Pending | `042`               | Drop `game_announcements` + UI                                        |
-| 5b             | Pending | `043`               | Drop announcement RPC enqueue                                         |
-| Group limits   | Pending | `044`               | Drop constraint + revert RPC                                          |
+| 2b-iii hotfix  | **Done** | `038`               | Re-apply `037` overload mistake manually if rolled back               |
+| 3a             | Pending | `039`               | Drop due-live step in processor                                       |
+| 3b             | Pending | `040`               | Drop live-milestone branches from badge trigger                       |
+| 4a             | Pending | `041`               | Drop state-only chatter trigger                                       |
+| 4b             | Pending | `042`               | Remove enqueue branch from chatter trigger                            |
+| 5a             | Pending | `043`               | Drop `game_announcements` + UI                                        |
+| 5b             | Pending | `044`               | Drop announcement RPC enqueue                                         |
+| Group limits   | Pending | `045`               | Drop constraint + revert RPC                                          |
 
 
 Use **030+** (026–029 in remote history). One migration file per deployable sub-phase where possible.
