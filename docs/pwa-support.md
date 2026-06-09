@@ -172,10 +172,12 @@ Also exports `isIosDevice()`, `isAndroidDevice()`, `canOfferIosInstall()` (iOS +
 "--safe-area-bottom": "env(safe-area-inset-bottom, 0px)",
 "--safe-area-left": "env(safe-area-inset-left, 0px)",
 "--safe-area-right": "env(safe-area-inset-right, 0px)",
-"--app-height": "100dvh",
+"--chat-zone-min-height": "10rem",
 ```
 
-`src/styles/theme.js` applies safe-area padding to shell, header, chat bar anchor, and related layout. `useAppResume` overwrites `--app-height` with `visualViewport.height` for accurate PWA viewport sizing.
+`src/styles/theme.js` applies safe-area padding to shell, header, chat bar anchor, and related layout.
+
+**Viewport height:** the page shell (`html`, `body`, `#root`, `.app-shell`) uses document scroll with `height: auto` — no JS-synced viewport height. iOS still gets `min-height: -webkit-fill-available` on `html` / `body` / `#root`. The group games screen alone uses `min-height: 100dvh` so the chat zone can flex within the viewport; landing and other pages grow with content.
 
 ---
 
@@ -183,9 +185,8 @@ Also exports `isIosDevice()`, `isAndroidDevice()`, `canOfferIosInstall()` (iOS +
 
 ### `useAppResume` (`src/hooks/useAppResume.js`)
 
-Used in `App.jsx`. Addresses mobile/PWA viewport and resume issues:
+Used in `App.jsx`. Addresses mobile/PWA resume/paint glitches after backgrounding:
 
-- **`syncAppHeight()`** — sets `--app-height` from `visualViewport` (fallback `innerHeight`)
 - **`recoverPaint()`** — brief `translateZ(0)` nudge on `.app-shell` after resume
 - **`visibilitychange`** → recover when tab/app becomes visible
 - **`pageshow`** with `event.persisted` → full reload (BFCache)

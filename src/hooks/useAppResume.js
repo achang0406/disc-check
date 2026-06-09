@@ -1,14 +1,7 @@
 import { useEffect } from "react";
 import { isAndroidDevice, isStandaloneDisplay } from "../utils/pwaInstall.js";
 
-function syncAppHeight() {
-  const height = window.visualViewport?.height ?? window.innerHeight;
-  document.documentElement.style.setProperty("--app-height", `${Math.round(height)}px`);
-}
-
 function recoverPaint() {
-  syncAppHeight();
-
   const shell = document.querySelector(".app-shell");
   if (!(shell instanceof HTMLElement)) return;
 
@@ -20,13 +13,6 @@ function recoverPaint() {
 
 export function useAppResume() {
   useEffect(() => {
-    syncAppHeight();
-
-    const onViewportChange = () => syncAppHeight();
-    window.visualViewport?.addEventListener("resize", onViewportChange);
-    window.visualViewport?.addEventListener("scroll", onViewportChange);
-    window.addEventListener("resize", onViewportChange);
-
     const onVisible = () => {
       if (document.visibilityState !== "visible") return;
       recoverPaint();
@@ -48,9 +34,6 @@ export function useAppResume() {
     }
 
     return () => {
-      window.visualViewport?.removeEventListener("resize", onViewportChange);
-      window.visualViewport?.removeEventListener("scroll", onViewportChange);
-      window.removeEventListener("resize", onViewportChange);
       document.removeEventListener("visibilitychange", onVisible);
       window.removeEventListener("pageshow", onPageShow);
       window.removeEventListener("focus", onVisible);

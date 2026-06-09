@@ -87,7 +87,6 @@ export const globalStyles = `
   html, body, #root {
     margin: 0;
     padding: 0;
-    min-height: var(--app-height, 100dvh);
     height: auto;
     overflow-x: hidden;
     overflow-y: auto;
@@ -106,7 +105,6 @@ export const globalStyles = `
   }
 
   .app-shell {
-    min-height: var(--app-height, 100dvh);
     height: auto;
     overflow: visible;
   }
@@ -463,7 +461,6 @@ export const globalStyles = `
     z-index: 1;
     width: 100%;
     color: var(--text);
-    min-height: var(--app-height, 100dvh);
     height: auto;
     display: flex;
     flex-direction: column;
@@ -476,17 +473,12 @@ export const globalStyles = `
     min-height: 0;
   }
 
-  .games-screen--detail {
-    min-height: var(--app-height, 100dvh);
-    height: auto;
-  }
-
   /*
    * Group detail: at least viewport-tall so the chat thread can flex with screen size.
    * Page scroll stays enabled; only the message list scrolls inside the thread.
    */
   .games-screen.games-screen--group {
-    min-height: var(--app-height, 100dvh);
+    min-height: 100dvh;
     height: auto;
     overflow: visible;
   }

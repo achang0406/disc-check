@@ -59,7 +59,6 @@ export const TOKENS = {
   "--chat-thread-gap": "var(--space-2)",
   "--safe-area-top": "env(safe-area-inset-top, 0px)",
   "--safe-area-bottom": "env(safe-area-inset-bottom, 0px)",
-  "--app-height": "100dvh",
   "--chat-zone-min-height": "10rem",
   "--safe-area-left": "env(safe-area-inset-left, 0px)",
   "--safe-area-right": "env(safe-area-inset-right, 0px)",
