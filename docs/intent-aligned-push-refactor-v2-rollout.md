@@ -837,16 +837,18 @@ Trigger: `AFTER INSERT ON group_chat_messages` only (never UPDATE/DELETE). Name 
 
 #### Phase 4b — Chatter enqueue
 
+**Implementation plan:** [phase-4b-chat-chatter-plan.md](phase-4b-chat-chatter-plan.md)
+
 **Risk: Medium** · **Migration:** `043_chat_chatter_enqueue.sql`
 
+**Prerequisite (shipped pre-043):** [`chatterPush.ts`](../supabase/functions/_shared/chatterPush.ts) drain stale guard — re-prunes `window_senders` by time at drain; `distinct_sender_count` alone is not enough to detect "died down" when chat goes quiet without new inserts.
 
 | Area | What                                                                                                                     |
 | ---- | ------------------------------------------------------------------------------------------------------------------------ |
-| DB   | Enable step 6 in `maintain_chat_push_state` (enqueue + `last_push_at`)                                                   |
-| Edge | `chat_chatter` case in [`pushMaterialize.ts`](../supabase/functions/_shared/pushMaterialize.ts); redeploy `process-push-outbox` |
+| DB   | Step 8 in `maintain_chat_push_state`: cooldown check, **supersede pending** `chat_chatter`, enqueue, atomic `last_push_at` |
+| Edge | `chat_chatter` in [`pushMaterialize.ts`](../supabase/functions/_shared/pushMaterialize.ts); redeploy `process-push-outbox` (stale guard already wired) |
 
-
-**Optional fallback:** processor reconcile for missed groups (off hot path).
+**Died down at drain:** fewer than 2 distinct senders with `at >= now() - 30m` in `window_senders` (recomputed on drain, not cached column only).
 
 ##### Chat latency gate (required before prod)
 

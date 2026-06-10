@@ -7,6 +7,7 @@ import {
   winningCheckinBadgeRowIds,
   winningRsvpBadgeRowIds,
 } from "../_shared/badgePush.ts";
+import { isStaleChatterOutboxRow } from "../_shared/chatterPush.ts";
 import {
   isStaleCancelledOutboxRow,
   isStalePhaseLiveOutboxRow,
@@ -156,6 +157,13 @@ Deno.serve(async (req) => {
         }
       } else if (row.event_type === "phase_live") {
         if (await isStalePhaseLiveOutboxRow(supabase, row)) {
+          skipped += 1;
+          await markProcessed(supabase, row.id);
+          processed += 1;
+          continue;
+        }
+      } else if (row.event_type === "chat_chatter") {
+        if (await isStaleChatterOutboxRow(supabase, row)) {
           skipped += 1;
           await markProcessed(supabase, row.id);
           processed += 1;
