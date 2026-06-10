@@ -12,8 +12,9 @@ import {
   appendChatMessage,
   fetchGroupChatMessages,
   saveGroupChatMessage,
-  subscribeGroupChatMessages,
+  subscribeGroupChat,
 } from "../lib/chatMessages.js";
+import { useChatReactions } from "./useChatReactions.js";
 function createThreadMessage({ id, senderId, name, color, text, createdAt }) {
   return {
     id: id || `${senderId}-${createdAt || Date.now()}`,
@@ -76,6 +77,13 @@ export function usePresence(profile, groupId, groupName = "") {
   const displayName = getPresenceName(profile);
   const color = getPresenceColor(profile);
   const channelName = getPresenceChannel(groupId);
+
+  const {
+    reactionsByMessageId,
+    toggleReaction,
+    handleReactionEvent,
+    handleMessageDelete,
+  } = useChatReactions({ groupId, messages, sessionId });
 
   identityRef.current = { id: sessionId, name: displayName, color };
 
@@ -160,10 +168,17 @@ export function usePresence(profile, groupId, groupName = "") {
   useEffect(() => {
     if (!groupId || !isSupabaseConfigured()) return undefined;
 
-    return subscribeGroupChatMessages(groupId, (message) => {
-      setMessages((current) => appendChatMessage(current, message));
+    return subscribeGroupChat(groupId, {
+      onMessage: (message) => {
+        setMessages((current) => appendChatMessage(current, message));
+      },
+      onMessageDelete: (messageId) => {
+        setMessages((current) => current.filter((entry) => entry.id !== messageId));
+        handleMessageDelete(messageId);
+      },
+      onReaction: handleReactionEvent,
     });
-  }, [groupId]);
+  }, [groupId, handleMessageDelete, handleReactionEvent]);
 
   useEffect(() => {
     if (!isSupabaseConfigured() || !channelName) return undefined;
@@ -338,6 +353,8 @@ export function usePresence(profile, groupId, groupName = "") {
       chatInputRef,
       setThreadDraft,
       sendChat,
+      reactionsByMessageId,
+      toggleReaction,
       self: { id: sessionId, name: displayName, color },
     }),
     [
@@ -348,6 +365,8 @@ export function usePresence(profile, groupId, groupName = "") {
       connected,
       setThreadDraft,
       sendChat,
+      reactionsByMessageId,
+      toggleReaction,
       sessionId,
       displayName,
       color,

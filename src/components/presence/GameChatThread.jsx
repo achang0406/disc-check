@@ -1,18 +1,125 @@
-import { useCallback, useLayoutEffect, useRef, useState } from "react";
+import { memo, useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { suppressMouseFocus } from "../../utils/suppressMouseFocus.js";
+import ChatReactionPicker from "./ChatReactionPicker.jsx";
+import ChatReactionStrip from "./ChatReactionStrip.jsx";
 
-function ChatBubble({ message, selfId }) {
+const LONG_PRESS_MS = 450;
+const MOVE_CANCEL_PX = 8;
+
+function reactionsEqual(left, right) {
+  if (left === right) return true;
+  if (!left?.length && !right?.length) return true;
+  if (!left?.length || !right?.length || left.length !== right.length) return false;
+
+  return left.every((entry, index) => {
+    const other = right[index];
+    return (
+      entry.emoji === other.emoji &&
+      entry.count === other.count &&
+      entry.reactorIds.join() === other.reactorIds.join()
+    );
+  });
+}
+
+const ChatBubble = memo(function ChatBubble({
+  message,
+  selfId,
+  reactions,
+  onToggleReaction,
+  onOpenPicker,
+  isSpotlightSource = false,
+}) {
   const isSelf = message.senderId === selfId;
+  const pressTimerRef = useRef(null);
+  const pressOriginRef = useRef(null);
+
+  const clearPressTimer = useCallback(() => {
+    if (pressTimerRef.current != null) {
+      window.clearTimeout(pressTimerRef.current);
+      pressTimerRef.current = null;
+    }
+    pressOriginRef.current = null;
+  }, []);
+
+  const openPicker = useCallback(
+    (target) => {
+      if (!(target instanceof HTMLElement)) return;
+      onOpenPicker(message.id, target.getBoundingClientRect());
+    },
+    [message.id, onOpenPicker],
+  );
+
+  const handlePointerDown = useCallback(
+    (event) => {
+      if (event.button !== 0) return;
+
+      pressOriginRef.current = { x: event.clientX, y: event.clientY };
+      clearPressTimer();
+
+      const target = event.currentTarget;
+      pressTimerRef.current = window.setTimeout(() => {
+        pressTimerRef.current = null;
+        openPicker(target);
+      }, LONG_PRESS_MS);
+    },
+    [clearPressTimer, openPicker],
+  );
+
+  const handlePointerMove = useCallback(
+    (event) => {
+      if (!pressOriginRef.current || pressTimerRef.current == null) return;
+
+      const dx = event.clientX - pressOriginRef.current.x;
+      const dy = event.clientY - pressOriginRef.current.y;
+      if (Math.hypot(dx, dy) > MOVE_CANCEL_PX) {
+        clearPressTimer();
+      }
+    },
+    [clearPressTimer],
+  );
+
+  const handleContextMenu = useCallback(
+    (event) => {
+      event.preventDefault();
+      openPicker(event.currentTarget);
+    },
+    [openPicker],
+  );
+
+  useEffect(() => () => clearPressTimer(), [clearPressTimer]);
 
   return (
     <div className={`chat-message${isSelf ? " chat-message--self" : ""}`}>
       {!isSelf && <span className="chat-message__name">{message.name}</span>}
-      <div className="chat-message__bubble">
-        {message.text}
+      <div className="chat-message__bubble-wrap">
+        <div
+          className={`chat-message__bubble${
+            isSpotlightSource ? " chat-message__bubble--spotlight-source" : ""
+          }`}
+          onPointerDown={handlePointerDown}
+          onPointerMove={handlePointerMove}
+          onPointerUp={clearPressTimer}
+          onPointerCancel={clearPressTimer}
+          onContextMenu={handleContextMenu}
+        >
+          {message.text}
+        </div>
+        <ChatReactionStrip
+          summaries={reactions}
+          selfId={selfId}
+          onToggleReaction={(emoji) => onToggleReaction(message.id, emoji)}
+        />
       </div>
     </div>
   );
-}
+}, (prev, next) => (
+  prev.message.id === next.message.id &&
+  prev.message.text === next.message.text &&
+  prev.message.senderId === next.message.senderId &&
+  prev.selfId === next.selfId &&
+  prev.isSpotlightSource === next.isSpotlightSource &&
+  reactionsEqual(prev.reactions, next.reactions)
+));
 
 function scrollToLatest(node) {
   if (!node) return;
@@ -66,21 +173,17 @@ function distanceFromLatest(thread) {
 
   const scrollTop = thread.scrollTop;
 
-  // WebKit rubber-band past the latest edge — still at latest.
   if (scrollTop > maxScroll + 2) return 0;
 
   const newest = thread.querySelector(".chat-message");
   if (newest) {
     const threadRect = thread.getBoundingClientRect();
     const msgRect = newest.getBoundingClientRect();
-    // Only count distance when the newest bubble sits below the viewport (scrolled up
-    // to read older messages). Overscroll past latest lifts content, so this stays ≤ 0.
     const beyondBottom = msgRect.bottom - threadRect.bottom;
     if (beyondBottom <= 2) return 0;
     return beyondBottom;
   }
 
-  // Fallback: Chrome uses 0 at latest (negative when scrolled up); positive is overscroll.
   if (scrollTop >= 0) return 0;
   return Math.abs(scrollTop);
 }
@@ -89,13 +192,53 @@ function isAtLatestScroll(thread) {
   return distanceFromLatest(thread) <= 2;
 }
 
-export default function GameChatThread({ messages, selfId, loading = false }) {
+export default function GameChatThread({
+  messages,
+  selfId,
+  reactionsByMessageId = {},
+  onToggleReaction,
+  loading = false,
+}) {
   const scrollRef = useRef(null);
   const latestAnchorRef = useRef(null);
   const stickToBottomRef = useRef(true);
   const prevMessageCountRef = useRef(0);
   const [showJumpToBottom, setShowJumpToBottom] = useState(false);
   const [hasPendingNew, setHasPendingNew] = useState(false);
+  const [pickerTarget, setPickerTarget] = useState(null);
+
+  const closePicker = useCallback(() => {
+    setPickerTarget(null);
+  }, []);
+
+  const handleOpenPicker = useCallback(
+    (messageId, rect) => {
+      const message = messages.find((entry) => entry.id === messageId);
+      if (!message || !rect) return;
+
+      setPickerTarget({
+        messageId,
+        rect: {
+          top: rect.top,
+          left: rect.left,
+          width: rect.width,
+          height: rect.height,
+        },
+        message,
+        isSelf: message.senderId === selfId,
+      });
+    },
+    [messages, selfId],
+  );
+
+  const handlePickerSelect = useCallback(
+    (emoji) => {
+      if (pickerTarget?.messageId && onToggleReaction) {
+        onToggleReaction(pickerTarget.messageId, emoji);
+      }
+    },
+    [onToggleReaction, pickerTarget?.messageId],
+  );
 
   const goToLatest = useCallback(({ smooth = false } = {}) => {
     const node = scrollRef.current;
@@ -189,6 +332,8 @@ export default function GameChatThread({ messages, selfId, loading = false }) {
     };
   }, [messages.length, messages[messages.length - 1]?.id]);
 
+  const messageIdSet = new Set(messages.map((message) => message.id));
+
   return (
     <div className="game-chat-thread-shell">
       <div
@@ -209,9 +354,21 @@ export default function GameChatThread({ messages, selfId, loading = false }) {
               className="game-chat-thread__latest-anchor"
               aria-hidden="true"
             />
-            {[...messages].reverse().map((message) => (
-              <ChatBubble key={message.id} message={message} selfId={selfId} />
-            ))}
+            {[...messages].reverse().map((message) => {
+              if (!messageIdSet.has(message.id)) return null;
+
+              return (
+                <ChatBubble
+                  key={message.id}
+                  message={message}
+                  selfId={selfId}
+                  reactions={reactionsByMessageId[message.id] ?? []}
+                  onToggleReaction={onToggleReaction}
+                  onOpenPicker={handleOpenPicker}
+                  isSpotlightSource={pickerTarget?.messageId === message.id}
+                />
+              );
+            })}
           </>
         )}
       </div>
@@ -229,6 +386,12 @@ export default function GameChatThread({ messages, selfId, loading = false }) {
           {hasPendingNew ? "New messages ↓" : "Latest ↓"}
         </button>
       )}
+
+      <ChatReactionPicker
+        target={pickerTarget}
+        onSelect={handlePickerSelect}
+        onClose={closePicker}
+      />
     </div>
   );
 }

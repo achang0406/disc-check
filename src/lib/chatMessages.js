@@ -93,15 +93,19 @@ export async function saveGroupChatMessage({
   return true;
 }
 
-export function subscribeGroupChatMessages(groupId, onMessage) {
+export function subscribeGroupChat(
+  groupId,
+  { onMessage, onMessageDelete, onReaction } = {},
+) {
   if (!isSupabaseConfigured() || !groupId) {
     return () => {};
   }
 
   const supabase = getSupabase();
-  const channel = supabase
-    .channel(`group-chat-messages:${groupId}`)
-    .on(
+  let channel = supabase.channel(`group-chat:${groupId}`);
+
+  if (onMessage) {
+    channel = channel.on(
       "postgres_changes",
       {
         event: "INSERT",
@@ -113,10 +117,71 @@ export function subscribeGroupChatMessages(groupId, onMessage) {
         const message = rowToMessage(payload.new);
         if (message) onMessage(message);
       },
-    )
-    .subscribe();
+    );
+  }
+
+  if (onMessageDelete) {
+    channel = channel.on(
+      "postgres_changes",
+      {
+        event: "DELETE",
+        schema: "public",
+        table: "group_chat_messages",
+        filter: `group_id=eq.${groupId}`,
+      },
+      (payload) => {
+        const id = payload.old?.id;
+        if (typeof id === "string") onMessageDelete(id);
+      },
+    );
+  }
+
+  if (onReaction) {
+    const handleReaction = (eventType) => (payload) => {
+      const row = eventType === "DELETE" ? payload.old : payload.new;
+      onReaction(eventType, row);
+    };
+
+    channel = channel
+      .on(
+        "postgres_changes",
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "group_chat_message_reactions",
+          filter: `group_id=eq.${groupId}`,
+        },
+        handleReaction("INSERT"),
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "UPDATE",
+          schema: "public",
+          table: "group_chat_message_reactions",
+          filter: `group_id=eq.${groupId}`,
+        },
+        handleReaction("UPDATE"),
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "DELETE",
+          schema: "public",
+          table: "group_chat_message_reactions",
+          filter: `group_id=eq.${groupId}`,
+        },
+        handleReaction("DELETE"),
+      );
+  }
+
+  channel.subscribe();
 
   return () => {
     void supabase.removeChannel(channel);
   };
+}
+
+export function subscribeGroupChatMessages(groupId, onMessage) {
+  return subscribeGroupChat(groupId, { onMessage });
 }

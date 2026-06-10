@@ -211,6 +211,8 @@ export default function GroupGamesScreen({
               <GameChatThread
                 messages={presence.messages}
                 selfId={presence.self.id}
+                reactionsByMessageId={presence.reactionsByMessageId}
+                onToggleReaction={presence.toggleReaction}
                 loading={presence.messagesLoading}
               />
             )}
