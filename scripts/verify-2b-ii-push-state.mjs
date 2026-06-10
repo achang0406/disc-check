@@ -1,5 +1,5 @@
 /**
- * Phase 2b-ii — read-only checks: game_push_state headcount vs live RSVPs.
+ * Phase 2b-ii — read-only checks: game_push_state headcount vs live RSVPs, guests, check-ins.
  * Usage: npm run verify:2b-ii-push-state
  * Optional: VERIFY_GAME_ID=g1 npm run verify:2b-ii-push-state
  */
@@ -24,8 +24,8 @@ function assert(condition, message) {
   if (!condition) throw new Error(message);
 }
 
-function sumHeadcount(rsvps) {
-  return rsvps.reduce((total, row) => total + 1 + (row.plus_ones ?? 0), 0);
+function sumPlayerHeadcount(rows) {
+  return rows.reduce((total, row) => total + 1 + (row.plus_ones ?? 0), 0);
 }
 
 async function main() {
@@ -51,25 +51,51 @@ async function main() {
   let missingCurrentRow = 0;
 
   for (const game of games) {
-    const { data: rsvps, error: rsvpError } = await supabase
-      .from("rsvps")
-      .select("plus_ones")
-      .eq("game_id", game.id);
+    const cycleAt = game.rsvp_cycle_at;
 
-    assert(!rsvpError, `rsvps query failed for ${game.id}: ${rsvpError?.message ?? "unknown"}`);
+    const [rsvpsResult, guestsResult, checkInsResult] = await Promise.all([
+      supabase.from("rsvps").select("plus_ones").eq("game_id", game.id),
+      supabase
+        .from("game_guests")
+        .select("guest_phase")
+        .eq("game_id", game.id)
+        .eq("cycle_at", cycleAt),
+      supabase
+        .from("game_check_ins")
+        .select("plus_ones")
+        .eq("game_id", game.id)
+        .eq("cycle_at", cycleAt),
+    ]);
 
-    const actual = sumHeadcount(rsvps ?? []);
+    assert(!rsvpsResult.error, `rsvps query failed for ${game.id}: ${rsvpsResult.error?.message}`);
+    assert(!guestsResult.error, `guests query failed for ${game.id}: ${guestsResult.error?.message}`);
+    assert(
+      !checkInsResult.error,
+      `check_ins query failed for ${game.id}: ${checkInsResult.error?.message}`,
+    );
+
+    const actualRsvp = sumPlayerHeadcount(rsvpsResult.data ?? []);
+    const actualPregameGuests = (guestsResult.data ?? []).filter(
+      (row) => (row.guest_phase ?? "live") === "pregame",
+    ).length;
+    const actualLiveGuests = (guestsResult.data ?? []).filter(
+      (row) => (row.guest_phase ?? "live") === "live",
+    ).length;
+    const actualCheckin =
+      sumPlayerHeadcount(checkInsResult.data ?? []) + actualLiveGuests;
 
     const { data: pushRows, error: pushError } = await supabase
       .from("game_push_state")
-      .select("cycle_at, rsvp_headcount, game_status, next_live_at")
+      .select(
+        "cycle_at, rsvp_headcount, pregame_guest_count, checkin_headcount, game_status, next_live_at",
+      )
       .eq("game_id", game.id)
       .order("cycle_at", { ascending: false });
 
     assert(!pushError, `game_push_state query failed for ${game.id}: ${pushError?.message ?? "unknown"}`);
 
     const current = (pushRows ?? []).find(
-      (row) => new Date(row.cycle_at).getTime() === new Date(game.rsvp_cycle_at).getTime(),
+      (row) => new Date(row.cycle_at).getTime() === new Date(cycleAt).getTime(),
     );
 
     if (!current) {
@@ -80,13 +106,22 @@ async function main() {
 
     checked += 1;
 
-    if (current.rsvp_headcount !== actual) {
+    const rsvpOk = current.rsvp_headcount === actualRsvp;
+    const pregameGuestOk = (current.pregame_guest_count ?? 0) === actualPregameGuests;
+    const checkinOk = (current.checkin_headcount ?? 0) === actualCheckin;
+
+    if (!rsvpOk || !pregameGuestOk || !checkinOk) {
       mismatches += 1;
       console.error(
-        `FAIL ${game.id} (${game.name}): push_headcount=${current.rsvp_headcount} actual=${actual}`,
+        `FAIL ${game.id} (${game.name}): ` +
+          `rsvp=${current.rsvp_headcount}/${actualRsvp} ` +
+          `pregame_guests=${current.pregame_guest_count ?? 0}/${actualPregameGuests} ` +
+          `checkin=${current.checkin_headcount ?? 0}/${actualCheckin}`,
       );
     } else {
-      console.log(`OK   ${game.id} (${game.name}): headcount=${actual}`);
+      console.log(
+        `OK   ${game.id} (${game.name}): rsvp=${actualRsvp} pregame_guests=${actualPregameGuests} checkin=${actualCheckin}`,
+      );
     }
 
     if (game.status === "cancelled") {

@@ -737,7 +737,11 @@ Drop `next_live_at` logic from processor; remove schedule hooks.
 
 Renames pregame `badge_*` → `rsvp_*`. Separate coalescing per family (`last_badge_milestone` vs `last_checkin_badge_milestone`). Pregame named guests via `game_guests.guest_phase = 'pregame'` (add after RSVP).
 
-**Deploy:** apply `041` → **redeploy `process-push-outbox`** → `npm run verify:3c-checkin-badge` (+ `verify:2b-iii` for pregame almost/go).
+**Live-entry catch-up:** `enqueue_due_phase_live_events` calls `try_enqueue_checkin_badge_upgrade` after `phase_live` when check-in headcount already qualifies (mirrors retired 3b RSVP catch-up, but on check-in counters).
+
+**DB guest guards:** `enforce_guest_window` requires ≥1 RSVP before pregame guest insert and ≥1 check-in before live walk-in insert (game-level; client still enforces per-user RSVP/check-in).
+
+**Deploy:** apply `041` → **redeploy `process-push-outbox`** → `npm run verify:3c-checkin-badge` (+ `verify:2b-iii` for pregame almost/go; `verify:2b-ii-push-state` for counter reconcile).
 
 ##### Rollback
 

@@ -18,7 +18,7 @@ See full plan: event types `rsvp_*` (pregame), `checkin_*` (live), `phase_live` 
 | 1.5× | `>= ceil(target × 1.5)` | `rsvp_surge_some` | `checkin_live_some` |
 | 2× | `>= ceil(target × 2)` | `rsvp_surge_full` | `checkin_live_full` |
 
-Pregame headcount: `rsvp_headcount + pregame_guest_count`. Live headcount: check-ins + live walk-ins. Coalesce latest-only **within each family** (`rsvp_*` vs `checkin_*`).
+Pregame headcount: `rsvp_headcount + pregame_guest_count`. Live headcount: check-ins + live walk-ins. Coalesce latest-only **within each family** (`rsvp_*` vs `checkin_*`). Live-entry catch-up: `try_enqueue_checkin_badge_upgrade` after `phase_live` when headcount already qualifies.
 
 ## Push copy
 

@@ -12,6 +12,8 @@ DROP FUNCTION IF EXISTS try_enqueue_checkin_badge_upgrade(TEXT, TIMESTAMPTZ);
 DROP FUNCTION IF EXISTS try_enqueue_rsvp_badge_upgrade(TEXT, TIMESTAMPTZ);
 DROP FUNCTION IF EXISTS supersede_pending_checkin_badge(TEXT, INTEGER);
 DROP FUNCTION IF EXISTS supersede_pending_rsvp_badge(TEXT, INTEGER);
+DROP FUNCTION IF EXISTS checkin_milestone_to_event(TEXT);
+DROP FUNCTION IF EXISTS rsvp_milestone_to_event(TEXT);
 DROP FUNCTION IF EXISTS checkin_event_to_milestone(TEXT);
 DROP FUNCTION IF EXISTS rsvp_event_to_milestone(TEXT);
 DROP FUNCTION IF EXISTS compute_badge_milestone(INTEGER, INTEGER);
@@ -85,6 +87,29 @@ BEGIN
         ELSE 'not'
       END
     ) < p_new_rank;
+END;
+$$;
+
+-- Restore 2-tier pregame helper (rollback maintain_rsvp only enqueues almost/go).
+CREATE OR REPLACE FUNCTION compute_pregame_badge_milestone(p_headcount INTEGER, p_target INTEGER)
+RETURNS TEXT
+LANGUAGE plpgsql
+IMMUTABLE
+AS $$
+DECLARE
+  v_almost_threshold INTEGER;
+BEGIN
+  IF p_headcount >= p_target THEN
+    RETURN 'go';
+  END IF;
+
+  v_almost_threshold := GREATEST(1, p_target - 2);
+
+  IF p_headcount >= v_almost_threshold THEN
+    RETURN 'almost';
+  END IF;
+
+  RETURN 'not';
 END;
 $$;
 

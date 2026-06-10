@@ -491,8 +491,22 @@ BEGIN
 
   IF TG_OP = 'INSERT' THEN
     IF v_in_live THEN
+      IF NOT EXISTS (
+        SELECT 1
+        FROM game_check_ins
+        WHERE game_id = NEW.game_id
+          AND cycle_at = v_occurrence
+        LIMIT 1
+      ) THEN
+        RAISE EXCEPTION 'Walk-ins can only be added after someone has checked in';
+      END IF;
       NEW.guest_phase := 'live';
     ELSIF v_occurrence IS NOT NULL AND NOW() < v_occurrence THEN
+      IF NOT EXISTS (
+        SELECT 1 FROM rsvps WHERE game_id = NEW.game_id LIMIT 1
+      ) THEN
+        RAISE EXCEPTION 'Guests can only be added after someone has RSVP''d';
+      END IF;
       NEW.guest_phase := 'pregame';
     ELSE
       RAISE EXCEPTION 'Guests can only be added during pregame or while the game is live';
@@ -689,7 +703,7 @@ BEGIN
 END;
 $$;
 
-CREATE OR REPLACE FUNCTION rsvp_event_to_milestone(p_milestone TEXT)
+CREATE OR REPLACE FUNCTION rsvp_milestone_to_event(p_milestone TEXT)
 RETURNS TEXT
 LANGUAGE sql
 IMMUTABLE
@@ -703,7 +717,7 @@ AS $$
   END;
 $$;
 
-CREATE OR REPLACE FUNCTION checkin_event_to_milestone(p_milestone TEXT)
+CREATE OR REPLACE FUNCTION checkin_milestone_to_event(p_milestone TEXT)
 RETURNS TEXT
 LANGUAGE sql
 IMMUTABLE
@@ -719,10 +733,24 @@ $$;
 
 CREATE OR REPLACE FUNCTION compute_pregame_badge_milestone(p_headcount INTEGER, p_target INTEGER)
 RETURNS TEXT
-LANGUAGE sql
+LANGUAGE plpgsql
 IMMUTABLE
 AS $$
-  SELECT compute_badge_milestone(p_headcount, p_target);
+DECLARE
+  v_almost_threshold INTEGER;
+BEGIN
+  IF p_headcount >= p_target THEN
+    RETURN 'go';
+  END IF;
+
+  v_almost_threshold := GREATEST(1, p_target - 2);
+
+  IF p_headcount >= v_almost_threshold THEN
+    RETURN 'almost';
+  END IF;
+
+  RETURN 'not';
+END;
 $$;
 
 CREATE OR REPLACE FUNCTION supersede_pending_rsvp_badge(p_game_id TEXT, p_new_rank INTEGER)
@@ -841,7 +869,7 @@ BEGIN
 
   IF v_new_milestone = 'almost' THEN
     PERFORM enqueue_push_event(
-      rsvp_event_to_milestone(v_new_milestone),
+      rsvp_milestone_to_event(v_new_milestone),
       v_group_id,
       p_game_id,
       '{}',
@@ -852,7 +880,7 @@ BEGIN
     );
   ELSE
     PERFORM enqueue_push_event(
-      rsvp_event_to_milestone(v_new_milestone),
+      rsvp_milestone_to_event(v_new_milestone),
       v_group_id,
       p_game_id,
       '{}',
@@ -916,7 +944,7 @@ BEGIN
 
   IF v_new_milestone = 'almost' THEN
     PERFORM enqueue_push_event(
-      checkin_event_to_milestone(v_new_milestone),
+      checkin_milestone_to_event(v_new_milestone),
       v_group_id,
       p_game_id,
       '{}',
@@ -927,7 +955,7 @@ BEGIN
     );
   ELSE
     PERFORM enqueue_push_event(
-      checkin_event_to_milestone(v_new_milestone),
+      checkin_milestone_to_event(v_new_milestone),
       v_group_id,
       p_game_id,
       '{}',
@@ -1042,6 +1070,7 @@ DECLARE
   v_cycle TIMESTAMPTZ;
   v_delta INTEGER;
   v_phase TEXT;
+  v_status TEXT;
 BEGIN
   IF is_cycle_reset_in_progress() THEN
     RETURN COALESCE(NEW, OLD);
@@ -1060,11 +1089,12 @@ BEGIN
     v_delta := -1;
   END IF;
 
-  SELECT rsvp_cycle_at INTO v_cycle
+  SELECT rsvp_cycle_at, status
+  INTO v_cycle, v_status
   FROM games
   WHERE id = v_game_id;
 
-  IF v_cycle IS NULL THEN
+  IF v_cycle IS NULL OR v_status = 'cancelled' THEN
     RETURN COALESCE(NEW, OLD);
   END IF;
 
@@ -1095,13 +1125,20 @@ DECLARE
   v_cycle TIMESTAMPTZ;
   v_delta INTEGER;
   v_guest_phase TEXT;
+  v_status TEXT;
 BEGIN
   IF is_cycle_reset_in_progress() THEN
     RETURN COALESCE(NEW, OLD);
   END IF;
 
+  v_game_id := COALESCE(NEW.game_id, OLD.game_id);
+
+  SELECT status INTO v_status FROM games WHERE id = v_game_id;
+  IF v_status IS NULL OR v_status = 'cancelled' THEN
+    RETURN COALESCE(NEW, OLD);
+  END IF;
+
   IF TG_TABLE_NAME = 'game_check_ins' THEN
-    v_game_id := COALESCE(NEW.game_id, OLD.game_id);
     v_cycle := COALESCE(NEW.cycle_at, OLD.cycle_at);
 
     IF TG_OP = 'INSERT' THEN
@@ -1115,7 +1152,6 @@ BEGIN
       END IF;
     END IF;
   ELSE
-    v_game_id := COALESCE(NEW.game_id, OLD.game_id);
     v_cycle := COALESCE(NEW.cycle_at, OLD.cycle_at);
     v_guest_phase := COALESCE(NEW.guest_phase, OLD.guest_phase);
 
@@ -1246,6 +1282,8 @@ BEGIN
     WHERE game_id = v_row.game_id
       AND cycle_at = v_row.cycle_at;
 
+    PERFORM try_enqueue_checkin_badge_upgrade(v_row.game_id, v_row.cycle_at);
+
     v_count := v_count + 1;
   END LOOP;
 
@@ -1258,8 +1296,8 @@ REVOKE ALL ON FUNCTION enqueue_push_event(TEXT, TEXT, TEXT, TEXT[], JSONB) FROM 
 GRANT EXECUTE ON FUNCTION enqueue_push_event(TEXT, TEXT, TEXT, TEXT[], JSONB) TO service_role;
 REVOKE ALL ON FUNCTION badge_milestone_rank(TEXT) FROM PUBLIC;
 REVOKE ALL ON FUNCTION compute_badge_milestone(INTEGER, INTEGER) FROM PUBLIC;
-REVOKE ALL ON FUNCTION rsvp_event_to_milestone(TEXT) FROM PUBLIC;
-REVOKE ALL ON FUNCTION checkin_event_to_milestone(TEXT) FROM PUBLIC;
+REVOKE ALL ON FUNCTION rsvp_milestone_to_event(TEXT) FROM PUBLIC;
+REVOKE ALL ON FUNCTION checkin_milestone_to_event(TEXT) FROM PUBLIC;
 REVOKE ALL ON FUNCTION compute_pregame_badge_milestone(INTEGER, INTEGER) FROM PUBLIC;
 REVOKE ALL ON FUNCTION supersede_pending_badge(TEXT, INTEGER) FROM PUBLIC;
 REVOKE ALL ON FUNCTION supersede_pending_rsvp_badge(TEXT, INTEGER) FROM PUBLIC;
