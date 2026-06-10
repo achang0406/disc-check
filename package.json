@@ -15,7 +15,8 @@
     "verify:3a-phase-live": "node scripts/verify-3a-phase-live.mjs",
     "verify:3b-live-badge": "node scripts/verify-3b-live-badge.mjs",
     "verify:3c-checkin-badge": "node scripts/verify-3c-checkin-badge.mjs",
-    "verify:2b-iii-badge-outbox": "node scripts/verify-2b-iii-badge-outbox.mjs"
+    "verify:2b-iii-badge-outbox": "node scripts/verify-2b-iii-badge-outbox.mjs",
+    "verify:lifecycle-push-stale": "node scripts/verify-lifecycle-push-stale.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.49.8",

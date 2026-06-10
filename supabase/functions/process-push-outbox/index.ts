@@ -7,6 +7,10 @@ import {
   winningCheckinBadgeRowIds,
   winningRsvpBadgeRowIds,
 } from "../_shared/badgePush.ts";
+import {
+  isStaleCancelledOutboxRow,
+  isStalePhaseLiveOutboxRow,
+} from "../_shared/lifecyclePush.ts";
 import { materializePushPayload, type OutboxRow } from "../_shared/pushMaterialize.ts";
 import { isPushConfigured, sendPush } from "../_shared/pushSend.ts";
 
@@ -138,6 +142,20 @@ Deno.serve(async (req) => {
         }
       } else if (isCheckinBadgeEventType(row.event_type)) {
         if (await isStaleCheckinOutboxRow(supabase, row)) {
+          skipped += 1;
+          await markProcessed(supabase, row.id);
+          processed += 1;
+          continue;
+        }
+      } else if (row.event_type === "game_cancelled") {
+        if (await isStaleCancelledOutboxRow(supabase, row)) {
+          skipped += 1;
+          await markProcessed(supabase, row.id);
+          processed += 1;
+          continue;
+        }
+      } else if (row.event_type === "phase_live") {
+        if (await isStalePhaseLiveOutboxRow(supabase, row)) {
           skipped += 1;
           await markProcessed(supabase, row.id);
           processed += 1;
