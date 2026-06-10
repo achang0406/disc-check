@@ -4,7 +4,7 @@ import Button from "../ui/Button.jsx";
 import GameCommitStrip from "./GameCommitStrip.jsx";
 import { useGameClock } from "../../hooks/useGameClock.js";
 import { isGameEnded, isGameLive } from "../../utils/gameSchedule.js";
-import { countHeadcount, countPlayers } from "../../utils/format.js";
+import { countHeadcount, countPregameHeadcount } from "../../utils/format.js";
 
 export default function GameCommitCard({
   profile,
@@ -37,11 +37,18 @@ export default function GameCommitCard({
 
   const live = isGameLive(game, now);
   const ended = isGameEnded(game, now);
-  const rsvpCount = countPlayers(rsvps, game.id);
-  const checkInCount = countHeadcount(checkIns, guests, game.id);
+  const rsvpCount = countPregameHeadcount(rsvps, guests, game.id);
+  const checkInCount = countHeadcount(checkIns, guests, game.id, "live");
   const rsvpEntries = rsvps[game.id] || [];
   const checkInEntries = checkIns[game.id] || [];
-  const walkInEntries = guests[game.id] || [];
+  const allGuestEntries = guests[game.id] || [];
+  const pregameGuestEntries = allGuestEntries.filter(
+    (entry) => (entry.guestPhase ?? "live") === "pregame",
+  );
+  const liveGuestEntries = allGuestEntries.filter(
+    (entry) => (entry.guestPhase ?? "live") === "live",
+  );
+  const walkInEntries = live || ended ? liveGuestEntries : pregameGuestEntries;
   const rsvpd = isRsvpd(game.id);
   const checkedIn = isCheckedIn(game.id);
   const saving = savingGameId === game.id;

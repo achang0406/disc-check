@@ -3,8 +3,8 @@ name: Intent-aligned push refactor v2 rollout
 overview: Feature-phased rollout with PR sub-phases (2b-i/ii/ii-client/iii, 3a/b, 4a/b, 5a/b) isolating hot-path risk. Badge milestones (pregame + live 1.5×/2×) with latest-only coalescing; thin paths via denormalized game_push_state, stub outbox + drain copy, single cron.
 status: in-progress
 completed_phases: [1, 2a, 2b-i, 2b-ii, 2b-ii-client, 2b-iii, 3a, 3b]
-next: 4a
-note: Derisked rollout after v1 revert. Phase 3 complete on staging (039–040). Reference spec at docs/intent-aligned-push-refactor-plan.md; rollback template at scripts/supabase-rollback-push-plan.sql.
+next: 3c
+note: Phase 3c (041) implemented locally — apply migration + redeploy process-push-outbox before staging E2E. Supersedes 3b RSVP-live-window badges.
 ---
 
 # Incremental push refactor (derisked v2)
@@ -24,7 +24,8 @@ Reference: archived spec in [intent-aligned-push-refactor-plan.md](intent-aligne
 | **2b** | **Done** | pregame badge stack |
 | **3a** — Phase live push | **Done** | migration `039`; `npm run verify:3a-phase-live` |
 | **3b** — Live badge milestones | **Done** | migration `040`; `npm run verify:3b-live-badge` |
-| **3** — Live pushes *(3a → 3b)* | **Done** | scheduled live start + live-window 1.5× / 2× badges |
+| **3c** — Check-in + pregame surge pushes | **Implemented** *(local)* | `041`; pregame `rsvp_surge_*` + live `checkin_*` on check-in headcount |
+| **3** — Live pushes *(3a → 3b → 3c)* | **In progress** | 3c supersedes 3b live RSVP badges |
 | **4** — Chatter *(4a → 4b)* | Pending | — |
 | **5** — Announcements *(5a → 5b)* | Pending | — |
 | Group limits *(orthogonal)* | Pending | — |
@@ -293,10 +294,11 @@ Split **medium-risk** phases so each PR changes **one layer**: hygiene → state
 | **2b-iii hotfix** | `038` — drop duplicate `enqueue_push_event` overload; explicit 5-arg calls for `badge_go` / `game_cancelled` | **Low**        | RSVP at `go` threshold (headcount ≥ target) succeeds                    |
 | **3a**           | `039` — `next_live_at` due-live step in processor → `phase_live`                                               | **Low**        | One “Game is live” push per cycle                                      |
 | **3b**           | `040` — live-window milestone branches (`badge_live_some`, `badge_live_full`) + live-entry catch-up            | **Low–Medium** | 1.5× / 2× pushes; rapid crossing → latest only; check-in path instant  |
-| **4a**           | `041` — `chat_push_state` + AFTER INSERT state-only trigger                                                      | **Low–Medium** | Chat send instant; window state correct                                |
-| **4b**           | `042` — enqueue branch on chatter trigger                                                                        | **Medium**     | **Chat latency gate** + chatter E2E                                    |
-| **5a**           | `043` — announcements table + banner/composer UI                                                                 | **Low–Medium** | Banner E2E; no push yet                                                |
-| **5b**           | `044` — announcement push RPC                                                                                    | **Low**        | Admin post → banner + OS push                                          |
+| **3c**           | `041` — pregame `rsvp_*` surge + live `checkin_*` milestones; `guest_phase`; drop 3b RSVP-live path          | **Medium**     | `npm run verify:3c-checkin-badge`; redeploy `process-push-outbox`        |
+| **4a**           | `042` — `chat_push_state` + AFTER INSERT state-only trigger                                                      | **Low–Medium** | Chat send instant; window state correct                                |
+| **4b**           | `043` — enqueue branch on chatter trigger                                                                        | **Medium**     | **Chat latency gate** + chatter E2E                                    |
+| **5a**           | `044` — announcements table + banner/composer UI                                                                 | **Low–Medium** | Banner E2E; no push yet                                                |
+| **5b**           | `045` — announcement push RPC                                                                                    | **Low**        | Admin post → banner + OS push                                          |
 
 
 **Dependency rule:** 2b-iii requires **2b-ii** (`game_push_state` exists) **and 2b-ii-client** (scoped fetch so latency gate is meaningful). 2b-i should ship before 2b-iii (isolates enforce regressions). **3b** requires **2b-iii** (badge trigger + coalescing); **3a** can ship before 3b. 4b requires 4a.
@@ -717,6 +719,29 @@ Drop `next_live_at` logic from processor; remove schedule hooks.
 ##### Rollback
 
 [scripts/supabase-rollback-040-live-badge.sql](../scripts/supabase-rollback-040-live-badge.sql) — drop live-milestone branches; keep 3a `phase_live`.
+
+**Superseded by 3c** — do not ship 3b-only behavior on new environments; use `041` instead.
+
+---
+
+#### Phase 3c — Check-in milestones + pregame surge
+
+**Status: Implemented** (migration `041`, local) · **Risk: Medium** · **Migration:** `041_checkin_badge_milestones.sql`
+
+**Replaces 3b:** live 1.5× / 2× excitement now tracks **check-in headcount** (check-ins + plus-ones + live walk-ins), not locked RSVP count. **Adds** pregame 1.5× / 2× (`rsvp_surge_some` / `rsvp_surge_full`) on RSVP + pregame named guests during the RSVP window.
+
+| Phase | Headcount | Events |
+| ----- | --------- | ------ |
+| Pregame | `rsvp_headcount + pregame_guest_count` | `rsvp_almost` → `rsvp_go` → `rsvp_surge_some` → `rsvp_surge_full` |
+| Live | `checkin_headcount` | `checkin_almost` → `checkin_go` → `checkin_live_some` → `checkin_live_full` |
+
+Renames pregame `badge_*` → `rsvp_*`. Separate coalescing per family (`last_badge_milestone` vs `last_checkin_badge_milestone`). Pregame named guests via `game_guests.guest_phase = 'pregame'` (add after RSVP).
+
+**Deploy:** apply `041` → **redeploy `process-push-outbox`** → `npm run verify:3c-checkin-badge` (+ `verify:2b-iii` for pregame almost/go).
+
+##### Rollback
+
+[scripts/supabase-rollback-041-checkin-badge.sql](../scripts/supabase-rollback-041-checkin-badge.sql) — restores 040 RSVP-live-window behavior; drops check-in triggers.
 
 ---
 

@@ -89,7 +89,7 @@ async function clearRsvps(cycleAt) {
     .delete()
     .eq("game_id", gameId)
     .is("processed_at", null)
-    .in("event_type", ["badge_almost", "badge_go"]);
+    .in("event_type", ["rsvp_almost", "rsvp_go", "badge_almost", "badge_go"]);
   if (outboxError) throw new Error(`clear pending badge outbox failed: ${outboxError.message}`);
 }
 
@@ -119,7 +119,7 @@ async function pendingBadgeRows() {
     .select("id, event_type, payload, processed_at")
     .eq("game_id", gameId)
     .is("processed_at", null)
-    .in("event_type", ["badge_almost", "badge_go"]);
+    .in("event_type", ["rsvp_almost", "rsvp_go", "badge_almost", "badge_go"]);
   if (error) throw new Error(`push_outbox query failed: ${error.message}`);
   return data ?? [];
 }
@@ -151,7 +151,10 @@ async function runTriggerTests(game) {
   state = await pushState(game.rsvp_cycle_at);
   assert(state?.last_badge_milestone === "go", `expected last_badge_milestone go, got ${state?.last_badge_milestone}`);
   let pending = await pendingBadgeRows();
-  assert(pending.some((row) => row.event_type === "badge_go"), "expected pending badge_go row");
+  assert(
+    pending.some((row) => row.event_type === "rsvp_go" || row.event_type === "badge_go"),
+    "expected pending rsvp_go row",
+  );
   await clearRsvps(game.rsvp_cycle_at);
 
   // almost enqueue + payload snapshot
@@ -163,8 +166,10 @@ async function runTriggerTests(game) {
   state = await pushState(game.rsvp_cycle_at);
   assert(state?.last_badge_milestone === "almost", `expected almost, got ${state?.last_badge_milestone}`);
   pending = await pendingBadgeRows();
-  const almostRow = pending.find((row) => row.event_type === "badge_almost");
-  assert(almostRow, "expected pending badge_almost");
+  const almostRow = pending.find(
+    (row) => row.event_type === "rsvp_almost" || row.event_type === "badge_almost",
+  );
+  assert(almostRow, "expected pending rsvp_almost");
   assert(almostRow.payload?.headcount_at_enqueue === almostNeed, "badge_almost missing headcount_at_enqueue");
   assert(almostRow.payload?.target_at_enqueue === game.target, "badge_almost missing target_at_enqueue");
 
@@ -176,8 +181,14 @@ async function runTriggerTests(game) {
   state = await pushState(game.rsvp_cycle_at);
   assert(state?.last_badge_milestone === "go", `expected go, got ${state?.last_badge_milestone}`);
   pending = await pendingBadgeRows();
-  assert(!pending.some((row) => row.event_type === "badge_almost"), "badge_almost should be superseded");
-  assert(pending.some((row) => row.event_type === "badge_go"), "expected pending badge_go after coalesce");
+  assert(
+    !pending.some((row) => row.event_type === "rsvp_almost" || row.event_type === "badge_almost"),
+    "rsvp_almost should be superseded",
+  );
+  assert(
+    pending.some((row) => row.event_type === "rsvp_go" || row.event_type === "badge_go"),
+    "expected pending rsvp_go after coalesce",
+  );
 
   // same-tier RSVP should not add another badge row
   console.log("\n--- test: no duplicate enqueue at same tier");

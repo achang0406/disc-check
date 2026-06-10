@@ -71,6 +71,7 @@ function groupGuests(rows) {
     map[row.game_id].push({
       id: String(row.id),
       name: row.name,
+      guestPhase: row.guest_phase ?? "live",
     });
   }
   return map;
@@ -368,7 +369,7 @@ export async function fetchAppData() {
 
   const guestsResult = await supabase
     .from("game_guests")
-    .select("id, game_id, name, cycle_at")
+    .select("id, game_id, name, cycle_at, guest_phase")
     .order("created_at", { ascending: true });
 
   if (guestsResult.error) throw guestsResult.error;

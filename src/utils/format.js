@@ -27,12 +27,20 @@ export function countPlayers(entriesByGame, gameId) {
   return (entriesByGame[gameId] || []).reduce((sum, entry) => sum + 1 + (entry.plusOnes || 0), 0);
 }
 
-export function countWalkIns(guests, gameId) {
-  return (guests[gameId] || []).length;
+export function countGuestsByPhase(guests, gameId, phase) {
+  return (guests[gameId] || []).filter((entry) => (entry.guestPhase ?? "live") === phase).length;
 }
 
-export function countHeadcount(checkIns, guests, gameId) {
-  return countPlayers(checkIns, gameId) + countWalkIns(guests, gameId);
+export function countWalkIns(guests, gameId) {
+  return countGuestsByPhase(guests, gameId, "live");
+}
+
+export function countHeadcount(checkIns, guests, gameId, phase = "live") {
+  return countPlayers(checkIns, gameId) + countGuestsByPhase(guests, gameId, phase);
+}
+
+export function countPregameHeadcount(rsvps, guests, gameId) {
+  return countPlayers(rsvps, gameId) + countGuestsByPhase(guests, gameId, "pregame");
 }
 
 export function totalRsvpCount(rsvps) {

@@ -591,8 +591,16 @@ export function useAppData(showToast) {
     if (!profile) return;
 
     const game = gamesMeta.find((item) => item.id === gameId);
-    if (!game || !isGameLive(game)) {
-      showToast("Walk-ins can be added after the game starts", "error");
+    if (!game) return;
+
+    const live = isGameLive(game);
+    const pregame = isRsvpOpen(game);
+
+    if (live) {
+      if (!isCheckedIn(gameId)) return;
+    } else if (pregame) {
+      if (!isRsvpd(gameId)) return;
+    } else {
       return;
     }
 
@@ -602,8 +610,9 @@ export function useAppData(showToast) {
     const trimmed = name.trim();
     if (!trimmed) return;
 
+    const guestPhase = live ? "live" : "pregame";
     const current = getStoredJson(STORAGE_KEYS.GUESTS) || {};
-    const nextEntry = { id: `local_${Date.now()}`, name: trimmed };
+    const nextEntry = { id: `local_${Date.now()}`, name: trimmed, guestPhase };
     current[gameId] = [...(current[gameId] || []), nextEntry];
     localStorage.setItem(STORAGE_KEYS.GUESTS, JSON.stringify(current));
     setGuests({ ...current });
@@ -620,7 +629,13 @@ export function useAppData(showToast) {
     if (!profile) return;
 
     const game = gamesMeta.find((item) => item.id === gameId);
-    if (!game || !isGameLive(game)) return;
+    if (!game) return;
+
+    const live = isGameLive(game);
+    const pregame = isRsvpOpen(game);
+    if (!live && !(pregame && isRsvpd(gameId))) {
+      return;
+    }
 
     const current = getStoredJson(STORAGE_KEYS.GUESTS) || {};
     const removed = (current[gameId] || []).find((entry) => entry.id === guestId);

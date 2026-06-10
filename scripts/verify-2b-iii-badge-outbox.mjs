@@ -17,12 +17,25 @@ const url = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
 const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const gameIdFilter = process.env.VERIFY_GAME_ID?.trim() || null;
 
-const BADGE_EVENT_TYPES = new Set([
+const RSVP_BADGE_EVENT_TYPES = new Set([
+  "rsvp_almost",
+  "rsvp_go",
+  "rsvp_surge_some",
+  "rsvp_surge_full",
   "badge_almost",
   "badge_go",
+]);
+
+const CHECKIN_BADGE_EVENT_TYPES = new Set([
+  "checkin_almost",
+  "checkin_go",
+  "checkin_live_some",
+  "checkin_live_full",
   "badge_live_some",
   "badge_live_full",
 ]);
+
+const BADGE_EVENT_TYPES = new Set([...RSVP_BADGE_EVENT_TYPES, ...CHECKIN_BADGE_EVENT_TYPES]);
 
 const MILESTONE_RANK = {
   not: 0,
@@ -51,12 +64,20 @@ function milestoneRank(value) {
 
 function eventTypeToMilestone(eventType) {
   switch (eventType) {
+    case "rsvp_almost":
+    case "checkin_almost":
     case "badge_almost":
       return "almost";
+    case "rsvp_go":
+    case "checkin_go":
     case "badge_go":
       return "go";
+    case "rsvp_surge_some":
+    case "checkin_live_some":
     case "badge_live_some":
       return "live_some";
+    case "rsvp_surge_full":
+    case "checkin_live_full":
     case "badge_live_full":
       return "live_full";
     default:
@@ -75,13 +96,7 @@ function isLiveWindow(cycleAt, now = new Date()) {
   return nowMs >= start && nowMs < end;
 }
 
-function computePregameBadgeMilestone(headcount, target) {
-  if (headcount >= target) return "go";
-  if (headcount >= Math.max(1, target - 2)) return "almost";
-  return "not";
-}
-
-function computeLiveBadgeMilestone(headcount, target) {
+function computeBadgeMilestone(headcount, target) {
   const liveFull = Math.ceil(target * 2);
   const liveSome = Math.ceil(target * 1.5);
 
@@ -92,24 +107,20 @@ function computeLiveBadgeMilestone(headcount, target) {
   return "not";
 }
 
-function computeCurrentBadgeMilestone(headcount, target, cycleAt, now = new Date()) {
-  if (isPregameWindow(cycleAt, now)) {
-    return computePregameBadgeMilestone(headcount, target);
-  }
+function isRsvpBadgeEventType(eventType) {
+  return RSVP_BADGE_EVENT_TYPES.has(eventType);
+}
 
-  if (isLiveWindow(cycleAt, now)) {
-    return computeLiveBadgeMilestone(headcount, target);
-  }
-
-  return "not";
+function isCheckinBadgeEventType(eventType) {
+  return CHECKIN_BADGE_EVENT_TYPES.has(eventType);
 }
 
 function isBadgeEventValidForPhase(eventType, cycleAt, now = new Date()) {
-  if (eventType === "badge_almost" || eventType === "badge_go") {
+  if (isRsvpBadgeEventType(eventType)) {
     return isPregameWindow(cycleAt, now);
   }
 
-  if (eventType === "badge_live_some" || eventType === "badge_live_full") {
+  if (isCheckinBadgeEventType(eventType)) {
     return isLiveWindow(cycleAt, now);
   }
 
@@ -129,7 +140,7 @@ function isStaleBadgeRowForMilestone(eventType, headcount, target, cycleAt, now 
     return true;
   }
 
-  const currentMilestone = computeCurrentBadgeMilestone(headcount, target, cycleAt, now);
+  const currentMilestone = computeBadgeMilestone(headcount, target);
   const rowMilestone = eventTypeToMilestone(eventType);
 
   return milestoneRank(rowMilestone) !== milestoneRank(currentMilestone);
@@ -181,7 +192,7 @@ async function main() {
 
         const { data: state, error: stateError } = await supabase
           .from("game_push_state")
-          .select("rsvp_headcount, target")
+          .select("rsvp_headcount, pregame_guest_count, checkin_headcount, target")
           .eq("game_id", row.game_id)
           .eq("cycle_at", game.rsvp_cycle_at)
           .maybeSingle();
@@ -191,14 +202,13 @@ async function main() {
           `game_push_state query failed for ${row.game_id}: ${stateError?.message ?? "unknown"}`,
         );
 
+        const headcount = isCheckinBadgeEventType(row.event_type)
+          ? state?.checkin_headcount ?? 0
+          : (state?.rsvp_headcount ?? 0) + (state?.pregame_guest_count ?? 0);
+
         if (
           !state ||
-          isStaleBadgeRowForMilestone(
-            row.event_type,
-            state.rsvp_headcount ?? 0,
-            state.target ?? 0,
-            cycleAt,
-          )
+          isStaleBadgeRowForMilestone(row.event_type, headcount, state.target ?? 0, cycleAt)
         ) {
           status = "stale";
           stale += 1;

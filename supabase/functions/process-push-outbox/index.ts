@@ -1,8 +1,11 @@
 import { createClient, SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import {
-  isBadgeEventType,
-  isStaleBadgeOutboxRow,
-  winningBadgeRowIds,
+  isCheckinBadgeEventType,
+  isRsvpBadgeEventType,
+  isStaleCheckinOutboxRow,
+  isStaleRsvpOutboxRow,
+  winningCheckinBadgeRowIds,
+  winningRsvpBadgeRowIds,
 } from "../_shared/badgePush.ts";
 import { materializePushPayload, type OutboxRow } from "../_shared/pushMaterialize.ts";
 import { isPushConfigured, sendPush } from "../_shared/pushSend.ts";
@@ -99,7 +102,8 @@ Deno.serve(async (req) => {
     }
 
     const batch = rows ?? [];
-    const deliverRowIds = winningBadgeRowIds(batch);
+    const deliverRsvpIds = winningRsvpBadgeRowIds(batch);
+    const deliverCheckinIds = winningCheckinBadgeRowIds(batch);
 
     let processed = 0;
     let sentTotal = 0;
@@ -108,23 +112,37 @@ Deno.serve(async (req) => {
     let abandoned = 0;
 
     for (const row of batch) {
-      const isSupersededBadge =
+      const isSupersededRsvp =
         row.game_id &&
-        isBadgeEventType(row.event_type) &&
-        !deliverRowIds.has(row.id);
+        isRsvpBadgeEventType(row.event_type) &&
+        !deliverRsvpIds.has(row.id);
 
-      if (isSupersededBadge) {
+      const isSupersededCheckin =
+        row.game_id &&
+        isCheckinBadgeEventType(row.event_type) &&
+        !deliverCheckinIds.has(row.id);
+
+      if (isSupersededRsvp || isSupersededCheckin) {
         skipped += 1;
         await markProcessed(supabase, row.id);
         processed += 1;
         continue;
       }
 
-      if (await isStaleBadgeOutboxRow(supabase, row)) {
-        skipped += 1;
-        await markProcessed(supabase, row.id);
-        processed += 1;
-        continue;
+      if (isRsvpBadgeEventType(row.event_type)) {
+        if (await isStaleRsvpOutboxRow(supabase, row)) {
+          skipped += 1;
+          await markProcessed(supabase, row.id);
+          processed += 1;
+          continue;
+        }
+      } else if (isCheckinBadgeEventType(row.event_type)) {
+        if (await isStaleCheckinOutboxRow(supabase, row)) {
+          skipped += 1;
+          await markProcessed(supabase, row.id);
+          processed += 1;
+          continue;
+        }
       }
 
       const payload = await materializePushPayload(supabase, row);

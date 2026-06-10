@@ -1,7 +1,7 @@
 ---
 name: Phase 3c check-in pushes
 overview: "Add Phase 3c: full four-tier milestone ladders for pregame RSVP (incl. 1.5×/2× surge) and live check-in; pregame named guests; rsvp_* / checkin_* rename; latest-only coalescing per phase."
-status: planned
+status: implemented
 migration: "041"
 ---
 
