@@ -101,8 +101,8 @@ export function useChatReactions({ groupId, messages, sessionId }) {
         emoji,
       };
 
-      const existing = (snapshot[messageId] ?? []).find((entry) =>
-        entry.reactorIds.includes(sessionId),
+      const existing = (snapshot[messageId] ?? []).find(
+        (entry) => entry.reactorId === sessionId,
       );
       const eventType = existing?.emoji === emoji ? "DELETE" : existing ? "UPDATE" : "INSERT";
 
