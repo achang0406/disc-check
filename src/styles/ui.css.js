@@ -1091,21 +1091,27 @@ export const uiStyles = `
     -webkit-touch-callout: none;
   }
 
+  .chat-message--self .chat-message__reactions {
+    right: auto;
+    left: 0;
+    justify-content: flex-start;
+    transform: translate(-20%, -42%);
+  }
+
   .chat-reaction {
     position: relative;
     display: inline-flex;
     align-items: center;
-    gap: 2px;
-    min-height: 20px;
-    padding: 1px 5px;
+    justify-content: center;
+    min-width: 22px;
+    min-height: 22px;
+    padding: 1px 4px;
     border-radius: var(--radius-pill, 999px);
     border: 1px solid var(--chip-border);
-    background: var(--surface, var(--chip-bg));
     box-shadow: var(--shadow-sm, 0 1px 3px rgba(0, 0, 0, 0.12));
     font-size: var(--font-label);
     line-height: 1;
     cursor: pointer;
-    color: var(--text);
     user-select: none;
     -webkit-user-select: none;
     -webkit-touch-callout: none;
@@ -1138,17 +1144,18 @@ export const uiStyles = `
   .chat-reaction--mine {
     border-color: var(--chip-you-border);
     background: var(--chip-you-bg);
+    color: var(--chip-you-text);
+  }
+
+  .chat-reaction--other {
+    border-color: var(--chip-border);
+    background: var(--chip-bg);
+    color: var(--text);
   }
 
   .chat-reaction__emoji {
     font-size: 13px;
     line-height: 1;
-  }
-
-  .chat-reaction__count {
-    font-family: var(--font-mono);
-    font-size: 9px;
-    color: var(--text-faint);
   }
 
   .chat-reaction-overlay {

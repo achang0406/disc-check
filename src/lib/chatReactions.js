@@ -10,49 +10,31 @@ function rowToReaction(row) {
   const groupId = typeof row.group_id === "string" ? row.group_id : null;
   const reactorId = typeof row.reactor_id === "string" ? row.reactor_id : null;
   const emoji = typeof row.emoji === "string" ? row.emoji : null;
+  const createdAt = row.created_at ? Date.parse(row.created_at) : 0;
 
   if (!messageId || !groupId || !reactorId || !emoji || !CHAT_REACTION_EMOJI_SET.has(emoji)) {
     return null;
   }
 
-  return { messageId, groupId, reactorId, emoji };
+  return { messageId, groupId, reactorId, emoji, createdAt };
 }
 
-function removeReactorFromSummaries(summaries, reactorId) {
-  const next = [];
-
-  for (const entry of summaries) {
-    if (!entry.reactorIds.includes(reactorId)) {
-      next.push(entry);
-      continue;
+function sortReactions(entries) {
+  return [...entries].sort((left, right) => {
+    if (left.createdAt !== right.createdAt) {
+      return left.createdAt - right.createdAt;
     }
-
-    const reactorIds = entry.reactorIds.filter((id) => id !== reactorId);
-    if (reactorIds.length > 0) {
-      next.push({ ...entry, reactorIds, count: reactorIds.length });
-    }
-  }
-
-  return next;
+    return left.reactorId.localeCompare(right.reactorId);
+  });
 }
 
-function addReactorToSummaries(summaries, emoji, reactorId) {
-  const withoutReactor = removeReactorFromSummaries(summaries, reactorId);
-  const existing = withoutReactor.find((entry) => entry.emoji === emoji);
+function upsertReaction(entries, { reactorId, emoji, createdAt = Date.now() }) {
+  const withoutReactor = entries.filter((entry) => entry.reactorId !== reactorId);
+  return sortReactions([...withoutReactor, { reactorId, emoji, createdAt }]);
+}
 
-  if (existing) {
-    return withoutReactor.map((entry) =>
-      entry.emoji === emoji
-        ? {
-            ...entry,
-            reactorIds: [...entry.reactorIds, reactorId],
-            count: entry.reactorIds.length + 1,
-          }
-        : entry,
-    );
-  }
-
-  return [...withoutReactor, { emoji, reactorIds: [reactorId], count: 1 }];
+function removeReactor(entries, reactorId) {
+  return entries.filter((entry) => entry.reactorId !== reactorId);
 }
 
 export function buildReactionsMap(rows) {
@@ -63,7 +45,11 @@ export function buildReactionsMap(rows) {
     if (!reaction) continue;
 
     const current = map[reaction.messageId] ?? [];
-    map[reaction.messageId] = addReactorToSummaries(current, reaction.emoji, reaction.reactorId);
+    map[reaction.messageId] = upsertReaction(current, {
+      reactorId: reaction.reactorId,
+      emoji: reaction.emoji,
+      createdAt: reaction.createdAt,
+    });
   }
 
   return map;
@@ -77,7 +63,7 @@ export function applyReactionDelta(map, event, row) {
   const current = [...(next[reaction.messageId] ?? [])];
 
   if (event === "DELETE") {
-    const updated = removeReactorFromSummaries(current, reaction.reactorId);
+    const updated = removeReactor(current, reaction.reactorId);
     if (updated.length === 0) {
       delete next[reaction.messageId];
     } else {
@@ -86,8 +72,11 @@ export function applyReactionDelta(map, event, row) {
     return next;
   }
 
-  const updated = addReactorToSummaries(current, reaction.emoji, reaction.reactorId);
-  next[reaction.messageId] = updated;
+  next[reaction.messageId] = upsertReaction(current, {
+    reactorId: reaction.reactorId,
+    emoji: reaction.emoji,
+    createdAt: reaction.createdAt || Date.now(),
+  });
   return next;
 }
 
@@ -95,9 +84,9 @@ export function pruneReactionsForMessages(map, messageIds) {
   const allowed = new Set(messageIds);
   const next = {};
 
-  for (const [messageId, summaries] of Object.entries(map)) {
+  for (const [messageId, reactions] of Object.entries(map)) {
     if (allowed.has(messageId)) {
-      next[messageId] = summaries;
+      next[messageId] = reactions;
     }
   }
 

@@ -13,11 +13,7 @@ function reactionsEqual(left, right) {
 
   return left.every((entry, index) => {
     const other = right[index];
-    return (
-      entry.emoji === other.emoji &&
-      entry.count === other.count &&
-      entry.reactorIds.join() === other.reactorIds.join()
-    );
+    return entry.reactorId === other.reactorId && entry.emoji === other.emoji;
   });
 }
 
@@ -105,7 +101,7 @@ const ChatBubble = memo(function ChatBubble({
           {message.text}
         </div>
         <ChatReactionStrip
-          summaries={reactions}
+          reactions={reactions}
           selfId={selfId}
           onToggleReaction={(emoji) => onToggleReaction(message.id, emoji)}
         />
