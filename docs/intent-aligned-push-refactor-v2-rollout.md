@@ -2,9 +2,9 @@
 name: Intent-aligned push refactor v2 rollout
 overview: Feature-phased rollout with PR sub-phases (2b-i/ii/ii-client/iii, 3a/b, 4a/b, 5a/b) isolating hot-path risk. Badge milestones (pregame + live 1.5×/2×) with latest-only coalescing; thin paths via denormalized game_push_state, stub outbox + drain copy, single cron.
 status: in-progress
-completed_phases: [1, 2a, 2b-i, 2b-ii, 2b-ii-client, 2b-iii, 3a, 3b]
-next: 3c
-note: Phase 3c (041) implemented locally — apply migration + redeploy process-push-outbox before staging E2E. Supersedes 3b RSVP-live-window badges.
+completed_phases: [1, 2a, 2b-i, 2b-ii, 2b-ii-client, 2b-iii, 3a, 3b, 3c]
+next: 4a
+note: Phase 3c (041) shipped. Lifecycle stale guards for game_cancelled + phase_live on drain (b6a3b66). Next migration for 4a is 042.
 ---
 
 # Incremental push refactor (derisked v2)
@@ -24,13 +24,13 @@ Reference: archived spec in [intent-aligned-push-refactor-plan.md](intent-aligne
 | **2b** | **Done** | pregame badge stack |
 | **3a** — Phase live push | **Done** | migration `039`; `npm run verify:3a-phase-live` |
 | **3b** — Live badge milestones | **Done** | migration `040`; `npm run verify:3b-live-badge` |
-| **3c** — Check-in + pregame surge pushes | **Implemented** *(local)* | `041`; pregame `rsvp_surge_*` + live `checkin_*` on check-in headcount |
-| **3** — Live pushes *(3a → 3b → 3c)* | **In progress** | 3c supersedes 3b live RSVP badges |
+| **3c** — Check-in + pregame surge pushes | **Done** | `041`; [phase-3c plan](phase-3c-check-in-pushes-plan.md) |
+| **3** — Live pushes *(3a → 3b → 3c)* | **Done** | 3c supersedes 3b live RSVP badges |
 | **4** — Chatter *(4a → 4b)* | Pending | — |
 | **5** — Announcements *(5a → 5b)* | Pending | — |
 | Group limits *(orthogonal)* | Pending | — |
 
-**Next up:** Phase 4a (chatter state trigger, migration `041`).
+**Next up:** Phase 4a (chatter state trigger, migration `042`).
 
 ## Goals
 
@@ -751,48 +751,99 @@ Renames pregame `badge_*` → `rsvp_*`. Separate coalescing per family (`last_ba
 
 ## Phase 4 — Chat chatter summary push (two PRs)
 
-**Ship:** event-driven discovery on message insert — **no** group-wide cron scan, **no** v1 `COUNT(DISTINCT)` trigger.
+**Implementation plan:** [phase-4a-chat-push-state-plan.md](phase-4a-chat-push-state-plan.md)
+
+**Ship:** event-driven discovery on message insert — **no** group-wide cron scan, **no** `COUNT(DISTINCT)` over `group_chat_messages` on the hot path.
+
+### Design review (4a) — soundness, performance, integrity
+
+**Verdict:** Splitting **4a (state only)** from **4b (enqueue)** remains the right shape — same pattern as 2b-ii → 2b-iii. The incremental `chat_push_state` approach still satisfies cross-cutting hot-path rules and fits the existing insert path in [`chatMessages.js`](../src/lib/chatMessages.js) (single `INSERT`, no client push hook).
+
+| Concern | Assessment |
+| ------- | ---------- |
+| **Performance** | One `chat_push_state` row upsert per message — O(1) I/O, bounded in-memory work. No scan of `group_chat_messages`. Coexists with existing `trim_group_chat_messages_after_insert` (trim stays table-maintenance only). |
+| **Integrity** | **Do not cap raw events** (50 messages from one sender is fine; 50 events with 2 senders could evict the first sender and under-count). **Dedupe by `sender_id`**: upsert `{sender_id, at}`; repeat messages refresh `at` only. Cap **distinct senders** (e.g. 20) after prune, dropping oldest `at`. Recompute `distinct_sender_count` from the array after prune (≤20 iterations). |
+| **Concurrency** | `SELECT … FOR UPDATE` on `chat_push_state` inside `SECURITY DEFINER` trigger function serializes per-group bursts. |
+| **4a scope** | Create full table including `last_push_at` (NULL, unused until 4b). **No** `push_outbox` writes, **no** `last_push_at` updates in 4a. |
+| **4b readiness** | Cooldown + enqueue live in the **same** trigger function behind `distinct >= 2` fast-path exit; set `last_push_at` only when enqueueing. Materialize `chat_chatter` copy on drain in [`pushMaterialize.ts`](../supabase/functions/_shared/pushMaterialize.ts). |
+| **Doc hygiene** | Next migration after `041` is **`042`** (4a), not `037`/`041` — those numbers are taken. |
+
+```mermaid
+sequenceDiagram
+  participant Client
+  participant ChatTable as group_chat_messages
+  participant Trim as trim_after_insert
+  participant State as maintain_chat_push_state
+  participant Outbox as push_outbox
+
+  Client->>ChatTable: INSERT message
+  ChatTable->>State: AFTER INSERT maintain window
+  Note over State: prune 30m, dedupe sender, count distinct
+  ChatTable->>Trim: AFTER INSERT cap 50 rows
+  Note over Outbox: 4a stops before Outbox
+  State-->>Outbox: 4b only if distinct>=2 and cooldown ok
+```
 
 ### `chat_push_state` (per `group_id`) — shared by 4a + 4b
 
-Maintain incrementally on each `group_chat_messages` INSERT:
+**Table (migration `042`):**
 
-- Prune senders older than 30 min from a bounded in-row structure (JSONB array of `{sender_id, at}`; **cap entries** e.g. last 50 events in window)
-- If new sender in window → increment distinct count
-- **Fast path:** after prune, if distinct `< 2` → return (no cooldown/outbox work)
+| Column | Purpose |
+| ------ | ------- |
+| `group_id` | PK, FK → `groups` |
+| `window_senders` | JSONB array of `{sender_id, at}` — **one entry per sender** in the rolling window |
+| `distinct_sender_count` | Cached count after each maintain (recomputed, not increment-only) |
+| `last_push_at` | Cooldown anchor for 4b; untouched in 4a |
+| `updated_at` | Audit |
+
+**`maintain_chat_push_state(p_group_id, p_sender_id)`** on each `group_chat_messages` INSERT:
+
+1. Upsert row; `FOR UPDATE` the `chat_push_state` row
+2. Prune entries with `at < now() - 30 minutes`
+3. If `p_sender_id` already in array → update its `at`; else append (then enforce max distinct senders cap by dropping oldest `at`)
+4. Set `distinct_sender_count` from array length
+5. **Fast path (4a + 4b):** if `distinct_sender_count < 2` → return
+6. **4b only:** if `last_push_at` is NULL or `> 1 hour` ago → `enqueue_push_event('chat_chatter', …)` + set `last_push_at = now()`
+
+Trigger: `AFTER INSERT ON group_chat_messages` only (never UPDATE/DELETE). Name e.g. `group_chat_messages_maintain_push_state` — separate from trim trigger.
 
 ---
 
 #### Phase 4a — Chat state only (no push)
 
-**Risk: Low–Medium** · **Migration:** `037_chat_push_state.sql`
+**Risk: Low–Medium** · **Migration:** `042_chat_push_state.sql`
 
 
 | Area | What                                                                                       |
 | ---- | ------------------------------------------------------------------------------------------ |
-| DB   | `chat_push_state` columns + AFTER INSERT trigger: update window state **only** — no outbox |
+| DB   | `chat_push_state` table + `maintain_chat_push_state` with steps 1–5 only — **no outbox, no `last_push_at` write** |
+| Edge | None (4a is DB-only)                                                                       |
+| Verify | `npm run verify:4a-chat-push-state` — latency smoke + distinct-window assertions       |
 
 
 ##### E2E test
 
 - [ ] Send message feels instant vs baseline
 - [ ] No OS push of any kind
-- [ ] State reflects 2+ distinct senders in 30 min window (inspect row or logs)
+- [ ] One sender × many messages → `distinct_sender_count = 1`
+- [ ] Two senders within 30 min → `distinct_sender_count = 2`
+- [ ] After 31 min idle, prune drops stale senders
 
 ##### Rollback
 
-Drop state trigger; keep table.
+`scripts/supabase-rollback-042-chat-push-state.sql` — add with 4a impl; drop trigger + function; keep or drop table.
 
 ---
 
 #### Phase 4b — Chatter enqueue
 
-**Risk: Medium** · **Migration:** `042_chat_chatter_enqueue.sql`
+**Risk: Medium** · **Migration:** `043_chat_chatter_enqueue.sql`
 
 
 | Area | What                                                                                                                     |
 | ---- | ------------------------------------------------------------------------------------------------------------------------ |
-| DB   | Extend chatter trigger: if distinct ≥ 2 and `now() - last_push_at > 1h` → stub outbox `chat_chatter`; set `last_push_at` |
+| DB   | Enable step 6 in `maintain_chat_push_state` (enqueue + `last_push_at`)                                                   |
+| Edge | `chat_chatter` case in [`pushMaterialize.ts`](../supabase/functions/_shared/pushMaterialize.ts); redeploy `process-push-outbox` |
 
 
 **Optional fallback:** processor reconcile for missed groups (off hot path).
@@ -926,11 +977,12 @@ Restore `return fetchAppData()` on write helpers.
 | 2b-iii hotfix  | **Done** | `038`               | Re-apply `037` overload mistake manually if rolled back               |
 | 3a             | **Done** | `039`         | [scripts/supabase-rollback-039-phase-live.sql](../scripts/supabase-rollback-039-phase-live.sql) |
 | 3b             | **Done** | `040`               | [scripts/supabase-rollback-040-live-badge.sql](../scripts/supabase-rollback-040-live-badge.sql) |
-| 4a             | Pending | `041`               | Drop state-only chatter trigger                                       |
-| 4b             | Pending | `042`               | Remove enqueue branch from chatter trigger                            |
-| 5a             | Pending | `043`               | Drop `game_announcements` + UI                                        |
-| 5b             | Pending | `044`               | Drop announcement RPC enqueue                                         |
-| Group limits   | Pending | `045`               | Drop constraint + revert RPC                                          |
+| 3c             | **Done** | `041`               | [scripts/supabase-rollback-041-checkin-badge.sql](../scripts/supabase-rollback-041-checkin-badge.sql) |
+| 4a             | Pending | `042`               | `scripts/supabase-rollback-042-chat-push-state.sql` (add with 4a impl) |
+| 4b             | Pending | `043`               | Remove enqueue branch from `maintain_chat_push_state`               |
+| 5a             | Pending | `044`               | Drop `game_announcements` + UI                                        |
+| 5b             | Pending | `045`               | Drop announcement RPC enqueue                                         |
+| Group limits   | Pending | `046`               | Drop constraint + revert RPC                                          |
 
 
 Use **030+** (026–029 in remote history). One migration file per deployable sub-phase where possible.

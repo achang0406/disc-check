@@ -139,8 +139,8 @@ Update `[src/sw.js](src/sw.js)` `push` handler — `clients.matchAll` → skip `
 **Tables:**
 
 ```sql
-game_push_state (game_id, cycle_at, last_rsvp_badge, last_phase, updated_at)
-chat_push_state (group_id, last_push_at)
+game_push_state (game_id, cycle_at, …)  -- see v2 rollout
+chat_push_state (group_id, window_senders JSONB, distinct_sender_count, last_push_at, updated_at)
 push_outbox (id, group_id, game_id, event_type, payload JSONB,
              exclude_subscriber_ids TEXT[], created_at, processed_at)
 ```
@@ -173,12 +173,14 @@ Deep link URLs use `/groups/{groupId}?game={gameId}` for game-scoped events; `/g
 
 ### 2d. Chat chatter trigger
 
-`AFTER INSERT ON group_chat_messages`:
+**Authoritative spec:** [phase-4a-chat-push-state-plan.md](phase-4a-chat-push-state-plan.md) + [intent-aligned-push-refactor-v2-rollout.md](intent-aligned-push-refactor-v2-rollout.md) Phase 4.
 
-1. Distinct `sender_id` in last 30 min ≥ 2
-2. `chat_push_state.last_push_at` NULL or > 1 hour ago → enqueue `chat_chatter` with `exclude_subscriber_ids = ARRAY[NEW.sender_id]`
-3. Update `chat_push_state.last_push_at`
-4. Remove `notifyChatPush` from `[usePresence.js](src/hooks/usePresence.js)`
+`AFTER INSERT ON group_chat_messages` only — maintain incremental `chat_push_state` (no `COUNT(DISTINCT)` over messages):
+
+1. Prune `window_senders` older than 30 min; **dedupe by `sender_id`** (repeat messages refresh `at` only; cap distinct senders, not raw events)
+2. **4a:** update state only — no outbox
+3. **4b:** if distinct ≥ 2 and `last_push_at` NULL or > 1 hour ago → enqueue `chat_chatter` with `exclude_subscriber_ids = ARRAY[NEW.sender_id]`; set `last_push_at`
+4. `notifyChatPush` already removed (Phase 1)
 
 ### 2e. Single processor + cron (merged Phase 4)
 
