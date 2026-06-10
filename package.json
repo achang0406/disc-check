@@ -16,7 +16,8 @@
     "verify:3b-live-badge": "node scripts/verify-3b-live-badge.mjs",
     "verify:3c-checkin-badge": "node scripts/verify-3c-checkin-badge.mjs",
     "verify:2b-iii-badge-outbox": "node scripts/verify-2b-iii-badge-outbox.mjs",
-    "verify:lifecycle-push-stale": "node scripts/verify-lifecycle-push-stale.mjs"
+    "verify:lifecycle-push-stale": "node scripts/verify-lifecycle-push-stale.mjs",
+    "verify:4a-chat-push-state": "node scripts/verify-4a-chat-push-state.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.49.8",

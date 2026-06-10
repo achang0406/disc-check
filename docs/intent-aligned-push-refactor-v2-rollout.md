@@ -2,9 +2,9 @@
 name: Intent-aligned push refactor v2 rollout
 overview: Feature-phased rollout with PR sub-phases (2b-i/ii/ii-client/iii, 3a/b, 4a/b, 5a/b) isolating hot-path risk. Badge milestones (pregame + live 1.5×/2×) with latest-only coalescing; thin paths via denormalized game_push_state, stub outbox + drain copy, single cron.
 status: in-progress
-completed_phases: [1, 2a, 2b-i, 2b-ii, 2b-ii-client, 2b-iii, 3a, 3b, 3c]
-next: 4a
-note: Phase 3c (041) shipped. Lifecycle stale guards for game_cancelled + phase_live on drain (b6a3b66). Next migration for 4a is 042.
+completed_phases: [1, 2a, 2b-i, 2b-ii, 2b-ii-client, 2b-iii, 3a, 3b, 3c, 4a]
+next: 4b
+note: Phase 4a (042) chat_push_state on insert — no push. Next is 4b chatter enqueue (043).
 ---
 
 # Incremental push refactor (derisked v2)
@@ -26,11 +26,11 @@ Reference: archived spec in [intent-aligned-push-refactor-plan.md](intent-aligne
 | **3b** — Live badge milestones | **Done** | migration `040`; `npm run verify:3b-live-badge` |
 | **3c** — Check-in + pregame surge pushes | **Done** | `041`; [phase-3c plan](phase-3c-check-in-pushes-plan.md) |
 | **3** — Live pushes *(3a → 3b → 3c)* | **Done** | 3c supersedes 3b live RSVP badges |
-| **4** — Chatter *(4a → 4b)* | Pending | — |
+| **4** — Chatter *(4a → 4b)* | **In progress** | 4a `042` shipped |
 | **5** — Announcements *(5a → 5b)* | Pending | — |
 | Group limits *(orthogonal)* | Pending | — |
 
-**Next up:** Phase 4a (chatter state trigger, migration `042`).
+**Next up:** Phase 4b (chatter enqueue, migration `043`).
 
 ## Goals
 
@@ -316,7 +316,7 @@ Split **medium-risk** phases so each PR changes **one layer**: hygiene → state
 | 2b-iii       | **Implemented** | Medium     | Badge enqueue on RSVP — **RSVP latency gate** + E2E pending on staging |
 | 3a     | **Done** | Low        | `next_live_at` due check on drain (not full-game scan) |
 | 3b     | **Done** | Low–Medium | Live headcount milestones on RSVP trigger — same coalescing rules |
-| 4a     | Pending | Low–Medium | Chat state on insert — no notifications yet                             |
+| 4a     | **Done** | Low–Medium | Chat state on insert — no notifications yet                             |
 | 4b     | Pending | Medium     | Chatter enqueue — **chat send latency gate**                            |
 | 5a     | Pending | Low–Medium | Carousel banner UI                                                      |
 | 5b     | Pending | Low        | Admin-only announcement push RPC                                        |
@@ -978,7 +978,7 @@ Restore `return fetchAppData()` on write helpers.
 | 3a             | **Done** | `039`         | [scripts/supabase-rollback-039-phase-live.sql](../scripts/supabase-rollback-039-phase-live.sql) |
 | 3b             | **Done** | `040`               | [scripts/supabase-rollback-040-live-badge.sql](../scripts/supabase-rollback-040-live-badge.sql) |
 | 3c             | **Done** | `041`               | [scripts/supabase-rollback-041-checkin-badge.sql](../scripts/supabase-rollback-041-checkin-badge.sql) |
-| 4a             | Pending | `042`               | `scripts/supabase-rollback-042-chat-push-state.sql` (add with 4a impl) |
+| 4a             | **Done** | `042`               | [scripts/supabase-rollback-042-chat-push-state.sql](../scripts/supabase-rollback-042-chat-push-state.sql) |
 | 4b             | Pending | `043`               | Remove enqueue branch from `maintain_chat_push_state`               |
 | 5a             | Pending | `044`               | Drop `game_announcements` + UI                                        |
 | 5b             | Pending | `045`               | Drop announcement RPC enqueue                                         |

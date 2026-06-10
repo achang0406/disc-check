@@ -1,7 +1,7 @@
 ---
 name: Phase 4a chat push state
 overview: "Incremental chat_push_state on message insert — sender-deduped 30m window, no outbox, no OS push. Prerequisite for 4b chatter enqueue."
-status: planned
+status: implemented
 migration: "042"
 ---
 
