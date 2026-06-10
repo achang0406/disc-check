@@ -201,6 +201,13 @@ export async function materializePushPayload(
         tag: `disc-check-checkin-${row.game_id}`,
         url,
       };
+    case "chat_chatter":
+      return {
+        title: groupName ?? "DiscCheck",
+        body: "There's some chatter — come say hi",
+        tag: `disc-check-chatter-${row.group_id}`,
+        url: `/groups/${row.group_id}`,
+      };
     default:
       console.warn("Unknown push event type — skipping", row.event_type, row.id);
       return null;

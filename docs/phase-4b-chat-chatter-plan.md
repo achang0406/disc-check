@@ -1,7 +1,7 @@
 ---
 name: Phase 4b chat chatter enqueue
 overview: "Enqueue chat_chatter summary push when 2+ active senders in 30m and 1h cooldown; drain stale check, pending supersede, materialize on edge."
-status: planned
+status: implemented
 migration: "043"
 prerequisites: [4a, chatterPush.ts drain stale guard]
 ---

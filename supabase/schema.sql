@@ -1727,6 +1727,7 @@ DECLARE
   v_min_at TIMESTAMPTZ;
   v_min_idx INTEGER;
   v_distinct INTEGER;
+  v_last_push_at TIMESTAMPTZ;
 BEGIN
   IF p_group_id IS NULL OR trim(p_group_id) = '' THEN
     RETURN;
@@ -1740,8 +1741,8 @@ BEGIN
   VALUES (p_group_id)
   ON CONFLICT (group_id) DO NOTHING;
 
-  SELECT window_senders
-  INTO v_senders
+  SELECT window_senders, last_push_at
+  INTO v_senders, v_last_push_at
   FROM chat_push_state
   WHERE group_id = p_group_id
   FOR UPDATE;
@@ -1802,10 +1803,30 @@ BEGIN
 
   v_distinct := COALESCE(jsonb_array_length(v_senders), 0);
 
+  IF v_distinct >= 2
+     AND (v_last_push_at IS NULL OR v_last_push_at <= v_now - INTERVAL '1 hour')
+  THEN
+    DELETE FROM push_outbox
+    WHERE group_id = p_group_id
+      AND event_type = 'chat_chatter'
+      AND processed_at IS NULL;
+
+    PERFORM enqueue_push_event(
+      'chat_chatter',
+      p_group_id,
+      NULL,
+      ARRAY[p_sender_id],
+      NULL
+    );
+
+    v_last_push_at := v_now;
+  END IF;
+
   UPDATE chat_push_state
   SET
     window_senders = v_senders,
     distinct_sender_count = v_distinct,
+    last_push_at = v_last_push_at,
     updated_at = v_now
   WHERE group_id = p_group_id;
 END;

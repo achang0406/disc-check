@@ -1,5 +1,5 @@
 /**
- * Phase 4a — chat_push_state window maintenance (no push).
+ * Phase 4a — chat_push_state window maintenance (mono sender never enqueues).
  *
  * Usage: npm run verify:4a-chat-push-state
  * Optional: VERIFY_GAME_ID=g_1baf4461 VERIFY_GROUP_ID=grp_xxx npm run verify:4a-chat-push-state
@@ -93,6 +93,12 @@ async function main() {
   const savedState = await fetchState(groupId);
 
   await supabase.from("chat_push_state").delete().eq("group_id", groupId);
+  await supabase
+    .from("push_outbox")
+    .delete()
+    .eq("group_id", groupId)
+    .eq("event_type", "chat_chatter")
+    .is("processed_at", null);
 
   try {
     const t1 = await insertMessage(groupId, senderA, 1, "verify mono 1");
@@ -102,12 +108,12 @@ async function main() {
     let state = await fetchState(groupId);
     assert(state, "expected chat_push_state row after inserts");
     assert(state.distinct_sender_count === 1, `mono sender expected 1, got ${state.distinct_sender_count}`);
+    await assertNoChatterOutbox(groupId);
 
     await insertMessage(groupId, senderB, 1, "verify duo 1");
     state = await fetchState(groupId);
     assert(state.distinct_sender_count === 2, `two senders expected 2, got ${state.distinct_sender_count}`);
 
-    await assertNoChatterOutbox(groupId);
     console.log(`latency sample (first insert): ${Math.round(t1)}ms`);
 
     const staleAt = new Date(Date.now() - 31 * 60 * 1000).toISOString();
@@ -134,6 +140,12 @@ async function main() {
     console.log(`OK — chat_push_state for group ${groupId} (${game.name})`);
   } finally {
     await cleanupMessages(groupId);
+    await supabase
+      .from("push_outbox")
+      .delete()
+      .eq("group_id", groupId)
+      .eq("event_type", "chat_chatter")
+      .is("processed_at", null);
 
     if (savedState) {
       await supabase.from("chat_push_state").upsert(savedState);
