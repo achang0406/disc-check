@@ -1,18 +1,33 @@
-import { forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useState } from "react";
+import {
+  forwardRef,
+  useCallback,
+  useEffect,
+  useImperativeHandle,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from "react";
 
+const PEEK_CLASS = "game-cards-carousel__slide--peek";
+const PROGRAMMATIC_SCROLL_FALLBACK_MS = 500;
+const SCROLL_SYNC_DEBOUNCE_MS = 100;
+
+/** Viewport coordinates — offsetLeft breaks when the track breaks out to 100vw. */
 function getFocusedIndexFromScroll(track, slides) {
-  const trackCenter = track.scrollLeft + track.clientWidth / 2;
+  const trackRect = track.getBoundingClientRect();
+  const trackCenter = trackRect.left + trackRect.width / 2;
   let bestIndex = 0;
   let bestDistance = Number.POSITIVE_INFINITY;
 
-  slides.forEach((slide, index) => {
-    const slideCenter = slide.offsetLeft + slide.offsetWidth / 2;
+  for (const [index, slide] of slides.entries()) {
+    const slideRect = slide.getBoundingClientRect();
+    const slideCenter = slideRect.left + slideRect.width / 2;
     const distance = Math.abs(slideCenter - trackCenter);
     if (distance < bestDistance) {
       bestDistance = distance;
       bestIndex = index;
     }
-  });
+  }
 
   return bestIndex;
 }
@@ -43,6 +58,10 @@ const GameCardsCarousel = forwardRef(function GameCardsCarousel(
     setFocusedIndex(getFocusedIndexFromScroll(track, slides));
   }, []);
 
+  useLayoutEffect(() => {
+    syncFocusedFromScroll();
+  }, [games, syncFocusedFromScroll]);
+
   useEffect(() => {
     const track = trackRef.current;
     if (!track || games.length === 0) return undefined;
@@ -60,14 +79,12 @@ const GameCardsCarousel = forwardRef(function GameCardsCarousel(
         scrollEndTimerRef.current = null;
         if (programmaticScrollIndexRef.current !== null) return;
         syncFocusedFromScroll();
-      }, 100);
+      }, SCROLL_SYNC_DEBOUNCE_MS);
     };
 
     const handleScrollEnd = () => {
       if (programmaticScrollIndexRef.current !== null) {
-        const index = programmaticScrollIndexRef.current;
         programmaticScrollIndexRef.current = null;
-        setFocusedIndex(index);
         return;
       }
       syncFocusedFromScroll();
@@ -75,22 +92,29 @@ const GameCardsCarousel = forwardRef(function GameCardsCarousel(
 
     track.addEventListener("scroll", handleScroll, { passive: true });
     track.addEventListener("scrollend", handleScrollEnd);
-    syncFocusedFromScroll();
+
+    const resizeObserver =
+      typeof ResizeObserver !== "undefined"
+        ? new ResizeObserver(syncFocusedFromScroll)
+        : null;
+    resizeObserver?.observe(track);
 
     return () => {
       track.removeEventListener("scroll", handleScroll);
       track.removeEventListener("scrollend", handleScrollEnd);
+      resizeObserver?.disconnect();
       if (scrollEndTimerRef.current) {
         window.clearTimeout(scrollEndTimerRef.current);
       }
     };
-  }, [games, syncFocusedFromScroll]);
+  }, [games.length, syncFocusedFromScroll]);
 
   const scrollToSlide = useCallback((index, behavior = "smooth") => {
     const track = trackRef.current;
     const slide = slideRefs.current[index];
     if (!track || !slide) return;
 
+    setFocusedIndex(index);
     programmaticScrollIndexRef.current = index;
 
     slide.scrollIntoView({
@@ -101,15 +125,13 @@ const GameCardsCarousel = forwardRef(function GameCardsCarousel(
 
     if (behavior !== "smooth") {
       programmaticScrollIndexRef.current = null;
-      setFocusedIndex(index);
       return;
     }
 
     window.setTimeout(() => {
       if (programmaticScrollIndexRef.current !== index) return;
       programmaticScrollIndexRef.current = null;
-      setFocusedIndex(index);
-    }, 500);
+    }, PROGRAMMATIC_SCROLL_FALLBACK_MS);
   }, []);
 
   useImperativeHandle(ref, () => ({ scrollToSlide }), [scrollToSlide]);
@@ -146,17 +168,17 @@ const GameCardsCarousel = forwardRef(function GameCardsCarousel(
               ref={(node) => {
                 slideRefs.current[index] = node;
               }}
-              className={`game-cards-carousel__slide${isPeek ? " game-cards-carousel__slide--peek" : ""}`}
+              className={`game-cards-carousel__slide${isPeek ? ` ${PEEK_CLASS}` : ""}`}
             >
               {renderSlide(game, index)}
-              {isPeek && (
-                <button
-                  type="button"
-                  className="game-cards-carousel__focus-hit"
-                  aria-label={`Show ${game.name}`}
-                  onClick={() => scrollToSlide(index)}
-                />
-              )}
+              <button
+                type="button"
+                className="game-cards-carousel__focus-hit"
+                tabIndex={isPeek ? 0 : -1}
+                aria-hidden={!isPeek}
+                aria-label={`Show ${game.name}`}
+                onClick={() => scrollToSlide(index)}
+              />
             </div>
           );
         })}

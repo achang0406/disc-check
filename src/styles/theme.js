@@ -1194,6 +1194,13 @@ export const globalStyles = `
     background: transparent;
     cursor: pointer;
     -webkit-tap-highlight-color: transparent;
+    display: none;
+    pointer-events: none;
+  }
+
+  .game-cards-carousel__slide--peek .game-cards-carousel__focus-hit {
+    display: block;
+    pointer-events: auto;
   }
 
   .game-cards-carousel__focus-hit:focus:not(:focus-visible) {
