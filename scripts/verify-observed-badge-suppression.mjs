@@ -1,6 +1,8 @@
 import { computeBadgeMilestone } from "../src/utils/badgeMilestone.js";
 import {
   emptyObservedAlerts,
+  pruneObservedGames,
+  recordGameBadgeObservations,
   shouldSuppressPush,
 } from "../src/lib/observedAlerts.js";
 
@@ -116,6 +118,64 @@ assert(
     observed: observedWithRanks({ rsvpRank: 4, checkinRank: 4 }),
   }),
   "phase_live not suppressed in phase 1",
+);
+
+// recordGameBadgeObservations uses same headcount path as GameCommitCard
+const observed = emptyObservedAlerts();
+const now = new Date("2026-05-18T19:00:00.000Z");
+const game = {
+  id: GAME_ID,
+  target: 8,
+  weekday: 3,
+  startTime: "18:00:00",
+  timezone: "America/Los_Angeles",
+  rsvpCycleAt: CYCLE,
+  status: "open",
+};
+const rsvps = {
+  [GAME_ID]: [
+    { userId: "u1", plusOnes: 0 },
+    { userId: "u2", plusOnes: 0 },
+    { userId: "u3", plusOnes: 0 },
+    { userId: "u4", plusOnes: 0 },
+    { userId: "u5", plusOnes: 0 },
+    { userId: "u6", plusOnes: 0 },
+    { userId: "u7", plusOnes: 0 },
+    { userId: "u8", plusOnes: 0 },
+  ],
+};
+const changed = recordGameBadgeObservations(observed, {
+  games: [game],
+  allGames: [game],
+  rsvps,
+  checkIns: {},
+  guests: {},
+  now,
+});
+assert(changed, "recording should update observed state");
+assert(observed.games[GAME_ID].rsvpRank === 2, "eight RSVPs should observe go rank");
+
+// prune removes orphan games
+observed.games["deleted-game"] = {
+  cycleAt: CYCLE,
+  rsvpRank: 2,
+  checkinRank: 0,
+  phaseLive: false,
+  cancelled: false,
+};
+const pruned = pruneObservedGames(observed, { knownGameIds: [GAME_ID], now });
+assert(pruned, "prune should remove orphan game");
+assert(!observed.games["deleted-game"], "orphan game entry removed");
+
+// legacy badge_go alias
+assert(
+  shouldSuppressPush({
+    eventType: "badge_go",
+    gameId: GAME_ID,
+    cycleAt: CYCLE,
+    observed: observedWithRanks({ rsvpRank: 2 }),
+  }),
+  "legacy badge_go suppressed at rank 2",
 );
 
 console.log("verify-observed-badge-suppression: all checks passed");

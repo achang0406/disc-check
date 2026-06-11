@@ -17,27 +17,36 @@ export function useObservedAlerts({
   const observedRef = useRef(loadObservedAlerts());
 
   useEffect(() => {
-    if (typeof document === "undefined" || document.visibilityState !== "visible") {
-      return;
+    function recordIfVisible() {
+      if (typeof document === "undefined" || document.visibilityState !== "visible") {
+        return;
+      }
+
+      if (!groupGames?.length) {
+        return;
+      }
+
+      const observed = observedRef.current;
+      const changed = recordGameBadgeObservations(observed, {
+        games: groupGames,
+        allGames: games,
+        rsvps,
+        checkIns,
+        guests,
+        now,
+      });
+
+      if (changed) {
+        saveObservedAlerts(observed);
+        scheduleObservedAlertsServiceWorkerSync(observed);
+      }
     }
 
-    if (!groupGames?.length) {
-      return;
-    }
+    recordIfVisible();
+    document.addEventListener("visibilitychange", recordIfVisible);
 
-    const observed = observedRef.current;
-    const changed = recordGameBadgeObservations(observed, {
-      games: groupGames,
-      allGames: games,
-      rsvps,
-      checkIns,
-      guests,
-      now,
-    });
-
-    if (changed) {
-      saveObservedAlerts(observed);
-      scheduleObservedAlertsServiceWorkerSync(observed);
-    }
+    return () => {
+      document.removeEventListener("visibilitychange", recordIfVisible);
+    };
   }, [games, groupGames, rsvps, checkIns, guests, now]);
 }
