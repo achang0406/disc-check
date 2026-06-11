@@ -12,6 +12,9 @@ export type PushSendRequest = {
   tag: string;
   url: string;
   excludeSubscriberIds?: string[];
+  eventType?: string | null;
+  gameId?: string | null;
+  cycleAt?: string | null;
 };
 
 export type PushSendResult = {
@@ -36,7 +39,17 @@ export async function sendPush(request: PushSendRequest): Promise<PushSendResult
     throw new Error("Push is not configured");
   }
 
-  const { groupId, title, body, tag, url, excludeSubscriberIds = [] } = request;
+  const {
+    groupId,
+    title,
+    body,
+    tag,
+    url,
+    excludeSubscriberIds = [],
+    eventType = null,
+    gameId = null,
+    cycleAt = null,
+  } = request;
   const exclude = new Set(excludeSubscriberIds.filter(Boolean));
 
   const supabase = getServiceClient();
@@ -77,6 +90,9 @@ export async function sendPush(request: PushSendRequest): Promise<PushSendResult
       tag,
       url,
       groupId,
+      eventType,
+      gameId,
+      cycleAt,
     });
 
     attempted += 1;

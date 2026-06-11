@@ -16,6 +16,7 @@ import { WALKTHROUGH_GAME_SLIDE_INDEX } from "../constants/walkthrough.js";
 import { canShowChatPushBell } from "../lib/push.js";
 import { getPresenceUsers } from "../utils/presenceUsers.js";
 import { sortGamesForLanding } from "../utils/gameSchedule.js";
+import { useObservedAlerts } from "../hooks/useObservedAlerts.js";
 
 export default function GroupGamesScreen({
   profile,
@@ -62,6 +63,15 @@ export default function GroupGamesScreen({
   );
 
   const walkthrough = useGroupWalkthrough({ hasGames: groupGames.length > 0 });
+
+  useObservedAlerts({
+    games,
+    groupGames,
+    rsvps,
+    checkIns,
+    guests,
+    now,
+  });
 
   useEffect(() => {
     if (focusedGameIndex >= groupGames.length) {

@@ -33,6 +33,34 @@ function jsonResponse(body: unknown, status = 200) {
   });
 }
 
+
+async function resolveCycleAt(
+  supabase: SupabaseClient,
+  gameId: string | null,
+  cache: Map<string, string | null>,
+) {
+  if (!gameId) return null;
+  if (cache.has(gameId)) {
+    return cache.get(gameId) ?? null;
+  }
+
+  const { data, error } = await supabase
+    .from("games")
+    .select("rsvp_cycle_at")
+    .eq("id", gameId)
+    .maybeSingle();
+
+  if (error) {
+    console.error("cycleAt lookup failed", gameId, error.message);
+    cache.set(gameId, null);
+    return null;
+  }
+
+  const cycleAt = data?.rsvp_cycle_at ?? null;
+  cache.set(gameId, cycleAt);
+  return cycleAt;
+}
+
 async function markProcessed(supabase: SupabaseClient, rowId: number) {
   await supabase
     .from("push_outbox")
@@ -115,6 +143,7 @@ Deno.serve(async (req) => {
     let skipped = 0;
     let retrying = 0;
     let abandoned = 0;
+    const cycleAtCache = new Map<string, string | null>();
 
     for (const row of batch) {
       const isSupersededRsvp =
@@ -181,6 +210,8 @@ Deno.serve(async (req) => {
       }
 
       try {
+        const cycleAt = await resolveCycleAt(supabase, row.game_id, cycleAtCache);
+
         const result = await sendPush({
           groupId: row.group_id,
           title: payload.title,
@@ -188,6 +219,9 @@ Deno.serve(async (req) => {
           tag: payload.tag,
           url: payload.url,
           excludeSubscriberIds: row.exclude_subscriber_ids ?? [],
+          eventType: row.event_type,
+          gameId: row.game_id,
+          cycleAt,
         });
         sentTotal += result.sent;
 

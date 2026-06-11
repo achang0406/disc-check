@@ -1,4 +1,5 @@
 import { cleanupOutdatedCaches, precacheAndRoute } from "workbox-precaching";
+import { shouldSuppressPush } from "./lib/observedAlerts.js";
 
 cleanupOutdatedCaches();
 precacheAndRoute(self.__WB_MANIFEST);
@@ -50,9 +51,16 @@ async function openNotificationTarget(targetUrl) {
   }
 }
 
+let observedAlertsSnapshot = { games: {}, groups: {} };
+
 self.addEventListener("message", (event) => {
   if (event.data?.type === "SKIP_WAITING") {
     self.skipWaiting();
+    return;
+  }
+
+  if (event.data?.type === "sync-observed-alerts") {
+    observedAlertsSnapshot = event.data.data ?? { games: {}, groups: {} };
   }
 });
 
@@ -71,6 +79,9 @@ self.addEventListener("push", (event) => {
   const tag = payload.tag || "disc-check-push";
   const url = payload.url || "/";
   const groupId = payload.groupId || null;
+  const eventType = payload.eventType || null;
+  const gameId = payload.gameId || null;
+  const cycleAt = payload.cycleAt || null;
 
   event.waitUntil(
     (async () => {
@@ -82,6 +93,17 @@ self.addEventListener("push", (event) => {
         (client) => client.visibilityState === "visible",
       );
       if (appIsForeground) return;
+
+      if (
+        shouldSuppressPush({
+          eventType,
+          gameId,
+          cycleAt,
+          observed: observedAlertsSnapshot,
+        })
+      ) {
+        return;
+      }
 
       await self.registration.showNotification(title, {
         body,
