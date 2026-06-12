@@ -15,7 +15,7 @@ import { useGroupWalkthrough } from "../hooks/useGroupWalkthrough.js";
 import { WALKTHROUGH_GAME_SLIDE_INDEX } from "../constants/walkthrough.js";
 import { canShowChatPushBell } from "../lib/push.js";
 import { getPresenceUsers } from "../utils/presenceUsers.js";
-import { sortGamesForLanding } from "../utils/gameSchedule.js";
+import { isGameEnded, sortGamesForLanding } from "../utils/gameSchedule.js";
 import { markBackToLanding } from "../utils/landingNavigation.js";
 import { useObservedAlerts } from "../hooks/useObservedAlerts.js";
 
@@ -109,6 +109,11 @@ export default function GroupGamesScreen({
       }),
     [presence],
   );
+
+  const focusedGameEnded = useMemo(() => {
+    const game = groupGames[focusedGameIndex];
+    return game ? isGameEnded(game, now) : false;
+  }, [groupGames, focusedGameIndex, now]);
 
   if (!group) {
     return <Navigate to="/" replace />;
@@ -238,6 +243,7 @@ export default function GroupGamesScreen({
               onChange={presence.setThreadDraft}
               onSend={presence.sendChat}
               connected={presence.connected}
+              gameEnded={focusedGameEnded}
             />
           )}
         </div>

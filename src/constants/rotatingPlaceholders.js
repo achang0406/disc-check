@@ -4,18 +4,36 @@ export const CHAT_PLACEHOLDERS = [
   "Rally the squad…",
   "Who's bringing snacks?",
   "Call subs from the sideline…",
-  "Trash talk, politely…",
+  "Trash talk, politely.",
   "Where's the field again?",
   "Five more minutes??",
   "Who forgot their disc?",
   "Claim your MVP take…",
-  "Weather check ☀️",
+  "Weather check?",
   "Game on or game off?",
   "Car pool pitch…",
   "Post-game plans?",
   "Need one more for numbers…",
   "Anyone else running late?",
-  "Best throw of the night?",
+  "Who's always late?",
+];
+
+export const CHAT_POSTGAME_PLACEHOLDERS = [
+  "MVP vote — go.",
+  "Who had the best huck?",
+  "Rematch when?",
+  "Where are we eating?",
+  "Rate tonight's calls…",
+  "That layout tho…",
+  "Highlight reel nominations?",
+  "Who owes beers?",
+  "Already sore tomorrow?",
+  "Next week same time?",
+  "Clip or it didn't happen.",
+  "Hot take from the game?",
+  "Car ride debrief?",
+  "Injury report?",
+  "What was the score?",
 ];
 
 export const WALK_IN_COMING_PLACEHOLDERS = [
@@ -64,8 +82,8 @@ export function pickDailyItem(items, date = new Date()) {
   return items[dayIndex(date) % items.length];
 }
 
-export function getDailyChatPlaceholder(date = new Date()) {
-  return pickDailyItem(CHAT_PLACEHOLDERS, date);
+export function getDailyChatPlaceholder(isEnded = false, date = new Date()) {
+  return pickDailyItem(isEnded ? CHAT_POSTGAME_PLACEHOLDERS : CHAT_PLACEHOLDERS, date);
 }
 
 export function getDailyWalkInPlaceholder(isLive, date = new Date()) {

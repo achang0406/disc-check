@@ -7,6 +7,7 @@ export default function ChatBar({
   onChange,
   onSend,
   connected,
+  gameEnded = false,
 }) {
   const handleSubmit = (event) => {
     event.preventDefault();
@@ -14,7 +15,7 @@ export default function ChatBar({
     onSend(value);
   };
 
-  const chatPlaceholder = getDailyChatPlaceholder();
+  const chatPlaceholder = getDailyChatPlaceholder(gameEnded);
 
   return (
     <div className="chat-bar-anchor chat-bar-anchor--detail">
