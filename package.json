@@ -21,6 +21,7 @@
     "verify:4b-chatter-stale-drain": "node scripts/verify-4b-chatter-stale-drain.mjs",
     "verify:4b-chat-chatter": "node scripts/verify-4b-chat-chatter.mjs",
     "verify:chat-reactions": "node scripts/verify-chat-reactions.mjs",
+    "verify:group-game-limits": "node scripts/verify-group-game-limits.mjs",
     "verify:observed-badge-suppression": "node scripts/verify-observed-badge-suppression.mjs"
   },
   "dependencies": {
