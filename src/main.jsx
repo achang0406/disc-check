@@ -4,7 +4,9 @@ import { registerSW } from "virtual:pwa-register";
 import App from "./App.jsx";
 import { flushObservedAlertsServiceWorkerSync, initObservedAlertsSync } from "./lib/observedAlerts.js";
 import { initPwaInstallPromptCapture } from "./utils/pwaInstallPrompt.js";
+import { syncIosStandaloneClass } from "./utils/pwaInstall.js";
 
+syncIosStandaloneClass();
 initPwaInstallPromptCapture();
 initObservedAlertsSync();
 

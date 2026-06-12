@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { isAndroidDevice, isStandaloneDisplay } from "../utils/pwaInstall.js";
+import { isAndroidDevice, isIosDevice, isStandaloneDisplay, syncIosStandaloneClass } from "../utils/pwaInstall.js";
 
 function recoverPaint() {
   const shell = document.querySelector(".app-shell");
@@ -13,6 +13,12 @@ function recoverPaint() {
 
 export function useAppResume() {
   useEffect(() => {
+    syncIosStandaloneClass();
+
+    const standaloneQuery = window.matchMedia("(display-mode: standalone)");
+    const onStandaloneChange = () => syncIosStandaloneClass();
+    standaloneQuery.addEventListener("change", onStandaloneChange);
+
     const onVisible = () => {
       if (document.visibilityState !== "visible") return;
       recoverPaint();
@@ -34,6 +40,8 @@ export function useAppResume() {
     }
 
     return () => {
+      standaloneQuery.removeEventListener("change", onStandaloneChange);
+      document.documentElement.classList.remove("ios-standalone");
       document.removeEventListener("visibilitychange", onVisible);
       window.removeEventListener("pageshow", onPageShow);
       window.removeEventListener("focus", onVisible);

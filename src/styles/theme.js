@@ -498,7 +498,7 @@ export const globalStyles = `
     display: flex;
     flex-direction: column;
     flex: 1 1 0;
-    min-height: var(--chat-zone-min-height, 10rem);
+    min-height: 0;
     width: 100%;
     max-width: var(--content-rail-width);
     margin-inline: auto;
@@ -506,7 +506,7 @@ export const globalStyles = `
 
   .group-games-screen__chat-zone .game-detail-layout__thread-wrap {
     flex: 1 1 0;
-    min-height: 0;
+    min-height: var(--chat-zone-min-height, 10rem);
     overflow: hidden;
   }
 
@@ -519,16 +519,6 @@ export const globalStyles = `
 
   .group-games-screen__chat-zone .chat-bar-anchor--detail {
     flex-shrink: 0;
-  }
-
-  .games-screen--detail .games-screen__main--detail {
-    flex: 0 1 auto;
-    min-height: 0;
-  }
-
-  .games-screen--detail .game-detail-layout--responsive {
-    flex: 0 1 auto;
-    min-height: 0;
   }
 
   .game-detail-layout {
@@ -1638,6 +1628,35 @@ export const globalStyles = `
     padding-left: max(var(--chat-bar-inset-x), var(--safe-area-left));
     padding-right: max(var(--chat-bar-inset-x), var(--safe-area-right));
     pointer-events: none;
+  }
+
+  /*
+   * Group detail: flex column from html so the page is at least viewport-tall and the
+   * chat thread absorbs leftover height, keeping the composer at the bottom edge.
+   */
+  html:has(.games-screen--group) {
+    min-height: 100dvh;
+    display: flex;
+    flex-direction: column;
+  }
+
+  html.ios-standalone:has(.games-screen--group) {
+    min-height: 100svh;
+  }
+
+  html:has(.games-screen--group) body,
+  html:has(.games-screen--group) #root,
+  html:has(.games-screen--group) .app-shell,
+  html:has(.games-screen--group) .games-screen.games-screen--group {
+    flex: 1 1 auto;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    width: 100%;
+  }
+
+  html.ios-standalone .chat-bar-anchor--detail {
+    padding-bottom: max(env(safe-area-inset-bottom, 0px), var(--chat-bar-inset-y));
   }
 
   .chat-bar-stack {

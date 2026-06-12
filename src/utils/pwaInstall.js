@@ -13,6 +13,17 @@ export function isAndroidDevice() {
   return /android/i.test(navigator.userAgent);
 }
 
+const IOS_STANDALONE_CLASS = "ios-standalone";
+
+export function syncIosStandaloneClass() {
+  if (typeof document === "undefined") return;
+
+  document.documentElement.classList.toggle(
+    IOS_STANDALONE_CLASS,
+    isIosDevice() && isStandaloneDisplay(),
+  );
+}
+
 export function isIosDevice() {
   if (typeof navigator === "undefined") return false;
 
