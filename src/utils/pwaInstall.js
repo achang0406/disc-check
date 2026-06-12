@@ -24,6 +24,14 @@ export function isIosDevice() {
   return isAppleMobile || isIpadOs;
 }
 
-export function canOfferIosInstall() {
-  return isIosDevice() && !isStandaloneDisplay();
+/** Platform for manual install steps when no native prompt is available. */
+export function getManualInstallPlatform() {
+  if (isStandaloneDisplay()) return null;
+  if (isIosDevice()) return "ios";
+  if (isAndroidDevice()) return "android";
+  return null;
+}
+
+export function canOfferManualInstall() {
+  return getManualInstallPlatform() !== null;
 }

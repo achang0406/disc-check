@@ -1,5 +1,9 @@
 import { useCallback, useEffect, useState } from "react";
-import { canOfferIosInstall, isStandaloneDisplay } from "../utils/pwaInstall.js";
+import {
+  canOfferManualInstall,
+  getManualInstallPlatform,
+  isStandaloneDisplay,
+} from "../utils/pwaInstall.js";
 import {
   getDeferredPwaInstallPrompt,
   setDeferredPwaInstallPrompt,
@@ -8,14 +12,14 @@ import {
 
 function readCanInstall(prompt) {
   if (typeof window === "undefined" || isStandaloneDisplay()) return false;
-  return Boolean(prompt) || canOfferIosInstall();
+  return Boolean(prompt) || canOfferManualInstall();
 }
 
 export function usePwaInstall() {
   const [deferredPrompt, setDeferredPrompt] = useState(() => getDeferredPwaInstallPrompt());
   const [canInstall, setCanInstall] = useState(() => readCanInstall(getDeferredPwaInstallPrompt()));
   const [installing, setInstalling] = useState(false);
-  const [showIosHelp, setShowIosHelp] = useState(false);
+  const [manualInstallHelp, setManualInstallHelp] = useState(null);
 
   useEffect(() => {
     if (isStandaloneDisplay()) {
@@ -40,7 +44,7 @@ export function usePwaInstall() {
     const onAppInstalled = () => {
       setDeferredPwaInstallPrompt(null);
       syncAvailability(null);
-      setShowIosHelp(false);
+      setManualInstallHelp(null);
     };
 
     const unsubscribe = subscribeDeferredPwaInstallPrompt(syncAvailability);
@@ -50,7 +54,7 @@ export function usePwaInstall() {
       if (isStandaloneDisplay()) {
         setDeferredPwaInstallPrompt(null);
         syncAvailability(null);
-        setShowIosHelp(false);
+        setManualInstallHelp(null);
       }
     };
 
@@ -85,24 +89,24 @@ export function usePwaInstall() {
       }
     }
 
-    if (canOfferIosInstall()) {
-      setShowIosHelp(true);
-      return false;
+    const platform = getManualInstallPlatform();
+    if (platform) {
+      setManualInstallHelp(platform);
     }
 
     return false;
   }, [deferredPrompt]);
 
-  const closeIosHelp = useCallback(() => {
-    setShowIosHelp(false);
+  const closeManualInstallHelp = useCallback(() => {
+    setManualInstallHelp(null);
   }, []);
 
   return {
     canInstall,
     installing,
-    showIosHelp,
+    manualInstallHelp,
     promptInstall,
-    closeIosHelp,
+    closeManualInstallHelp,
     usesNativePrompt: Boolean(deferredPrompt),
   };
 }

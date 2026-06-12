@@ -128,7 +128,6 @@ export default function GroupGamesScreen({
         onAdminLoginClick={onAdminLoginClick}
         onAdminLogout={onAdminLogout}
         onAddGame={onAddGame}
-        showInstallLink
         leading={
           <Button
             variant="icon"
