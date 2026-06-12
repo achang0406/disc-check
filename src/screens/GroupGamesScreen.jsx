@@ -16,6 +16,7 @@ import { WALKTHROUGH_GAME_SLIDE_INDEX } from "../constants/walkthrough.js";
 import { canShowChatPushBell } from "../lib/push.js";
 import { getPresenceUsers } from "../utils/presenceUsers.js";
 import { sortGamesForLanding } from "../utils/gameSchedule.js";
+import { markBackToLanding } from "../utils/landingNavigation.js";
 import { useObservedAlerts } from "../hooks/useObservedAlerts.js";
 
 export default function GroupGamesScreen({
@@ -109,8 +110,6 @@ export default function GroupGamesScreen({
     [presence],
   );
 
-  const showBack = groups.length > 1;
-
   if (!group) {
     return <Navigate to="/" replace />;
   }
@@ -131,16 +130,21 @@ export default function GroupGamesScreen({
         onAddGame={onAddGame}
         showInstallLink
         leading={
-          showBack ? (
-            <Button
-              variant="icon"
-              className="app-header__back"
-              onClick={() => navigate("/")}
-              aria-label="All groups"
-            >
-              ←
-            </Button>
-          ) : null
+          <Button
+            variant="icon"
+            className="app-header__back"
+            onClick={() => {
+              if (groups.length > 1) {
+                navigate("/");
+                return;
+              }
+              markBackToLanding();
+              navigate("/");
+            }}
+            aria-label="All groups"
+          >
+            ←
+          </Button>
         }
       />
 

@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
 import { suppressMouseFocus } from "../../utils/suppressMouseFocus.js";
+import { clearBackToLanding } from "../../utils/landingNavigation.js";
 
 export default function GroupListItem({ group, summary }) {
   return (
@@ -7,6 +8,7 @@ export default function GroupListItem({ group, summary }) {
       to={`/groups/${group.id}`}
       className="game-list-item surface group-list-item"
       onMouseDown={suppressMouseFocus}
+      onClick={clearBackToLanding}
     >
       <div className="game-list-item__top">
         <h2 className="game-list-item__title">{group.name}</h2>

@@ -7,6 +7,7 @@ import { gamesForGroup } from "../lib/data.js";
 import { useGameClock } from "../hooks/useGameClock.js";
 import { sortGamesForLanding, sortGroupsForLanding } from "../utils/gameSchedule.js";
 import { formatGameScheduleSlot } from "../utils/time.js";
+import { shouldStayOnLanding } from "../utils/landingNavigation.js";
 
 function buildGroupSummary(games) {
   const childGames = sortGamesForLanding(games);
@@ -33,7 +34,7 @@ export default function GroupsLandingScreen({
     [groups, games, now],
   );
 
-  if (sortedGroups.length === 1) {
+  if (sortedGroups.length === 1 && !shouldStayOnLanding()) {
     return <Navigate to={`/groups/${sortedGroups[0].id}`} replace />;
   }
 
