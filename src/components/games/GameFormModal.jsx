@@ -133,7 +133,7 @@ export default function GameFormModal({ mode, initial, saving, onSave, onClose, 
             className="field__input"
             value={form.location}
             onChange={(event) => setField("location", event.target.value)}
-            placeholder="Heritage Park"
+            placeholder="Crestwood Park"
           />
         </Field>
         <Field label="Address">
@@ -141,7 +141,7 @@ export default function GameFormModal({ mode, initial, saving, onSave, onClose, 
             className="field__input"
             value={form.address}
             onChange={(event) => setField("address", event.target.value)}
-            placeholder="11100 NE 68th St, Kirkland, WA"
+            placeholder="1818 6th St, Kirkland, WA 98033"
           />
         </Field>
       </div>
