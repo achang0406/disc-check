@@ -22,7 +22,8 @@ CREATE TABLE IF NOT EXISTS games (
   target INTEGER NOT NULL DEFAULT 8,
   status TEXT NOT NULL DEFAULT 'open',
   rsvp_cycle_at TIMESTAMPTZ,
-  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  CONSTRAINT games_group_weekday_unique UNIQUE (group_id, weekday)
 );
 
 CREATE INDEX IF NOT EXISTS games_group_id_idx ON games (group_id);
@@ -1509,6 +1510,7 @@ DECLARE
   v_status TEXT;
   v_cycle TIMESTAMPTZ;
   v_is_update BOOLEAN;
+  v_game_count INTEGER;
 BEGIN
   v_group_id := NULLIF(trim(p_game->>'group_id'), '');
   IF v_group_id IS NULL THEN
@@ -1553,6 +1555,26 @@ BEGIN
   v_address := NULLIF(trim(COALESCE(p_game->>'address', '')), '');
   v_cycle := get_current_occurrence_start(v_weekday, v_start_time, v_timezone);
   v_is_update := EXISTS (SELECT 1 FROM games WHERE id = v_id);
+
+  IF EXISTS (
+    SELECT 1
+    FROM games g
+    WHERE g.group_id = v_group_id
+      AND g.weekday = v_weekday
+      AND g.id <> v_id
+  ) THEN
+    RAISE EXCEPTION 'group already has a game on this weekday';
+  END IF;
+
+  IF NOT v_is_update THEN
+    SELECT COUNT(*)::INTEGER INTO v_game_count
+    FROM games g
+    WHERE g.group_id = v_group_id;
+
+    IF v_game_count >= 7 THEN
+      RAISE EXCEPTION 'group already has maximum of 7 games';
+    END IF;
+  END IF;
 
   IF v_is_update THEN
     UPDATE games

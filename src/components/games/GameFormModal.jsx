@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import Button from "../ui/Button.jsx";
 import Field from "../ui/Field.jsx";
 import ModalShell from "../ui/ModalShell.jsx";
@@ -19,6 +19,8 @@ const GAME_STATUS_OPTIONS = [
   { value: "open", label: "Open", tone: "positive" },
   { value: "cancelled", label: "Cancelled", tone: "danger" },
 ];
+
+const MAX_GAMES_PER_GROUP = 7;
 
 const EMPTY_FORM = {
   name: "",
@@ -47,13 +49,48 @@ function buildForm(initial) {
   };
 }
 
-export default function GameFormModal({ mode, initial, saving, onSave, onClose, onDelete }) {
+export default function GameFormModal({
+  mode,
+  initial,
+  groupGames = [],
+  saving,
+  onSave,
+  onClose,
+  onDelete,
+}) {
   const [form, setForm] = useState(() => buildForm(initial));
   const [error, setError] = useState("");
+
+  const editingId = mode === "edit" ? initial?.id : null;
+  const takenWeekdays = useMemo(
+    () =>
+      new Set(
+        groupGames
+          .filter((game) => game.id !== editingId)
+          .map((game) => game.weekday),
+      ),
+    [groupGames, editingId],
+  );
+
+  const weekdayOptions = useMemo(
+    () =>
+      WEEKDAY_OPTIONS.map((option) => ({
+        ...option,
+        disabled: takenWeekdays.has(option.value),
+        hint: takenWeekdays.has(option.value) ? "Taken" : option.hint,
+      })),
+    [takenWeekdays],
+  );
+
+  const atGameCap = mode === "create" && groupGames.length >= MAX_GAMES_PER_GROUP;
 
   const setField = (key, value) => setForm((current) => ({ ...current, [key]: value }));
 
   const handleSubmit = () => {
+    if (atGameCap) {
+      setError("This group already has 7 games");
+      return;
+    }
     const startTime = fromTimeInputValue(form.startTime);
     if (!form.name.trim()) {
       setError("Game name is required");
@@ -69,6 +106,10 @@ export default function GameFormModal({ mode, initial, saving, onSave, onClose, 
     }
     if (!startTime) {
       setError("Start time is required");
+      return;
+    }
+    if (takenWeekdays.has(Number(form.weekday))) {
+      setError("That day already has a game");
       return;
     }
 
@@ -101,7 +142,7 @@ export default function GameFormModal({ mode, initial, saving, onSave, onClose, 
       stackFooter={mode === "edit" && !!onDelete}
       footer={
         <>
-          <Button variant="primary" block disabled={saving} onClick={handleSubmit}>
+          <Button variant="primary" block disabled={saving || atGameCap} onClick={handleSubmit}>
             {saving ? "Saving..." : mode === "edit" ? "Save changes" : "Create game"}
           </Button>
           <Button variant="secondary" disabled={saving} onClick={onClose}>
@@ -150,8 +191,11 @@ export default function GameFormModal({ mode, initial, saving, onSave, onClose, 
         <Field label="Day of week">
           <SelectField
             value={form.weekday}
-            onChange={(weekday) => setField("weekday", Number(weekday))}
-            options={WEEKDAY_OPTIONS}
+            onChange={(weekday) => {
+              setField("weekday", Number(weekday));
+              setError("");
+            }}
+            options={weekdayOptions}
             disabled={saving}
             aria-label="Day of week"
           />
@@ -214,6 +258,9 @@ export default function GameFormModal({ mode, initial, saving, onSave, onClose, 
         </Field>
       </div>
 
+      {atGameCap ? (
+        <p className="field__error">This group already has 7 games. Delete one to add another.</p>
+      ) : null}
       {error && <p className="field__error">{error}</p>}
     </ModalShell>
   );

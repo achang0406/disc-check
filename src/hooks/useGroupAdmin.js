@@ -2,14 +2,20 @@ import { useCallback, useState } from "react";
 import { createGame, deleteGame, updateGame, updateGroup } from "../lib/data.js";
 import { getGroupAdminPasscode } from "./useGroupAdminSession.js";
 
-export function useGroupAdminActions({ groupId, showToast, refresh }) {
+export function useGroupAdminActions({ groupId, showToast, refresh, groupGameCount = 0 }) {
   const [gameModal, setGameModal] = useState(null);
   const [groupModal, setGroupModal] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [showLogin, setShowLogin] = useState(false);
   const [saving, setSaving] = useState(false);
 
-  const openCreate = useCallback(() => setGameModal({ mode: "create" }), []);
+  const openCreate = useCallback(() => {
+    if (groupGameCount >= 7) {
+      showToast("Maximum 7 games per group", "error");
+      return;
+    }
+    setGameModal({ mode: "create" });
+  }, [groupGameCount, showToast]);
   const openEdit = useCallback((game) => setGameModal({ mode: "edit", game }), []);
   const openGroupSettings = useCallback(() => setGroupModal(true), []);
   const closeGameModal = useCallback(() => {
@@ -55,10 +61,15 @@ export function useGroupAdminActions({ groupId, showToast, refresh }) {
         await refresh();
         setGameModal(null);
       } catch (error) {
-        const message =
-          error?.message?.includes("invalid group admin passcode")
-            ? "Admin passcode out of sync — sign in again"
-            : "Couldn't save game — try again";
+        const rawMessage = error?.message ?? "";
+        let message = "Couldn't save game — try again";
+        if (rawMessage.includes("invalid group admin passcode")) {
+          message = "Admin passcode out of sync — sign in again";
+        } else if (rawMessage.includes("maximum of 7 games")) {
+          message = "This group already has 7 games";
+        } else if (rawMessage.includes("game on this weekday")) {
+          message = "That day already has a game";
+        }
         showToast(message, "error");
       } finally {
         setSaving(false);

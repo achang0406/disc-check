@@ -41,6 +41,8 @@ export default function AppHeader({
   onAdminLoginClick,
   onAdminLogout,
   onAddGame,
+  addGameDisabled = false,
+  addGameDisabledReason = "Maximum 7 games per group",
   showAdmin = false,
   showInstallLink = false,
   leading,
@@ -187,8 +189,9 @@ export default function AppHeader({
             variant="ghost"
             className="games-screen__add-game games-screen__add-game--header"
             onClick={onAddGame}
-            aria-label="Add game"
-            title="Add game"
+            disabled={addGameDisabled}
+            aria-label={addGameDisabled ? addGameDisabledReason : "Add game"}
+            title={addGameDisabled ? addGameDisabledReason : "Add game"}
           >
             <span className="games-screen__add-game-icon" aria-hidden="true">
               +

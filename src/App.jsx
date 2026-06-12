@@ -33,12 +33,19 @@ function AppRoutes() {
     () => (groupId ? app.groupsMeta.find((item) => item.id === groupId) ?? null : null),
     [groupId, app.groupsMeta],
   );
+  const groupGames = useMemo(
+    () => (groupId ? app.gamesMeta.filter((game) => game.groupId === groupId) : []),
+    [groupId, app.gamesMeta],
+  );
+  const addGameDisabled = groupGames.length >= 7;
+  const addGameDisabledReason = "Maximum 7 games per group";
   const presence = usePresence(app.profile, groupId, detailGroup?.name ?? "");
   const groupAdminSession = useGroupAdminSession(groupId ?? "");
   const groupAdmin = useGroupAdminActions({
     groupId: groupId ?? "",
     showToast,
     refresh: app.refresh,
+    groupGameCount: groupGames.length,
   });
   const [loadingOverlay, setLoadingOverlay] = useState(true);
 
@@ -91,6 +98,8 @@ function AppRoutes() {
     onAdminLoginClick: () => groupAdmin.setShowLogin(true),
     onAdminLogout: groupAdminSession.logout,
     onAddGame: groupAdmin.openCreate,
+    addGameDisabled,
+    addGameDisabledReason,
     onEditGame: groupAdmin.openEdit,
     onEditGroup: groupAdmin.openGroupSettings,
   };
@@ -160,6 +169,7 @@ function AppRoutes() {
             <GameFormModal
               mode={groupAdmin.gameModal.mode}
               initial={groupAdmin.gameModal.mode === "edit" ? groupAdmin.gameModal.game : null}
+              groupGames={groupGames}
               saving={groupAdmin.saving}
               onSave={groupAdmin.saveGame}
               onClose={groupAdmin.closeGameModal}

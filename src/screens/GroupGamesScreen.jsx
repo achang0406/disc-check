@@ -46,6 +46,8 @@ export default function GroupGamesScreen({
   onAdminLoginClick,
   onAdminLogout,
   onAddGame,
+  addGameDisabled = false,
+  addGameDisabledReason = "Maximum 7 games per group",
   onEditGame,
   onEditGroup,
 }) {
@@ -133,6 +135,8 @@ export default function GroupGamesScreen({
         onAdminLoginClick={onAdminLoginClick}
         onAdminLogout={onAdminLogout}
         onAddGame={onAddGame}
+        addGameDisabled={addGameDisabled}
+        addGameDisabledReason={addGameDisabledReason}
         leading={
           <Button
             variant="icon"

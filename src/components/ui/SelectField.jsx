@@ -25,6 +25,36 @@ function SelectOptionLabel({ option, responsive = false }) {
   );
 }
 
+function isOptionDisabled(option) {
+  return Boolean(option?.disabled);
+}
+
+function firstEnabledIndex(options, start = 0) {
+  for (let index = start; index < options.length; index += 1) {
+    if (!isOptionDisabled(options[index])) return index;
+  }
+  return -1;
+}
+
+function lastEnabledIndex(options) {
+  for (let index = options.length - 1; index >= 0; index -= 1) {
+    if (!isOptionDisabled(options[index])) return index;
+  }
+  return -1;
+}
+
+function nextEnabledIndex(options, index, direction) {
+  if (options.length === 0) return -1;
+
+  let next = index;
+  for (let step = 0; step < options.length; step += 1) {
+    next = (next + direction + options.length) % options.length;
+    if (!isOptionDisabled(options[next])) return next;
+  }
+
+  return -1;
+}
+
 function Chevron() {
   return (
     <svg
@@ -70,7 +100,7 @@ export default function SelectField({
 
   const selectOption = useCallback(
     (option) => {
-      if (disabled) return;
+      if (disabled || isOptionDisabled(option)) return;
       onChange(option.value);
       close();
     },
@@ -97,8 +127,13 @@ export default function SelectField({
       if (event.key === "ArrowDown") {
         event.preventDefault();
         setHighlightIndex((index) => {
-          if (index < 0) return selectedIndex >= 0 ? selectedIndex : 0;
-          return Math.min(options.length - 1, index + 1);
+          if (index < 0) {
+            if (selectedIndex >= 0 && !isOptionDisabled(options[selectedIndex])) {
+              return selectedIndex;
+            }
+            return firstEnabledIndex(options);
+          }
+          return nextEnabledIndex(options, index, 1);
         });
         return;
       }
@@ -106,21 +141,26 @@ export default function SelectField({
       if (event.key === "ArrowUp") {
         event.preventDefault();
         setHighlightIndex((index) => {
-          if (index < 0) return selectedIndex >= 0 ? selectedIndex : options.length - 1;
-          return Math.max(0, index - 1);
+          if (index < 0) {
+            if (selectedIndex >= 0 && !isOptionDisabled(options[selectedIndex])) {
+              return selectedIndex;
+            }
+            return lastEnabledIndex(options);
+          }
+          return nextEnabledIndex(options, index, -1);
         });
         return;
       }
 
       if (event.key === "Home") {
         event.preventDefault();
-        setHighlightIndex(0);
+        setHighlightIndex(firstEnabledIndex(options));
         return;
       }
 
       if (event.key === "End") {
         event.preventDefault();
-        setHighlightIndex(options.length - 1);
+        setHighlightIndex(lastEnabledIndex(options));
         return;
       }
 
@@ -143,7 +183,11 @@ export default function SelectField({
   const openMenu = () => {
     if (disabled) return;
     setOpen(true);
-    setHighlightIndex(selectedIndex >= 0 ? selectedIndex : 0);
+    if (selectedIndex >= 0 && !isOptionDisabled(options[selectedIndex])) {
+      setHighlightIndex(selectedIndex);
+      return;
+    }
+    setHighlightIndex(firstEnabledIndex(options));
   };
 
   return (
@@ -181,14 +225,19 @@ export default function SelectField({
                   type="button"
                   role="option"
                   aria-selected={isSelected}
+                  aria-disabled={isOptionDisabled(option) || undefined}
+                  disabled={isOptionDisabled(option)}
                   className={cx(
                     "select-field__option",
                     isSelected && "select-field__option--selected",
                     isHighlighted && "select-field__option--highlighted",
+                    isOptionDisabled(option) && "select-field__option--disabled",
                     option.tone && `select-field__option--${option.tone}`,
                   )}
                   onMouseDown={suppressMouseFocus}
-                  onMouseEnter={() => setHighlightIndex(index)}
+                  onMouseEnter={() => {
+                    if (!isOptionDisabled(option)) setHighlightIndex(index);
+                  }}
                   onClick={() => selectOption(option)}
                 >
                   <SelectOptionLabel option={option} />
