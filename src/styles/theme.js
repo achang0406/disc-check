@@ -483,6 +483,10 @@ export const globalStyles = `
     overflow: visible;
   }
 
+  html.ios-standalone .games-screen.games-screen--group {
+    min-height: 100vh;
+  }
+
   .games-screen.games-screen--group .games-screen__main--detail {
     flex: 1 1 0;
     min-height: 0;

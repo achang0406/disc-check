@@ -1,3 +1,14 @@
+const IOS_STANDALONE_CLASS = "ios-standalone";
+
+export function syncIosStandaloneClass() {
+  if (typeof document === "undefined") return;
+
+  document.documentElement.classList.toggle(
+    IOS_STANDALONE_CLASS,
+    isIosDevice() && isStandaloneDisplay(),
+  );
+}
+
 export function isStandaloneDisplay() {
   if (typeof window === "undefined") return false;
 

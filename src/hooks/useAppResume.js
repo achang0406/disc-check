@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { isAndroidDevice, isStandaloneDisplay } from "../utils/pwaInstall.js";
+import { isAndroidDevice, isStandaloneDisplay, syncIosStandaloneClass } from "../utils/pwaInstall.js";
 
 function recoverPaint() {
   const shell = document.querySelector(".app-shell");
@@ -13,8 +13,11 @@ function recoverPaint() {
 
 export function useAppResume() {
   useEffect(() => {
+    syncIosStandaloneClass();
+
     const onVisible = () => {
       if (document.visibilityState !== "visible") return;
+      syncIosStandaloneClass();
       recoverPaint();
     };
 
@@ -23,6 +26,7 @@ export function useAppResume() {
         window.location.reload();
         return;
       }
+      syncIosStandaloneClass();
       recoverPaint();
     };
 

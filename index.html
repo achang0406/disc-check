@@ -52,6 +52,20 @@
         } catch (error) {
           // Storage unavailable — keep dark defaults.
         }
+
+        var ua = navigator.userAgent.toLowerCase();
+        var isAppleMobile = /iphone|ipad|ipod/.test(ua);
+        var isIpadOs =
+          navigator.platform === "MacIntel" &&
+          typeof navigator.maxTouchPoints === "number" &&
+          navigator.maxTouchPoints > 1;
+        var isStandalone =
+          window.navigator.standalone === true ||
+          window.matchMedia("(display-mode: standalone)").matches ||
+          window.matchMedia("(display-mode: fullscreen)").matches;
+        if ((isAppleMobile || isIpadOs) && isStandalone) {
+          document.documentElement.classList.add("ios-standalone");
+        }
       })();
     </script>
     <link
