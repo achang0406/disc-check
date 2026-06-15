@@ -156,7 +156,9 @@ placeBelow = (spaceBelow ≥ 200) OR (spaceBelow ≥ spaceAbove)
 - Targets near the bottom of the screen (chat) usually get **above**.
 - Mid-card targets (game card, walk-ins) usually get **below**.
 
-### 5.4 Vertical position
+### 5.4 Vertical position (current behavior)
+
+> **Note:** §5.3–5.4 describe the **current** implementation. The proposed fix for modal bounce is in [§14](#14-proposed-transition-redesign-draft--pending-review).
 
 **Below** (`placement: "below"`):
 
@@ -291,9 +293,11 @@ Cutout and modal each run their own lerp with **different start/end pairs**. The
 ### 9.3 Why some step pairs feel bouncy (2→3, 3→4)
 
 1. **Large Δheight and Δy** — walk-ins (tall) → chat bar (short, low on screen)
-2. **Placement flip** — `below` ↔ `above` toggles `transform: translateY(−100%)` while `top` also changes
+2. **Placement flip** — `below` ↔ `above` toggles `transform: translateY(−100%)` while `top` also changes (**confirmed root cause**; locking placement to always-below eliminates most bounce)
 3. **Parallel morph** — cutout height shrinking while modal moves on a separate path
 4. **220 ms remeasure** — `SETTLE_MS` timer fires when CSS transitions finish; a second layout pass can nudge positions if the DOM settled (carousel, fonts)
+
+**Proposed fix:** [§14](#14-proposed-transition-redesign-draft--pending-review).
 
 ---
 
@@ -331,7 +335,7 @@ Ideas for future polish (not all implemented):
 | Stop cutout “collapse” look | Transition only `x`/`y`; snap `width`/`height` |
 | Staged cutout morph | Phase 1: partial or full `x`/`y`; phase 2: `width`/`height` |
 | Collapse toward modal | Animate cutout to bubble tail anchor, then expand to new target |
-| Reduce modal bounce | Delay bubble layout until cutout settles, or lock modal during cutout |
+| Reduce modal bounce | **Chosen:** unified absolute positioning + tail-anchor snap — see [§14](#14-proposed-transition-redesign-draft--pending-review) |
 | Avoid double-hit at 220 ms | Skip remeasure if values unchanged or morph in progress |
 | Keep modal glued to cutout | Derive bubble position from **animated** `S(t)` each frame |
 
@@ -346,3 +350,183 @@ Ideas for future polish (not all implemented):
 | `src/constants/walkthrough.js` | Step copy, targets, `spotlightPad` overrides |
 | `src/hooks/useGroupWalkthrough.js` | Step index, completion, localStorage |
 | `src/screens/GroupGamesScreen.jsx` | Mount overlay, tour anchors on slide 0 |
+
+---
+
+## 14. Proposed transition redesign (draft — pending review)
+
+**Status:** Draft — pending review. Not yet implemented. When shipped, update §5.3–5.4 and §9 to describe the new behavior and mark this section as implemented.
+
+### 14.1 Motivation
+
+Step transitions **2→3** (walk-ins → chat bar) and **3→4** (chat bar → game status) produce a visible modal **bounce**. A quick test locking the modal to always-below placement eliminated most bounce, confirming the root cause:
+
+- **Above** placement uses `top` as a bottom anchor plus `transform: translateY(-100%)` (§5.4).
+- CSS transitions animate `top` and `transform` simultaneously (§9.1).
+- The **visual** box can move away from the destination mid-animation even though each property eases smoothly.
+
+The bounce is **not** caused by cutout and modal animating independently. Parallel 220 ms transitions are fine when the modal uses a single coordinate system.
+
+### 14.2 Current vs proposed
+
+| Concern | Current | Proposed |
+|---------|---------|----------|
+| Vertical position | `placement: "below"` → `top` = top edge; `"above"` → `top` = bottom anchor + `translateY(-100%)` | `top` is **always** the visual top edge of the modal box |
+| Placement decision | `spaceBelow ≥ 200` or `spaceBelow ≥ spaceAbove` (no modal height) | `fitsBelow` using measured `bubbleHeight` |
+| Tail direction | Tied to `placement` class (`--below` / `--above`) | `tailAnchor` snaps at t=0; presentation only |
+| Step change animation | `top`, `left`, `width`, `transform` all transition | `top`, `left`, `width` transition; `transform` removed |
+| Modal content | Updates immediately on step change | Same — updates immediately; height measured from new copy |
+
+### 14.3 Design principles
+
+1. **One coordinate system** — `top` is always the modal’s visual top edge; no `translateY(-100%)` for placement.
+2. **Separation of concerns** — layout (absolute box on screen) vs presentation (which edge the tail attaches to).
+3. **Copy-first measurement** — on step change, render next step copy immediately, measure new bubble height, then compute final screen coordinates.
+4. **Parallel animation** — cutout and modal still transition independently over 220 ms on comparable scalar properties.
+
+### 14.4 Orchestrator workflow
+
+The layout planner lives inside `WalkthroughOverlay` (no new React layer). `useGroupWalkthrough` continues to own step index only.
+
+```mermaid
+sequenceDiagram
+  participant User
+  participant StepState as useGroupWalkthrough
+  participant Overlay as WalkthroughOverlay
+  participant Planner as planBubbleLayout
+  participant DOM
+
+  User->>StepState: click Next
+  StepState->>Overlay: stepIndex++, new step copy
+  Overlay->>DOM: render bubble with new copy at prior position
+  Overlay->>DOM: useLayoutEffect measure bubble height
+  Overlay->>DOM: findTargetRect for new cutout
+  Overlay->>Planner: targetRect + bubbleHeight + viewport
+  Planner-->>Overlay: absolute box + tailAnchor
+  Overlay->>DOM: apply cutout S and bubble top/left/width
+  Note over DOM: CSS 220ms transition from last painted values
+```
+
+**Numbered steps:**
+
+1. User clicks Next → `stepIndex` advances; title, body, and dots update immediately.
+2. Measure next target → cutout `S` from `findTargetRect(step)` (unchanged from §4).
+3. `useLayoutEffect` reads `bubbleRef.getBoundingClientRect().height` **after** new copy is in the DOM. Bubble width is fixed (`min(340, …)`), so height is stable regardless of the prior `top`.
+4. `planBubbleLayout(R, P, bubbleHeight)` returns `{ left, top, width, tailX, tailAnchor }`.
+5. Cutout SVG attrs and bubble `top` / `left` / `width` update in one commit. `tailAnchor` maps to existing `--below` / `--above` classes and **snaps** at t=0. Both layers CSS-transition over 220 ms from the last painted values.
+
+The modal does not need to know its relative placement to the cutout for **positioning** — it only receives absolute screen coordinates. The tail flip is cosmetic: the pointer aims toward the cutout from whichever modal edge is closer.
+
+### 14.5 Layout formulas (`planBubbleLayout`)
+
+Replaces `getBubbleLayout` placement logic (§5.3–5.4). Cutout math (§4) is unchanged.
+
+**Horizontal** — unchanged from §5.1–5.2:
+
+```
+bubbleWidth = min(340, innerWidth − 2 × VIEWPORT_PAD)
+bubble.left = clamp(R.centerX − bubbleWidth/2, VIEWPORT_PAD, innerWidth − VIEWPORT_PAD − bubbleWidth)
+tailX       = clamp(R.centerX − bubble.left, 28, bubbleWidth − 28)
+```
+
+**Vertical** — always absolute top edge. Given cutout edges `S` (from §4) and measured `bubbleHeight`:
+
+```
+gapTop    = S.bottom + BUBBLE_GAP
+fitsBelow = gapTop + bubbleHeight ≤ innerHeight − VIEWPORT_PAD
+
+if fitsBelow:
+  top        = min(gapTop, innerHeight − VIEWPORT_PAD − bubbleHeight)
+  tailAnchor = "top"      → class walkthrough-bubble--below (tail on modal top, points up)
+else:
+  top        = max(VIEWPORT_PAD, S.top − BUBBLE_GAP − bubbleHeight)
+  tailAnchor = "bottom"   → class walkthrough-bubble--above (tail on modal bottom, points down)
+```
+
+**Mapping `tailAnchor` to existing CSS:** Reuse current class names for minimal churn. `--below` means the tail sits on the modal’s top edge (modal is below cutout). `--above` means the tail sits on the modal’s bottom edge (modal is above cutout). Only the **meaning of `top`** changes: always visual top edge, never a transform-adjusted anchor.
+
+#### Below cutout (tailAnchor = top)
+
+```
+        ┌─────────────────┐
+        │     cutout      │  S.top .. S.bottom
+        └────────┬────────┘
+                 │ BUBBLE_GAP (18)
+            ▲    │
+            │    ▼
+        ┌─────────────────┐
+        │      modal      │  top = gapTop (visual top edge)
+        └─────────────────┘
+```
+
+#### Above cutout (tailAnchor = bottom)
+
+```
+        ┌─────────────────┐
+        │      modal      │  top = S.top − BUBBLE_GAP − bubbleHeight
+        └────────┬────────┘
+                 │ BUBBLE_GAP
+        ┌────────▼────────┐
+        │     cutout      │
+        └─────────────────┘
+```
+
+### 14.6 Measurement pipeline (copy-first + `useLayoutEffect`)
+
+**Current:** `measureLayout()` runs in `useEffect` on step change (after paint). Placement does not account for bubble height.
+
+**Proposed two-pass (same frame, before paint):**
+
+```
+Click Next
+  → render pass 1: new copy, bubble still at prior top/left (from lastLayoutRef)
+  → useLayoutEffect:
+       bubbleHeight = bubbleRef.getBoundingClientRect().height
+       nextLayout   = planBubbleLayout(findTargetRect(step), pad, bubbleHeight)
+       setLayout(nextLayout)
+  → render pass 2: new copy, new top/left/width
+  → browser paints
+```
+
+CSS transition still works: the last **painted** frame had `top: P_old`. After `useLayoutEffect`, the DOM gets `top: P_new` before the next paint. The browser interpolates from the previous frame’s computed value over 220 ms. Copy can change in the same commit; only position properties animate.
+
+**Shift from `useEffect` to `useLayoutEffect`** for height-based placement on `stepIndex` / `step.id`. Scroll, resize, and `ResizeObserver` remeasures can remain on `requestAnimationFrame` / `useEffect`.
+
+### 14.7 Transition rules (animate vs snap)
+
+| Property | On step change |
+|----------|----------------|
+| Step copy (title, body, dots) | Immediate |
+| Cutout `x`, `y`, `width`, `height` | CSS transition 220 ms |
+| Modal `top`, `left`, `width` | CSS transition 220 ms |
+| `tailAnchor` / `--below` / `--above` | Snap at t=0 (presentation only) |
+| `transform` on `.walkthrough-bubble` | Removed from inline style and from CSS transition rule |
+
+### 14.8 Edge cases
+
+| Case | Handling |
+|------|----------|
+| **First step mount** | No prior bubble height. `useLayoutEffect` measures on first render; first step may not animate in (acceptable). |
+| **Chat step (step 3)** | `fitsBelow` is false → modal above cutout. May clamp `top` to `VIEWPORT_PAD`; `tailX` clamp (§5.2) handles horizontal skew. |
+| **Viewport clamp** | `top` clamped so `top + bubbleHeight ≤ innerHeight − VIEWPORT_PAD` when below; `top ≥ VIEWPORT_PAD` when above. |
+| **Height change during 220 ms** | Step copy is fixed during transition; height should be stable. `SETTLE_MS` remeasure at 220 ms may nudge `top` if fonts/carousel settle — defer remeasure until transition completes or skip if delta &lt; 1 px. |
+| **Back navigation** | Same pipeline: new copy → measure height → plan layout → transition from last painted position. |
+
+### 14.9 Open questions for review
+
+1. **Placement heuristic** — Drop the `spaceBelow ≥ 200` proxy and use only `fitsBelow` with measured height? **Recommendation:** yes; height-aware check supersedes the 200 px rule.
+2. **Lock bubble height during transition** — Should `min-height` be set from measured height for 220 ms to prevent content reflow mid-animation? **Recommendation:** optional; only if settle remeasure causes visible jumps.
+3. **Settle remeasure timing** — Keep `SETTLE_MS` at 220 ms but gate on `transitioning` flag? **Recommendation:** yes, to avoid double-hit nudge noted in §9.3 item 4.
+
+### 14.10 Implementation checklist (post-review)
+
+| File | Change |
+|------|--------|
+| `src/components/walkthrough/WalkthroughOverlay.jsx` | Rename `getBubbleLayout` → `planBubbleLayout(rect, pad, bubbleHeight)`; add `bubbleRef`; `useLayoutEffect` measure pass on step change; remove `transform` from `bubbleStyle`; map `tailAnchor` → `--below` / `--above` classes |
+| `src/styles/theme.js` | Remove `transform` from `.walkthrough-bubble` transition |
+| `docs/walkthrough-overlay-mechanics.md` | Update §5, §9 when implemented; mark §14 as shipped |
+
+**No changes** to `src/constants/walkthrough.js`, `src/hooks/useGroupWalkthrough.js`, or `src/screens/GroupGamesScreen.jsx`.
+
+**Out of scope for this fix:** staged cutout morph, snapping cutout `width`/`height`, gluing modal to animated `S(t)` each frame (see §12 for optional future polish).
+
