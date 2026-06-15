@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { BrowserRouter, Navigate, Route, Routes, useMatch } from "react-router-dom";
 import FieldBackground from "./components/layout/FieldBackground.jsx";
-import LoadingScreen from "./components/layout/LoadingScreen.jsx";
+import LoadingScreen, { LOADING_EXIT_MS } from "./components/layout/LoadingScreen.jsx";
 import Toast from "./components/layout/Toast.jsx";
 import SignUpModal from "./components/auth/SignUpModal.jsx";
 import EditProfileModal from "./components/auth/EditProfileModal.jsx";
@@ -47,7 +47,8 @@ function AppRoutes() {
     refresh: app.refresh,
     groupGameCount: groupGames.length,
   });
-  const [loadingOverlay, setLoadingOverlay] = useState(true);
+  const [loadingVisible, setLoadingVisible] = useState(true);
+  const [loadingExiting, setLoadingExiting] = useState(false);
 
   useAppResume();
 
@@ -68,7 +69,26 @@ function AppRoutes() {
   });
 
   useEffect(() => {
-    setLoadingOverlay(app.loading);
+    if (app.loading) {
+      setLoadingExiting(false);
+      setLoadingVisible(true);
+      return undefined;
+    }
+
+    let exitTimer;
+    const raf = window.requestAnimationFrame(() => {
+      setLoadingExiting(true);
+      const exitMs = window.matchMedia("(prefers-reduced-motion: reduce)").matches ? 0 : LOADING_EXIT_MS;
+      exitTimer = window.setTimeout(() => {
+        setLoadingVisible(false);
+        setLoadingExiting(false);
+      }, exitMs);
+    });
+
+    return () => {
+      window.cancelAnimationFrame(raf);
+      if (exitTimer) window.clearTimeout(exitTimer);
+    };
   }, [app.loading]);
 
   const groupScreenProps = {
@@ -207,7 +227,7 @@ function AppRoutes() {
           </Routes>
         </div>
       )}
-      {loadingOverlay && <LoadingScreen cssVars={cssVars} />}
+      {loadingVisible && <LoadingScreen cssVars={cssVars} exiting={loadingExiting} />}
     </>
   );
 }

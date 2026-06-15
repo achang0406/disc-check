@@ -112,7 +112,7 @@ export const globalStyles = `
   .loading-screen {
     position: fixed;
     inset: 0;
-    z-index: calc(var(--z-modal) + 10);
+    z-index: calc(var(--z-modal) + 30);
     display: flex;
     align-items: center;
     justify-content: center;
