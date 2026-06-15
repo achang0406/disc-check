@@ -1910,4 +1910,26 @@ export const globalStyles = `
     background: color-mix(in srgb, var(--rsvp-btn-bg) 75%, var(--card-bg));
   }
 
+  .welcome-modal {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: var(--space-3);
+    box-sizing: border-box;
+  }
+
+  .walkthrough-bubble--centered {
+    position: relative;
+    top: auto;
+    left: auto;
+    width: min(340px, 100%);
+    max-width: 100%;
+    transition: none;
+  }
+
+  .walkthrough-bubble--centered::before,
+  .walkthrough-bubble--centered::after {
+    display: none;
+  }
+
 `;

@@ -3,8 +3,10 @@ import { Navigate } from "react-router-dom";
 import AppHeader from "../components/layout/AppHeader.jsx";
 import GroupListItem from "../components/groups/GroupListItem.jsx";
 import EmptyState from "../components/ui/EmptyState.jsx";
+import WelcomeModal from "../components/welcome/WelcomeModal.jsx";
 import { gamesForGroup } from "../lib/data.js";
 import { useGameClock } from "../hooks/useGameClock.js";
+import { useWelcomeModal } from "../hooks/useWelcomeModal.js";
 import { sortGamesForLanding, sortGroupsForLanding } from "../utils/gameSchedule.js";
 import { formatGameScheduleSlot } from "../utils/time.js";
 import { shouldStayOnLanding } from "../utils/landingNavigation.js";
@@ -33,8 +35,13 @@ export default function GroupsLandingScreen({
     () => sortGroupsForLanding(groups, games, now),
     [groups, games, now],
   );
+  const welcome = useWelcomeModal({ groupCount: sortedGroups.length });
 
-  if (sortedGroups.length === 1 && !shouldStayOnLanding()) {
+  if (
+    sortedGroups.length === 1
+    && !shouldStayOnLanding()
+    && welcome.hasSeenWelcomeBefore
+  ) {
     return <Navigate to={`/groups/${sortedGroups[0].id}`} replace />;
   }
 
@@ -64,6 +71,18 @@ export default function GroupsLandingScreen({
           </div>
         )}
       </main>
+
+      {welcome.isActive && welcome.currentStep && (
+        <WelcomeModal
+          step={welcome.currentStep}
+          stepIndex={welcome.stepIndex}
+          totalSteps={welcome.totalSteps}
+          canGoBack={welcome.canGoBack}
+          onNext={welcome.next}
+          onBack={welcome.back}
+          onSkip={welcome.skip}
+        />
+      )}
     </div>
   );
 }
