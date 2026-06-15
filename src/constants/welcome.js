@@ -20,21 +20,21 @@ export function getWelcomeSteps(groupCount) {
   if (groupCount === 1) {
     steps.push({
       id: "single-group",
-      title: "Starting on this page",
+      title: "Tap your group",
       body:
-        "You have one group, so we normally open it automatically.\n\nOn this first visit we're staying here so you can read this intro. Tap your group below when you're ready — you'll get a quick tour inside.\n\nNext time you visit, we'll take you straight to your group.",
+        "First visit stays here on purpose. Tap your group below for a quick tour — next time we'll open it directly.",
     });
   } else if (groupCount > 1) {
     steps.push({
       id: "pick-group",
       title: "Pick a group",
-      body: "Tap any group below to see its games. If you ever have just one group, we'll skip this page on future visits and open it directly.",
+      body: "Tap a group below to get started. If you ever have just one, we'll skip this page and open it directly.",
     });
   } else {
     steps.push({
       id: "no-groups",
       title: "Almost there",
-      body: "When your organizer adds a group, it'll show up here. Open it to RSVP, check in, and chat.",
+      body: "When a group is added, it'll show up here.",
     });
   }
 
