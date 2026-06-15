@@ -84,7 +84,7 @@ export default function WalkthroughOverlay({
   const maskId = useId().replace(/:/g, "");
   const titleId = useId();
   const bodyId = useId();
-  const [portalTarget, setPortalTarget] = useState(null);
+  const [portalTarget] = useState(() => getPortalTarget());
   const [layout, setLayout] = useState(null);
   const lastLayoutRef = useRef(null);
   const bubbleRef = useRef(null);
@@ -143,10 +143,6 @@ export default function WalkthroughOverlay({
     setViewport(getOverlayViewport());
     scheduleMeasure();
   }, [scheduleMeasure]);
-
-  useEffect(() => {
-    setPortalTarget(getPortalTarget());
-  }, []);
 
   useLayoutEffect(() => {
     if (!portalTarget) return;

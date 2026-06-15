@@ -12,7 +12,7 @@ import EditIcon from "../components/ui/EditIcon.jsx";
 import Button from "../components/ui/Button.jsx";
 import { gamesForGroup } from "../lib/data.js";
 import { useGameClock } from "../hooks/useGameClock.js";
-import { useGroupWalkthrough } from "../hooks/useGroupWalkthrough.js";
+import { useGroupWalkthrough, shouldShowGroupWalkthrough } from "../hooks/useGroupWalkthrough.js";
 import { WALKTHROUGH_GAME_SLIDE_INDEX } from "../constants/walkthrough.js";
 import { canShowChatPushBell } from "../lib/push.js";
 import { getPresenceUsers } from "../utils/presenceUsers.js";
@@ -67,6 +67,7 @@ export default function GroupGamesScreen({
   );
 
   const walkthrough = useGroupWalkthrough({ hasGames: groupGames.length > 0 });
+  const showWalkthrough = shouldShowGroupWalkthrough(groupGames.length > 0);
 
   useObservedAlerts({
     games,
@@ -229,7 +230,7 @@ export default function GroupGamesScreen({
                     isAdmin={isAdmin}
                     onEditGame={onEditGame}
                     walkthroughAnchorActive={
-                      walkthrough.isActive && index === WALKTHROUGH_GAME_SLIDE_INDEX
+                      showWalkthrough && index === WALKTHROUGH_GAME_SLIDE_INDEX
                     }
                   />
                 )}
@@ -264,7 +265,7 @@ export default function GroupGamesScreen({
         </div>
       </main>
 
-      {walkthrough.isActive && walkthrough.currentStep && (
+      {showWalkthrough && walkthrough.isActive && walkthrough.currentStep && (
         <WalkthroughOverlay
           step={walkthrough.currentStep}
           stepIndex={walkthrough.stepIndex}

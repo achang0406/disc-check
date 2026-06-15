@@ -21,14 +21,20 @@ function markWalkthroughCompleted() {
   );
 }
 
+export function shouldShowGroupWalkthrough(hasGames) {
+  return hasGames && !isWalkthroughCompleted();
+}
+
 export function useGroupWalkthrough({ hasGames }) {
-  const [isActive, setIsActive] = useState(false);
+  const [isActive, setIsActive] = useState(() => shouldShowGroupWalkthrough(hasGames));
   const [stepIndex, setStepIndex] = useState(0);
 
   useEffect(() => {
-    if (!hasGames || isWalkthroughCompleted()) return;
-    setIsActive(true);
-    setStepIndex(0);
+    const nextActive = shouldShowGroupWalkthrough(hasGames);
+    setIsActive(nextActive);
+    if (nextActive) {
+      setStepIndex(0);
+    }
   }, [hasGames]);
 
   const finish = useCallback(() => {
