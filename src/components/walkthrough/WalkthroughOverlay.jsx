@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useId, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import { getOverlayViewport } from "../../utils/overlayViewport.js";
 import { getPortalTarget } from "../../utils/portalTarget.js";
 
 const DEFAULT_SPOTLIGHT_PAD = 8;
@@ -22,11 +23,11 @@ function findTargetRect(step) {
   return null;
 }
 
-function planBubbleLayout(rect, spotlightPad, bubbleHeight) {
-  const width = Math.min(340, window.innerWidth - VIEWPORT_PAD * 2);
+function planBubbleLayout(rect, spotlightPad, bubbleHeight, viewport) {
+  const width = Math.min(340, viewport.width - VIEWPORT_PAD * 2);
   const left = Math.min(
     Math.max(VIEWPORT_PAD, rect.left + rect.width / 2 - width / 2),
-    window.innerWidth - width - VIEWPORT_PAD,
+    viewport.width - width - VIEWPORT_PAD,
   );
   const targetCenterX = rect.left + rect.width / 2;
   const tailX = Math.min(Math.max(28, targetCenterX - left), width - 28);
@@ -34,13 +35,13 @@ function planBubbleLayout(rect, spotlightPad, bubbleHeight) {
   const cutoutTop = rect.top - spotlightPad;
   const gapTop = cutoutBottom + BUBBLE_GAP;
   const height = Math.max(bubbleHeight, 0);
-  const fitsBelow = gapTop + height <= window.innerHeight - VIEWPORT_PAD;
+  const fitsBelow = gapTop + height <= viewport.height - VIEWPORT_PAD;
 
   if (fitsBelow) {
     return {
       width,
       left,
-      top: Math.min(gapTop, window.innerHeight - VIEWPORT_PAD - Math.max(height, 1)),
+      top: Math.min(gapTop, viewport.height - VIEWPORT_PAD - Math.max(height, 1)),
       placement: "below",
       tailX,
     };
@@ -88,10 +89,7 @@ export default function WalkthroughOverlay({
   const lastLayoutRef = useRef(null);
   const bubbleRef = useRef(null);
   const lastBubbleHeightRef = useRef(0);
-  const [viewport, setViewport] = useState(() => ({
-    width: typeof window !== "undefined" ? window.innerWidth : 0,
-    height: typeof window !== "undefined" ? window.innerHeight : 0,
-  }));
+  const [viewport, setViewport] = useState(getOverlayViewport);
   const rafRef = useRef(null);
   const spotlightPad = step.spotlightPad ?? DEFAULT_SPOTLIGHT_PAD;
 
@@ -105,9 +103,14 @@ export default function WalkthroughOverlay({
   }, []);
 
   const buildLayout = useCallback(
-    (rect, pad = step.spotlightPad ?? DEFAULT_SPOTLIGHT_PAD, bubbleHeight = readBubbleHeight()) => ({
+    (
       rect,
-      bubble: planBubbleLayout(rect, pad, bubbleHeight),
+      pad = step.spotlightPad ?? DEFAULT_SPOTLIGHT_PAD,
+      bubbleHeight = readBubbleHeight(),
+      viewportMetrics = getOverlayViewport(),
+    ) => ({
+      rect,
+      bubble: planBubbleLayout(rect, pad, bubbleHeight, viewportMetrics),
     }),
     [readBubbleHeight, step.spotlightPad],
   );
@@ -125,8 +128,8 @@ export default function WalkthroughOverlay({
   const measureLayout = useCallback(() => {
     const rect = findTargetRect(step);
     if (!rect) return false;
-    return applyLayout(buildLayout(rect));
-  }, [applyLayout, buildLayout, step]);
+    return applyLayout(buildLayout(rect, step.spotlightPad ?? DEFAULT_SPOTLIGHT_PAD, readBubbleHeight(), getOverlayViewport()));
+  }, [applyLayout, buildLayout, readBubbleHeight, step]);
 
   const scheduleMeasure = useCallback(() => {
     if (rafRef.current !== null) return;
@@ -135,6 +138,11 @@ export default function WalkthroughOverlay({
       measureLayout();
     });
   }, [measureLayout]);
+
+  const syncViewport = useCallback(() => {
+    setViewport(getOverlayViewport());
+    scheduleMeasure();
+  }, [scheduleMeasure]);
 
   useEffect(() => {
     setPortalTarget(getPortalTarget());
@@ -171,16 +179,12 @@ export default function WalkthroughOverlay({
   useEffect(() => {
     if (!portalTarget) return undefined;
 
-    const handleViewportChange = () => {
-      setViewport({
-        width: window.innerWidth,
-        height: window.innerHeight,
-      });
-      scheduleMeasure();
-    };
+    const handleViewportChange = () => syncViewport();
 
     window.addEventListener("resize", handleViewportChange);
     window.addEventListener("scroll", scheduleMeasure, true);
+    window.visualViewport?.addEventListener("resize", handleViewportChange);
+    window.visualViewport?.addEventListener("scroll", handleViewportChange);
 
     const observed = (step.target ? [step.target] : [])
       .flatMap((key) => [...document.querySelectorAll(`[data-walkthrough-target="${key}"]`)]);
@@ -196,13 +200,15 @@ export default function WalkthroughOverlay({
     return () => {
       window.removeEventListener("resize", handleViewportChange);
       window.removeEventListener("scroll", scheduleMeasure, true);
+      window.visualViewport?.removeEventListener("resize", handleViewportChange);
+      window.visualViewport?.removeEventListener("scroll", handleViewportChange);
       resizeObserver?.disconnect();
       if (rafRef.current !== null) {
         window.cancelAnimationFrame(rafRef.current);
         rafRef.current = null;
       }
     };
-  }, [portalTarget, scheduleMeasure, step]);
+  }, [portalTarget, scheduleMeasure, step, syncViewport]);
 
   useEffect(() => {
     if (!layout) return;
@@ -225,10 +231,16 @@ export default function WalkthroughOverlay({
 
   const displayLayout = layout ?? lastLayoutRef.current;
   const isLastStep = stepIndex >= totalSteps - 1;
+  const layerStyle = {
+    top: `${viewport.offsetTop}px`,
+    left: `${viewport.offsetLeft}px`,
+    width: `${viewport.width}px`,
+    height: `${viewport.height}px`,
+  };
 
   if (!displayLayout) {
     return createPortal(
-      <div className="walkthrough-layer" role="presentation">
+      <div className="walkthrough-layer" style={layerStyle} role="presentation">
         <div className="walkthrough-scrim walkthrough-scrim--full" aria-hidden="true" />
       </div>,
       portalTarget,
@@ -251,7 +263,7 @@ export default function WalkthroughOverlay({
   };
 
   return createPortal(
-    <div className="walkthrough-layer" role="presentation">
+    <div className="walkthrough-layer" style={layerStyle} role="presentation">
       <svg
         className="walkthrough-scrim"
         aria-hidden="true"

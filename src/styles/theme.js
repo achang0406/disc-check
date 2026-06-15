@@ -1675,7 +1675,6 @@ export const globalStyles = `
 
   .walkthrough-layer {
     position: fixed;
-    inset: 0;
     z-index: 220;
     pointer-events: none;
     font-family: var(--font-sans);
@@ -1683,7 +1682,7 @@ export const globalStyles = `
   }
 
   .walkthrough-scrim {
-    position: fixed;
+    position: absolute;
     inset: 0;
     width: 100%;
     height: 100%;
@@ -1691,6 +1690,8 @@ export const globalStyles = `
   }
 
   .walkthrough-scrim--full {
+    position: absolute;
+    inset: 0;
     background: rgba(0, 0, 0, 0.78);
   }
 
@@ -1703,7 +1704,7 @@ export const globalStyles = `
   }
 
   .walkthrough-bubble {
-    position: fixed;
+    position: absolute;
     z-index: 1;
     box-sizing: border-box;
     padding: var(--space-3);
