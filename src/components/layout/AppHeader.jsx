@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { APP_NAME } from "../../constants/app.js";
 import { getInitials } from "../../utils/format.js";
 import Button from "../ui/Button.jsx";
 import InstallAppLink from "./InstallAppLink.jsx";
@@ -142,7 +143,7 @@ export default function AppHeader({
             onClick={brandTappable ? handleTitleTap : undefined}
             onMouseDown={brandTappable ? suppressMouseFocus : undefined}
           >
-            DiscCheck
+            {APP_NAME}
           </span>
           {showAdmin && isAdmin && (
             <div className="games-screen__admin-menu" ref={adminMenuRef}>

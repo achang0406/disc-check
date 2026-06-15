@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from "react";
+import { APP_NAME } from "../constants/app.js";
 import { isSubscribedToGroupChatPush } from "../lib/push.js";
-
-const BASE_TITLE = "DiscCheck";
 
 function clearHomeScreenBadge() {
   if (typeof navigator !== "undefined" && "clearAppBadge" in navigator) {
@@ -24,11 +23,11 @@ export function useChatAlerts({ gameId, gameName, messages, selfId, enabled = tr
   useEffect(() => {
     unreadRef.current = 0;
     seenCountRef.current = messages.length;
-    document.title = BASE_TITLE;
+    document.title = APP_NAME;
     clearHomeScreenBadge();
 
     return () => {
-      document.title = BASE_TITLE;
+      document.title = APP_NAME;
     };
   }, [contextId]);
 
@@ -68,7 +67,7 @@ export function useChatAlerts({ gameId, gameName, messages, selfId, enabled = tr
     const clearUnread = () => {
       if (document.hidden) return;
       unreadRef.current = 0;
-      document.title = BASE_TITLE;
+      document.title = APP_NAME;
       clearHomeScreenBadge();
     };
 
@@ -105,8 +104,8 @@ export function useChatAlerts({ gameId, gameName, messages, selfId, enabled = tr
       const count = unreadRef.current;
       document.title =
         count > 1
-          ? `(${count}) ${preview} · ${BASE_TITLE}`
-          : `${latest.name}: ${preview} · ${BASE_TITLE}`;
+          ? `(${count}) ${preview} · ${APP_NAME}`
+          : `${latest.name}: ${preview} · ${APP_NAME}`;
     }
   }, [chatPushEnabled, enabled, contextId, messages, selfId]);
 }

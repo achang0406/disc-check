@@ -101,7 +101,7 @@ export async function materializePushPayload(
     .maybeSingle();
   groupName = group?.name ?? null;
 
-  const title = gameName ?? groupName ?? "DiscCheck";
+  const title = gameName ?? groupName ?? "PickupFrisbee";
   const url = row.game_id
     ? gameDeepLink(row.group_id, row.game_id)
     : `/groups/${row.group_id}`;
@@ -203,7 +203,7 @@ export async function materializePushPayload(
       };
     case "chat_chatter":
       return {
-        title: groupName ?? "DiscCheck",
+        title: groupName ?? "PickupFrisbee",
         body: "There's some chatter — come say hi",
         tag: `disc-check-chatter-${row.group_id}`,
         url: `/groups/${row.group_id}`,

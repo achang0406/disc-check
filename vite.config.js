@@ -1,6 +1,7 @@
 import { defineConfig, loadEnv } from "vite";
 import react from "@vitejs/plugin-react";
 import { VitePWA } from "vite-plugin-pwa";
+import { APP_NAME } from "./src/constants/app.js";
 
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), "");
@@ -50,8 +51,8 @@ export default defineConfig(({ mode }) => {
         },
         includeAssets: ["icon.svg", "apple-touch-icon.png", "pwa-192x192.png", "pwa-512x512.png"],
         manifest: {
-        name: "DiscCheck",
-        short_name: "DiscCheck",
+        name: APP_NAME,
+        short_name: APP_NAME,
         description: "Weekly pickup disc golf RSVPs, check-ins, and chat.",
         theme_color: "#0a0a0a",
         background_color: "#0a0a0a",

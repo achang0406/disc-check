@@ -1,6 +1,6 @@
-# DiscCheck
+# PickupFrisbee
 
-DiscCheck is a lightweight web app for tracking ultimate frisbee pickup games. Browse **groups**, RSVP to weekly games with plus-ones, and chat with your pickup community in one thread per group.
+PickupFrisbee is a lightweight web app for tracking ultimate frisbee pickup games. Browse **groups**, RSVP to weekly games with plus-ones, and chat with your pickup community in one thread per group.
 
 Game and RSVP data live in **Supabase Postgres**. Live cursors, chat, and RSVP updates use **Supabase Realtime** (free tier). Player profiles stay in the browser.
 
@@ -52,7 +52,7 @@ Open `http://localhost:5173`. Supabase env vars are required for game and RSVP d
 
 Each group has its own admin passcode (seeded via `scripts/seed-data.mjs` or `GROUP_ADMIN_PASSCODE`). After applying migrations, run `npm run db:seed`.
 
-On a **group page**, tap the DiscCheck title five times and enter that group's 4-digit passcode. Admins can **Edit group**, **+ Add game**, and edit/delete games in that group only.
+On a **group page**, tap the PickupFrisbee title five times and enter that group's 4-digit passcode. Admins can **Edit group**, **+ Add game**, and edit/delete games in that group only.
 
 Passcodes are verified server-side via Supabase RPCs — suitable for a trusted pickup community, not multi-tenant security.
 

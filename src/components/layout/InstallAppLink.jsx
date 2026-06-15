@@ -1,4 +1,5 @@
 import { createPortal } from "react-dom";
+import { APP_NAME } from "../../constants/app.js";
 import { usePwaInstall } from "../../hooks/usePwaInstall.js";
 import { getPortalTarget } from "../../utils/portalTarget.js";
 import { suppressMouseFocus } from "../../utils/suppressMouseFocus.js";
@@ -45,7 +46,7 @@ export default function InstallAppLink() {
     manualInstallHelp && !usesNativePrompt ? (
       <ModalShell
         title="Add to Home Screen"
-        description="Install DiscCheck for quick access, push notifications, and a full-screen app experience."
+        description={`Install ${APP_NAME} for quick access, push notifications, and a full-screen app experience.`}
         onClose={closeManualInstallHelp}
         footer={
           <button type="button" className="btn btn--primary" onClick={closeManualInstallHelp}>

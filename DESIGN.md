@@ -1,4 +1,4 @@
-# DiscCheck design system
+# PickupFrisbee design system
 
 Shared tokens, theme roles, and UI components keep the app visually consistent as features grow.
 

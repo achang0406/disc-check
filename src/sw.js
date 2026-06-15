@@ -1,4 +1,5 @@
 import { cleanupOutdatedCaches, precacheAndRoute } from "workbox-precaching";
+import { APP_NAME } from "./constants/app.js";
 import { shouldSuppressPush } from "./lib/observedAlerts.js";
 
 cleanupOutdatedCaches();
@@ -71,10 +72,10 @@ self.addEventListener("push", (event) => {
   try {
     payload = event.data.json();
   } catch {
-    payload = { title: "DiscCheck", body: event.data.text() };
+    payload = { title: APP_NAME, body: event.data.text() };
   }
 
-  const title = payload.title || "DiscCheck";
+  const title = payload.title || APP_NAME;
   const body = payload.body || "New update";
   const tag = payload.tag || "disc-check-push";
   const url = payload.url || "/";

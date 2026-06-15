@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { APP_NAME } from "../../constants/app.js";
 import {
   canShowChatPushBell,
   getWebPushSupportState,
@@ -16,7 +17,7 @@ function notifyPushPreferenceChanged(groupId) {
 
 function deniedStatusLabel() {
   if (isIosDevice() && isStandaloneDisplay()) {
-    return "Turn on notifications in Settings → DiscCheck";
+    return `Turn on notifications in Settings → ${APP_NAME}`;
   }
   return "Notifications blocked in browser settings";
 }
@@ -27,12 +28,12 @@ const STATUS_LABEL = {
   "missing-identity": "Loading… try again in a moment",
   misconfigured: "Push notifications are not configured on this build",
   unsupported: "Push notifications are not supported in this browser",
-  "ios-install-required": "Add DiscCheck to your Home Screen first",
 };
 
 function statusMessage(reason) {
   if (!reason) return null;
   if (reason === "denied") return deniedStatusLabel();
+  if (reason === "ios-install-required") return `Add ${APP_NAME} to your Home Screen first`;
   return STATUS_LABEL[reason] ?? "Could not enable game alerts";
 }
 

@@ -1,6 +1,6 @@
 # PWA support
 
-Reference for how DiscCheck works as a Progressive Web App: manifest, service worker, install flow, push notifications, and mobile/PWA-specific runtime behavior.
+Reference for how PickupFrisbee works as a Progressive Web App: manifest, service worker, install flow, push notifications, and mobile/PWA-specific runtime behavior.
 
 **Source of truth:** `vite.config.js`, `src/sw.js`, `src/main.jsx`, `src/utils/pwaInstall.js`, `src/lib/push.js`, `index.html`.
 
@@ -36,7 +36,7 @@ flowchart TB
   end
 ```
 
-DiscCheck is a Vite + React SPA deployed to Vercel. PWA support is layered on top via **vite-plugin-pwa** with a **custom service worker** (`injectManifest` strategy). The app works in a normal browser tab; installation adds standalone display, home-screen icon, and (on supported platforms) reliable push.
+PickupFrisbee is a Vite + React SPA deployed to Vercel. PWA support is layered on top via **vite-plugin-pwa** with a **custom service worker** (`injectManifest` strategy). The app works in a normal browser tab; installation adds standalone display, home-screen icon, and (on supported platforms) reliable push.
 
 ---
 

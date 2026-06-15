@@ -66,7 +66,7 @@ Guards:
 ```typescript
 case "chat_chatter":
   return {
-    title: groupName ?? "DiscCheck",
+    title: groupName ?? "PickupFrisbee",
     body: "There's some chatter — come say hi",
     tag: `disc-check-chatter-${row.group_id}`,
     url: `/groups/${row.group_id}`,
