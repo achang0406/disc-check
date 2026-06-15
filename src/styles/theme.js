@@ -1262,10 +1262,22 @@ export const globalStyles = `
     outline-offset: 2px;
   }
 
-  .group-games-screen__empty {
-    margin: 0;
+  .game-cards-carousel--static .game-cards-carousel__track {
+    overflow-x: hidden;
+    scroll-snap-type: none;
+    justify-content: center;
+  }
+
+  .game-cards-carousel--static .game-cards-carousel__slide {
+    margin-right: 0;
+  }
+
+  .game-card-empty__meta {
     color: var(--text-subtle);
-    font-size: 15px;
+  }
+
+  .game-card-empty__meta .meta-row__text {
+    font-size: var(--font-body);
   }
 
   .install-app-link {

@@ -3,6 +3,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import AppHeader from "../components/layout/AppHeader.jsx";
 import GameCommitCard from "../components/games/GameCommitCard.jsx";
 import GameCardsCarousel from "../components/games/GameCardsCarousel.jsx";
+import GameCardEmptyState from "../components/games/GameCardEmptyState.jsx";
 import GameChatThread from "../components/presence/GameChatThread.jsx";
 import ChatBar from "../components/presence/ChatBar.jsx";
 import GroupChatPushButton from "../components/games/GroupChatPushButton.jsx";
@@ -137,6 +138,7 @@ export default function GroupGamesScreen({
         onAddGame={onAddGame}
         addGameDisabled={addGameDisabled}
         addGameDisabledReason={addGameDisabledReason}
+        showAddGame={groupGames.length > 0}
         leading={
           <Button
             variant="icon"
@@ -188,9 +190,18 @@ export default function GroupGamesScreen({
 
           <div className="group-games-screen__cards">
             {groupGames.length === 0 ? (
-              <p className="group-games-screen__empty">
-                {isAdmin ? "No games yet — tap Add game to create one." : "No games scheduled."}
-              </p>
+              <div className="game-cards-carousel game-cards-carousel--static">
+                <div className="game-cards-carousel__track">
+                  <div className="game-cards-carousel__slide">
+                    <GameCardEmptyState
+                      isAdmin={isAdmin}
+                      onAddGame={onAddGame}
+                      addGameDisabled={addGameDisabled}
+                      addGameDisabledReason={addGameDisabledReason}
+                    />
+                  </div>
+                </div>
+              </div>
             ) : (
               <GameCardsCarousel
                 ref={carouselRef}

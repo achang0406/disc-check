@@ -44,6 +44,7 @@ export default function AppHeader({
   onAddGame,
   addGameDisabled = false,
   addGameDisabledReason = "Maximum 7 games per group",
+  showAddGame = true,
   showAdmin = false,
   showInstallLink = false,
   leading,
@@ -185,7 +186,7 @@ export default function AppHeader({
       ) : null}
 
       <div className="app-header__actions">
-        {showAdmin && isAdmin && (
+        {showAdmin && isAdmin && showAddGame && (
           <Button
             variant="ghost"
             className="games-screen__add-game games-screen__add-game--header"
