@@ -326,9 +326,10 @@ export const globalStyles = `
   }
 
   .games-screen__admin-menu {
-    display: flex;
+    position: relative;
+    display: inline-flex;
     align-items: center;
-    gap: var(--layout-inline-gap);
+    flex-shrink: 0;
   }
 
   .games-screen__admin-badge {
@@ -378,6 +379,11 @@ export const globalStyles = `
   }
 
   .games-screen__admin-link {
+    position: absolute;
+    left: calc(100% + var(--layout-inline-gap));
+    top: 50%;
+    transform: translateY(-50%);
+    z-index: 1;
     width: 26px;
     height: 26px;
     padding: 0;
