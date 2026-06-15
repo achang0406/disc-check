@@ -1718,8 +1718,7 @@ export const globalStyles = `
     transition:
       top 0.22s ease,
       left 0.22s ease,
-      width 0.22s ease,
-      transform 0.22s ease;
+      width 0.22s ease;
   }
 
   .walkthrough-bubble__dismiss {

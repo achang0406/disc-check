@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useId, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { getPortalTarget } from "../../utils/portalTarget.js";
 
@@ -6,6 +6,7 @@ const DEFAULT_SPOTLIGHT_PAD = 8;
 const BUBBLE_GAP = 18;
 const VIEWPORT_PAD = 12;
 const SETTLE_MS = 220;
+const LAYOUT_EPSILON = 1;
 
 function findTargetRect(step) {
   const keys = [step.target, step.fallbackTarget].filter(Boolean);
@@ -21,7 +22,7 @@ function findTargetRect(step) {
   return null;
 }
 
-function getBubbleLayout(rect, spotlightPad = DEFAULT_SPOTLIGHT_PAD) {
+function planBubbleLayout(rect, spotlightPad, bubbleHeight) {
   const width = Math.min(340, window.innerWidth - VIEWPORT_PAD * 2);
   const left = Math.min(
     Math.max(VIEWPORT_PAD, rect.left + rect.width / 2 - width / 2),
@@ -29,15 +30,17 @@ function getBubbleLayout(rect, spotlightPad = DEFAULT_SPOTLIGHT_PAD) {
   );
   const targetCenterX = rect.left + rect.width / 2;
   const tailX = Math.min(Math.max(28, targetCenterX - left), width - 28);
-  const spaceBelow = window.innerHeight - (rect.top + rect.height + spotlightPad);
-  const spaceAbove = rect.top - spotlightPad;
-  const placeBelow = spaceBelow >= 200 || spaceBelow >= spaceAbove;
+  const cutoutBottom = rect.bottom + spotlightPad;
+  const cutoutTop = rect.top - spotlightPad;
+  const gapTop = cutoutBottom + BUBBLE_GAP;
+  const height = Math.max(bubbleHeight, 0);
+  const fitsBelow = gapTop + height <= window.innerHeight - VIEWPORT_PAD;
 
-  if (placeBelow) {
+  if (fitsBelow) {
     return {
       width,
       left,
-      top: Math.min(rect.bottom + spotlightPad + BUBBLE_GAP, window.innerHeight - VIEWPORT_PAD),
+      top: Math.min(gapTop, window.innerHeight - VIEWPORT_PAD - Math.max(height, 1)),
       placement: "below",
       tailX,
     };
@@ -46,10 +49,26 @@ function getBubbleLayout(rect, spotlightPad = DEFAULT_SPOTLIGHT_PAD) {
   return {
     width,
     left,
-    top: Math.max(VIEWPORT_PAD, rect.top - spotlightPad - BUBBLE_GAP),
+    top: Math.max(VIEWPORT_PAD, cutoutTop - BUBBLE_GAP - Math.max(height, 1)),
     placement: "above",
     tailX,
   };
+}
+
+function layoutsNearlyEqual(previous, next) {
+  if (!previous || !next) return false;
+
+  const prevBubble = previous.bubble;
+  const nextBubble = next.bubble;
+
+  return (
+    Math.abs(previous.rect.top - next.rect.top) < LAYOUT_EPSILON
+    && Math.abs(previous.rect.left - next.rect.left) < LAYOUT_EPSILON
+    && Math.abs(prevBubble.top - nextBubble.top) < LAYOUT_EPSILON
+    && Math.abs(prevBubble.left - nextBubble.left) < LAYOUT_EPSILON
+    && Math.abs(prevBubble.width - nextBubble.width) < LAYOUT_EPSILON
+    && prevBubble.placement === nextBubble.placement
+  );
 }
 
 export default function WalkthroughOverlay({
@@ -67,6 +86,8 @@ export default function WalkthroughOverlay({
   const [portalTarget, setPortalTarget] = useState(null);
   const [layout, setLayout] = useState(null);
   const lastLayoutRef = useRef(null);
+  const bubbleRef = useRef(null);
+  const lastBubbleHeightRef = useRef(0);
   const [viewport, setViewport] = useState(() => ({
     width: typeof window !== "undefined" ? window.innerWidth : 0,
     height: typeof window !== "undefined" ? window.innerHeight : 0,
@@ -74,19 +95,38 @@ export default function WalkthroughOverlay({
   const rafRef = useRef(null);
   const spotlightPad = step.spotlightPad ?? DEFAULT_SPOTLIGHT_PAD;
 
+  const readBubbleHeight = useCallback(() => {
+    const measured = bubbleRef.current?.getBoundingClientRect().height ?? 0;
+    if (measured > 0) {
+      lastBubbleHeightRef.current = measured;
+      return measured;
+    }
+    return lastBubbleHeightRef.current;
+  }, []);
+
+  const buildLayout = useCallback(
+    (rect, pad = step.spotlightPad ?? DEFAULT_SPOTLIGHT_PAD, bubbleHeight = readBubbleHeight()) => ({
+      rect,
+      bubble: planBubbleLayout(rect, pad, bubbleHeight),
+    }),
+    [readBubbleHeight, step.spotlightPad],
+  );
+
+  const applyLayout = useCallback(
+    (next, { allowSkip = true } = {}) => {
+      if (allowSkip && layoutsNearlyEqual(lastLayoutRef.current, next)) return false;
+      lastLayoutRef.current = next;
+      setLayout(next);
+      return true;
+    },
+    [],
+  );
+
   const measureLayout = useCallback(() => {
     const rect = findTargetRect(step);
-    const pad = step.spotlightPad ?? DEFAULT_SPOTLIGHT_PAD;
-
-    if (!rect) return;
-
-    const next = {
-      rect,
-      bubble: getBubbleLayout(rect, pad),
-    };
-    lastLayoutRef.current = next;
-    setLayout(next);
-  }, [step]);
+    if (!rect) return false;
+    return applyLayout(buildLayout(rect));
+  }, [applyLayout, buildLayout, step]);
 
   const scheduleMeasure = useCallback(() => {
     if (rafRef.current !== null) return;
@@ -100,10 +140,19 @@ export default function WalkthroughOverlay({
     setPortalTarget(getPortalTarget());
   }, []);
 
+  useLayoutEffect(() => {
+    if (!portalTarget) return;
+
+    const rect = findTargetRect(step);
+    if (!rect) return;
+
+    applyLayout(buildLayout(rect), { allowSkip: true });
+  }, [portalTarget, step, stepIndex, step.id, step.title, step.body, layout, applyLayout, buildLayout]);
+
   useEffect(() => {
-    measureLayout();
     const settleTimer = window.setTimeout(measureLayout, SETTLE_MS);
     const carouselTimer = window.setTimeout(measureLayout, 450);
+
     return () => {
       window.clearTimeout(settleTimer);
       window.clearTimeout(carouselTimer);
@@ -111,9 +160,16 @@ export default function WalkthroughOverlay({
   }, [measureLayout, stepIndex, step.id]);
 
   useEffect(() => {
-    if (!portalTarget) return undefined;
+    const bubble = bubbleRef.current;
+    if (!bubble || typeof ResizeObserver === "undefined") return undefined;
 
-    measureLayout();
+    const observer = new ResizeObserver(scheduleMeasure);
+    observer.observe(bubble);
+    return () => observer.disconnect();
+  }, [layout, scheduleMeasure, stepIndex]);
+
+  useEffect(() => {
+    if (!portalTarget) return undefined;
 
     const handleViewportChange = () => {
       setViewport({
@@ -146,7 +202,7 @@ export default function WalkthroughOverlay({
         rafRef.current = null;
       }
     };
-  }, [portalTarget, measureLayout, scheduleMeasure, step]);
+  }, [portalTarget, scheduleMeasure, step]);
 
   useEffect(() => {
     if (!layout) return;
@@ -192,7 +248,6 @@ export default function WalkthroughOverlay({
     left: `${bubble.left}px`,
     width: `${bubble.width}px`,
     "--walkthrough-tail-x": `${bubble.tailX}px`,
-    ...(bubble.placement === "above" ? { transform: "translateY(-100%)" } : {}),
   };
 
   return createPortal(
@@ -223,6 +278,7 @@ export default function WalkthroughOverlay({
       </svg>
 
       <div
+        ref={bubbleRef}
         className={`walkthrough-bubble walkthrough-bubble--${bubble.placement}`}
         style={bubbleStyle}
         role="dialog"
