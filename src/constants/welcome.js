@@ -2,7 +2,14 @@ import { APP_NAME } from "./app.js";
 
 export const WELCOME_STORAGE_KEY = "disc_check_welcome_seen_v1";
 
-export function getWelcomeSteps(groupCount) {
+const INSTALL_STEP = {
+  id: "install",
+  title: "Add to Home Screen",
+  body:
+    'Tap "Add to Home Screen" at the top to install as a full-screen app and get push notifications for game status updates.',
+};
+
+export function getWelcomeSteps(groupCount, { showInstallStep = false } = {}) {
   const steps = [
     {
       id: "welcome",
@@ -16,6 +23,10 @@ export function getWelcomeSteps(groupCount) {
       body: "Each card is a group. Open one to see its games and join the action.",
     },
   ];
+
+  if (showInstallStep) {
+    steps.push(INSTALL_STEP);
+  }
 
   if (groupCount === 1) {
     steps.push({

@@ -7,6 +7,7 @@ import WelcomeModal from "../components/welcome/WelcomeModal.jsx";
 import { gamesForGroup } from "../lib/data.js";
 import { useGameClock } from "../hooks/useGameClock.js";
 import { useWelcomeModal } from "../hooks/useWelcomeModal.js";
+import { usePwaInstall } from "../hooks/usePwaInstall.js";
 import { sortGamesForLanding, sortGroupsForLanding } from "../utils/gameSchedule.js";
 import { formatGameScheduleSlot } from "../utils/time.js";
 import { shouldStayOnLanding } from "../utils/landingNavigation.js";
@@ -35,7 +36,11 @@ export default function GroupsLandingScreen({
     () => sortGroupsForLanding(groups, games, now),
     [groups, games, now],
   );
-  const welcome = useWelcomeModal({ groupCount: sortedGroups.length });
+  const { canInstall } = usePwaInstall();
+  const welcome = useWelcomeModal({
+    groupCount: sortedGroups.length,
+    showInstallStep: canInstall,
+  });
 
   if (
     sortedGroups.length === 1

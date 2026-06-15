@@ -15,12 +15,15 @@ function markWelcomeSeen() {
   localStorage.setItem(WELCOME_STORAGE_KEY, "1");
 }
 
-export function useWelcomeModal({ groupCount }) {
+export function useWelcomeModal({ groupCount, showInstallStep = false }) {
   const [hasSeenWelcomeBefore] = useState(() => isWelcomeSeen());
   const [isActive, setIsActive] = useState(() => !isWelcomeSeen());
   const [stepIndex, setStepIndex] = useState(0);
 
-  const steps = useMemo(() => getWelcomeSteps(groupCount), [groupCount]);
+  const steps = useMemo(
+    () => getWelcomeSteps(groupCount, { showInstallStep }),
+    [groupCount, showInstallStep],
+  );
 
   const finish = useCallback(() => {
     markWelcomeSeen();
