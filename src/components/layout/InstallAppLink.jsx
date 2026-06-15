@@ -1,5 +1,6 @@
 import { createPortal } from "react-dom";
 import { APP_NAME } from "../../constants/app.js";
+import { WELCOME_TARGETS } from "../../constants/welcome.js";
 import { usePwaInstall } from "../../hooks/usePwaInstall.js";
 import { getPortalTarget } from "../../utils/portalTarget.js";
 import { suppressMouseFocus } from "../../utils/suppressMouseFocus.js";
@@ -63,6 +64,7 @@ export default function InstallAppLink() {
       <button
         type="button"
         className="install-app-link"
+        data-walkthrough-target={WELCOME_TARGETS.INSTALL_LINK}
         onMouseDown={suppressMouseFocus}
         onClick={() => {
           void promptInstall();

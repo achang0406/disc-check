@@ -2,11 +2,14 @@ import { Link } from "react-router-dom";
 import { suppressMouseFocus } from "../../utils/suppressMouseFocus.js";
 import { clearBackToLanding } from "../../utils/landingNavigation.js";
 
-export default function GroupListItem({ group, summary }) {
+import { WELCOME_TARGETS } from "../../constants/welcome.js";
+
+export default function GroupListItem({ group, summary, walkthroughTarget }) {
   return (
     <Link
       to={`/groups/${group.id}`}
       className="game-list-item surface group-list-item"
+      {...(walkthroughTarget ? { "data-walkthrough-target": walkthroughTarget } : {})}
       onMouseDown={suppressMouseFocus}
       onClick={clearBackToLanding}
     >

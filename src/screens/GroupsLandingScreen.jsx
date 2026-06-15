@@ -3,7 +3,8 @@ import { Navigate } from "react-router-dom";
 import AppHeader from "../components/layout/AppHeader.jsx";
 import GroupListItem from "../components/groups/GroupListItem.jsx";
 import EmptyState from "../components/ui/EmptyState.jsx";
-import WelcomeModal from "../components/welcome/WelcomeModal.jsx";
+import WalkthroughOverlay from "../components/walkthrough/WalkthroughOverlay.jsx";
+import { WELCOME_TARGETS } from "../constants/welcome.js";
 import { gamesForGroup } from "../lib/data.js";
 import { useGameClock } from "../hooks/useGameClock.js";
 import { useWelcomeModal } from "../hooks/useWelcomeModal.js";
@@ -70,6 +71,7 @@ export default function GroupsLandingScreen({
                 <GroupListItem
                   group={group}
                   summary={buildGroupSummary(gamesForGroup(games, group.id))}
+                  walkthroughTarget={index === 0 ? WELCOME_TARGETS.FIRST_GROUP : undefined}
                 />
               </div>
             ))}
@@ -78,11 +80,13 @@ export default function GroupsLandingScreen({
       </main>
 
       {welcome.isActive && welcome.currentStep && (
-        <WelcomeModal
+        <WalkthroughOverlay
           step={welcome.currentStep}
           stepIndex={welcome.stepIndex}
           totalSteps={welcome.totalSteps}
           canGoBack={welcome.canGoBack}
+          lastStepLabel="Got it"
+          dismissLabel="Dismiss welcome"
           onNext={welcome.next}
           onBack={welcome.back}
           onSkip={welcome.skip}

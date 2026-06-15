@@ -23,6 +23,21 @@ function findTargetRect(step) {
   return null;
 }
 
+function planCenteredBubbleLayout(bubbleHeight, viewport) {
+  const width = Math.min(340, viewport.width - VIEWPORT_PAD * 2);
+  const left = Math.max(VIEWPORT_PAD, (viewport.width - width) / 2);
+  const height = Math.max(bubbleHeight, 0);
+  const top = Math.max(VIEWPORT_PAD, (viewport.height - height) / 2);
+
+  return {
+    width,
+    left,
+    top,
+    placement: "centered",
+    tailX: width / 2,
+  };
+}
+
 function planBubbleLayout(rect, spotlightPad, bubbleHeight, viewport) {
   const width = Math.min(340, viewport.width - VIEWPORT_PAD * 2);
   const left = Math.min(
@@ -58,9 +73,19 @@ function planBubbleLayout(rect, spotlightPad, bubbleHeight, viewport) {
 
 function layoutsNearlyEqual(previous, next) {
   if (!previous || !next) return false;
+  if (Boolean(previous.centered) !== Boolean(next.centered)) return false;
 
   const prevBubble = previous.bubble;
   const nextBubble = next.bubble;
+
+  if (previous.centered) {
+    return (
+      Math.abs(prevBubble.top - nextBubble.top) < LAYOUT_EPSILON
+      && Math.abs(prevBubble.left - nextBubble.left) < LAYOUT_EPSILON
+      && Math.abs(prevBubble.width - nextBubble.width) < LAYOUT_EPSILON
+      && prevBubble.placement === nextBubble.placement
+    );
+  }
 
   return (
     Math.abs(previous.rect.top - next.rect.top) < LAYOUT_EPSILON
@@ -77,6 +102,8 @@ export default function WalkthroughOverlay({
   stepIndex,
   totalSteps,
   canGoBack = false,
+  lastStepLabel = "Done",
+  dismissLabel = "Dismiss tour",
   onNext,
   onBack,
   onSkip,
@@ -102,6 +129,15 @@ export default function WalkthroughOverlay({
     return lastBubbleHeightRef.current;
   }, []);
 
+  const buildCenteredLayout = useCallback(
+    (bubbleHeight = readBubbleHeight(), viewportMetrics = getOverlayViewport()) => ({
+      centered: true,
+      rect: null,
+      bubble: planCenteredBubbleLayout(bubbleHeight, viewportMetrics),
+    }),
+    [readBubbleHeight],
+  );
+
   const buildLayout = useCallback(
     (
       rect,
@@ -126,10 +162,14 @@ export default function WalkthroughOverlay({
   );
 
   const measureLayout = useCallback(() => {
+    if (step.centered) {
+      return applyLayout(buildCenteredLayout(readBubbleHeight(), getOverlayViewport()));
+    }
+
     const rect = findTargetRect(step);
     if (!rect) return false;
     return applyLayout(buildLayout(rect, step.spotlightPad ?? DEFAULT_SPOTLIGHT_PAD, readBubbleHeight(), getOverlayViewport()));
-  }, [applyLayout, buildLayout, readBubbleHeight, step]);
+  }, [applyLayout, buildCenteredLayout, buildLayout, readBubbleHeight, step]);
 
   const scheduleMeasure = useCallback(() => {
     if (rafRef.current !== null) return;
@@ -147,11 +187,16 @@ export default function WalkthroughOverlay({
   useLayoutEffect(() => {
     if (!portalTarget) return;
 
+    if (step.centered) {
+      applyLayout(buildCenteredLayout(readBubbleHeight(), getOverlayViewport()), { allowSkip: true });
+      return;
+    }
+
     const rect = findTargetRect(step);
     if (!rect) return;
 
     applyLayout(buildLayout(rect), { allowSkip: true });
-  }, [portalTarget, step, stepIndex, step.id, step.title, step.body, layout, applyLayout, buildLayout]);
+  }, [portalTarget, step, stepIndex, step.id, step.title, step.body, layout, applyLayout, buildCenteredLayout, buildLayout, readBubbleHeight]);
 
   useEffect(() => {
     const settleTimer = window.setTimeout(measureLayout, SETTLE_MS);
@@ -244,19 +289,26 @@ export default function WalkthroughOverlay({
   }
 
   const { rect, bubble } = displayLayout;
-  const spotlight = {
-    x: rect.left - spotlightPad,
-    y: rect.top - spotlightPad,
-    width: rect.width + spotlightPad * 2,
-    height: rect.height + spotlightPad * 2,
-  };
+  const isCentered = Boolean(displayLayout.centered);
+  const spotlight = rect
+    ? {
+        x: rect.left - spotlightPad,
+        y: rect.top - spotlightPad,
+        width: rect.width + spotlightPad * 2,
+        height: rect.height + spotlightPad * 2,
+      }
+    : null;
 
   const bubbleStyle = {
     top: `${bubble.top}px`,
     left: `${bubble.left}px`,
     width: `${bubble.width}px`,
-    "--walkthrough-tail-x": `${bubble.tailX}px`,
+    ...(isCentered ? {} : { "--walkthrough-tail-x": `${bubble.tailX}px` }),
   };
+
+  const bubbleClassName = isCentered
+    ? "walkthrough-bubble walkthrough-bubble--centered"
+    : `walkthrough-bubble walkthrough-bubble--${bubble.placement}`;
 
   return createPortal(
     <div className="walkthrough-layer" style={layerStyle} role="presentation">
@@ -270,16 +322,18 @@ export default function WalkthroughOverlay({
         <defs>
           <mask id={maskId}>
             <rect width="100%" height="100%" fill="white" />
-            <rect
-              className="walkthrough-scrim__spotlight"
-              x={spotlight.x}
-              y={spotlight.y}
-              width={spotlight.width}
-              height={spotlight.height}
-              rx="10"
-              ry="10"
-              fill="black"
-            />
+            {!isCentered && spotlight ? (
+              <rect
+                className="walkthrough-scrim__spotlight"
+                x={spotlight.x}
+                y={spotlight.y}
+                width={spotlight.width}
+                height={spotlight.height}
+                rx="10"
+                ry="10"
+                fill="black"
+              />
+            ) : null}
           </mask>
         </defs>
         <rect width="100%" height="100%" fill="rgba(0, 0, 0, 0.78)" mask={`url(#${maskId})`} />
@@ -287,7 +341,7 @@ export default function WalkthroughOverlay({
 
       <div
         ref={bubbleRef}
-        className={`walkthrough-bubble walkthrough-bubble--${bubble.placement}`}
+        className={bubbleClassName}
         style={bubbleStyle}
         role="dialog"
         aria-modal="true"
@@ -298,7 +352,7 @@ export default function WalkthroughOverlay({
         <button
           type="button"
           className="walkthrough-bubble__dismiss"
-          aria-label="Dismiss tour"
+          aria-label={dismissLabel}
           onClick={onSkip}
         >
           ×
@@ -332,7 +386,7 @@ export default function WalkthroughOverlay({
             </button>
           ) : null}
           <button type="button" className="walkthrough-bubble__btn walkthrough-bubble__btn--next" onClick={onNext}>
-            {isLastStep ? "Done" : "Next"}
+            {isLastStep ? lastStepLabel : "Next"}
           </button>
         </div>
       </div>
