@@ -1,12 +1,15 @@
 <!doctype html>
-<html lang="en">
+<html
+  lang="en"
+  style="background-color: #0a0a0a; color: #e8e8e8; color-scheme: dark"
+>
   <head>
     <meta charset="UTF-8" />
     <meta
       name="viewport"
       content="width=device-width, initial-scale=1.0, viewport-fit=cover, interactive-widget=resizes-content"
     />
-    <meta name="color-scheme" content="dark light" />
+    <meta name="color-scheme" content="dark" />
     <meta name="theme-color" content="#0a0a0a" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
@@ -15,43 +18,50 @@
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     <title>PickupFrisbee</title>
     <style>
-      html {
-        margin: 0;
-        --initial-bg: #0a0a0a;
-        --initial-text: #e8e8e8;
-        background: var(--initial-bg);
-        color: var(--initial-text);
-        color-scheme: dark;
-      }
-
+      html,
       body {
         margin: 0;
-        background: var(--initial-bg);
-        color: var(--initial-text);
       }
     </style>
+    <link
+      href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&family=DM+Mono:wght@400;500;600&display=swap"
+      rel="stylesheet"
+    />
+  </head>
+  <body style="background-color: #0a0a0a; color: #e8e8e8">
     <script>
       (function () {
+        var bg = "#0a0a0a";
+        var text = "#e8e8e8";
+        var scheme = "dark";
+
         try {
-          var theme = localStorage.getItem("disc_theme") === "light" ? "light" : "dark";
-          var bg = theme === "light" ? "#f4f4ef" : "#0a0a0a";
-          var text = theme === "light" ? "#1a1a1a" : "#e8e8e8";
-          var root = document.documentElement;
-          root.style.setProperty("--initial-bg", bg);
-          root.style.setProperty("--initial-text", text);
-          root.style.colorScheme = theme === "light" ? "light" : "dark";
-          document
-            .querySelector('meta[name="theme-color"]')
-            ?.setAttribute("content", bg);
-          document
-            .querySelector('meta[name="apple-mobile-web-app-status-bar-style"]')
-            ?.setAttribute(
-              "content",
-              theme === "light" ? "default" : "black-translucent",
-            );
+          if (localStorage.getItem("disc_theme") === "light") {
+            bg = "#f4f4ef";
+            text = "#1a1a1a";
+            scheme = "light";
+          }
         } catch (error) {
           // Storage unavailable — keep dark defaults.
         }
+
+        var root = document.documentElement;
+        root.style.backgroundColor = bg;
+        root.style.color = text;
+        root.style.colorScheme = scheme;
+        document.body.style.backgroundColor = bg;
+        document.body.style.color = text;
+
+        document.querySelector('meta[name="theme-color"]')?.setAttribute("content", bg);
+        document
+          .querySelector('meta[name="color-scheme"]')
+          ?.setAttribute("content", scheme);
+        document
+          .querySelector('meta[name="apple-mobile-web-app-status-bar-style"]')
+          ?.setAttribute(
+            "content",
+            scheme === "light" ? "default" : "black-translucent",
+          );
 
         var ua = navigator.userAgent.toLowerCase();
         var isAppleMobile = /iphone|ipad|ipod/.test(ua);
@@ -68,12 +78,6 @@
         }
       })();
     </script>
-    <link
-      href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&family=DM+Mono:wght@400;500;600&display=swap"
-      rel="stylesheet"
-    />
-  </head>
-  <body>
     <div id="root"></div>
     <script type="module" src="/src/main.jsx"></script>
   </body>
