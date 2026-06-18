@@ -4,22 +4,26 @@ Consolidate **production** on the DiscCheck Supabase project (one Postgres schem
 
 Related repos:
 
-| App | Repo | Schema |
-|-----|------|--------|
+
+| App            | Repo                     | Schema           |
+| -------------- | ------------------------ | ---------------- |
 | pickup-frisbee | this repo (`disc-check`) | `pickup_frisbee` |
-| Class Library | `class-library` | `lyanne_library` |
+| Class Library  | `class-library`          | `lyanne_library` |
+
 
 ---
 
 ## Progress
 
-| Wave | Status | Notes |
-|------|--------|-------|
-| **0** — Repo prep | **Done** | `schema.sql` → `pickup_frisbee`; client + seed schema env; cron renames in migrations |
-| **1a** — Staging database | **Done** | `iunqmpxp` — `pickup_frisbee` schema, seed, edge functions, crons |
-| **1b** — Vercel Preview | **Manual step** | Set Preview env in [Vercel dashboard](https://vercel.com/achang0406s-projects/disc-check/settings/environment-variables) (CLI requires a feature branch) |
-| **2** — lyanne_library staging → prod | Pending | After 1–2 stable days on prod |
-| **3** — Docs + regression | Pending | |
+
+| Wave                                  | Status          | Notes                                                                                                                                                    |
+| ------------------------------------- | --------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **0** — Repo prep                     | **Done**        | `schema.sql` → `pickup_frisbee`; client + seed schema env; cron renames in migrations                                                                    |
+| **1a** — Staging database             | **Done**        | `iunqmpxp` — `pickup_frisbee` schema, seed, edge functions, crons                                                                                        |
+| **1b** — Vercel Preview               | **Done**        | Preview → staging URL, staging anon, `pickup_frisbee`; verified in latest Preview bundle                                                                 |
+| **2** — lyanne_library staging → prod | Pending         | After 1–2 stable days on prod                                                                                                                            |
+| **3** — Docs + regression             | Pending         |                                                                                                                                                          |
+
 
 ---
 
@@ -54,21 +58,27 @@ flowchart LR
   wave0 --> wave1 --> wave2 --> wave3
 ```
 
-| Wave | Scope | Prod downtime |
-|------|-------|---------------|
-| **0** | disc-check repo only | None |
-| **1** | pickup-frisbee only | pickup-frisbee prod (steps 1d–1f) |
-| **2** | lyanne_library only | class-library prod (steps 2d–2e) |
-| **3** | Docs + regression | None |
+
+
+
+| Wave  | Scope                | Prod downtime                     |
+| ----- | -------------------- | --------------------------------- |
+| **0** | disc-check repo only | None                              |
+| **1** | pickup-frisbee only  | pickup-frisbee prod (steps 1d–1f) |
+| **2** | lyanne_library only  | class-library prod (steps 2d–2e)  |
+| **3** | Docs + regression    | None                              |
+
 
 ---
 
 ## Data policy
 
-| App | Prod data | Approach |
-|-----|-----------|----------|
-| pickup-frisbee | Little to none — **wipe OK** | Fresh `pickup_frisbee` schema + `npm run db:seed` |
-| Class Library | No users — **wipe OK** | Fresh `lyanne_library` schema + seed in `class-library` |
+
+| App            | Prod data                    | Approach                                                |
+| -------------- | ---------------------------- | ------------------------------------------------------- |
+| pickup-frisbee | Little to none — **wipe OK** | Fresh `pickup_frisbee` schema + `npm run db:seed`       |
+| Class Library  | No users — **wipe OK**       | Fresh `lyanne_library` schema + seed in `class-library` |
+
 
 No `pg_dump`, no `ALTER TABLE … SET SCHEMA`, no row migration. Schema definitions live in git; re-seed anytime.
 
@@ -78,10 +88,12 @@ Optional: export prod hub backup before Wave 1d if you want a safety net — not
 
 ## Schema naming
 
-| Use | Do not use |
-|-----|------------|
+
+| Use              | Do not use                                   |
+| ---------------- | -------------------------------------------- |
 | `pickup_frisbee` | `pickup-frisbee`, `disc-check`, `disc_check` |
-| `lyanne_library` | `class_library`, `class-library` |
+| `lyanne_library` | `class_library`, `class-library`             |
+
 
 Postgres schema names cannot contain hyphens. App display names stay kebab-case.
 
@@ -89,18 +101,22 @@ Postgres schema names cannot contain hyphens. App display names stay kebab-case.
 
 ## Supabase projects
 
-| Project | Ref | Role |
-|---------|-----|------|
-| **DiscCheck** | `mczxxonwvsztbrqmjzlu` | **Prod hub** — edge functions, pg_cron, vault |
+
+| Project           | Ref                    | Role                                                  |
+| ----------------- | ---------------------- | ----------------------------------------------------- |
+| **DiscCheck**     | `mczxxonwvsztbrqmjzlu` | **Prod hub** — edge functions, pg_cron, vault         |
 | **Class Library** | `iunqmpxpwhybqyfxcsdt` | **Staging** after Wave 1a; library prod until Wave 2e |
+
 
 ### During migration
 
-| When | Prod hub (`mczxxonw`) | Class Library project (`iunqmpxp`) |
-|------|----------------------|-----------------------------------|
-| Before Wave 1 | disc-check in `public` | class-library in `public` (library prod) |
-| After Wave 1 | `pickup_frisbee` | unchanged — still library prod |
-| After Wave 2 | `pickup_frisbee` + `lyanne_library` | staging only — both schemas |
+
+| When          | Prod hub (`mczxxonw`)               | Class Library project (`iunqmpxp`)       |
+| ------------- | ----------------------------------- | ---------------------------------------- |
+| Before Wave 1 | disc-check in `public`              | class-library in `public` (library prod) |
+| After Wave 1  | `pickup_frisbee`                    | unchanged — still library prod           |
+| After Wave 2  | `pickup_frisbee` + `lyanne_library` | staging only — both schemas              |
+
 
 ### Target end state
 
@@ -126,12 +142,16 @@ flowchart TB
   clPrev --> clStage
 ```
 
-| | Prod hub | Staging project |
-|--|----------|-----------------|
-| pickup-frisbee | `pickup_frisbee` + seed | `pickup_frisbee` + test seed |
-| Class Library | `lyanne_library` + seed | `lyanne_library` + test seed |
-| Vercel Production | Prod hub URL + `VITE_SUPABASE_DB_SCHEMA` per app | — |
-| Vercel Preview | — | Staging URL + same schema names |
+
+
+
+|                   | Prod hub                                         | Staging project                 |
+| ----------------- | ------------------------------------------------ | ------------------------------- |
+| pickup-frisbee    | `pickup_frisbee` + seed                          | `pickup_frisbee` + test seed    |
+| Class Library     | `lyanne_library` + seed                          | `lyanne_library` + test seed    |
+| Vercel Production | Prod hub URL + `VITE_SUPABASE_DB_SCHEMA` per app | —                               |
+| Vercel Preview    | —                                                | Staging URL + same schema names |
+
 
 ---
 
@@ -141,12 +161,12 @@ flowchart TB
 
 ### Shipped in repo
 
-- [`supabase/schema.sql`](../supabase/schema.sql) — full app in `pickup_frisbee` schema (tables, functions, RLS, Realtime, grants)
-- [`src/lib/supabase.js`](../src/lib/supabase.js) — `VITE_SUPABASE_DB_SCHEMA` (defaults to `public` until cutover)
-- [`scripts/seed.mjs`](../scripts/seed.mjs) + [`scripts/supabase-client.mjs`](../scripts/supabase-client.mjs) — schema-aware service client
-- [`.env.example`](../.env.example) — documents schema env vars
-- [`supabase/config.toml`](../supabase/config.toml) — exposes `pickup_frisbee` locally
-- Cron migrations renamed/prepared: [`034`](../supabase/migrations/034_push_outbox_cron.sql), [`017`](../supabase/migrations/017_server_cycle_reset_twelve_hours.sql), [`049`](../supabase/migrations/049_activity_retention.sql)
+- `[supabase/schema.sql](../supabase/schema.sql)` — full app in `pickup_frisbee` schema (tables, functions, RLS, Realtime, grants)
+- `[src/lib/supabase.js](../src/lib/supabase.js)` — `VITE_SUPABASE_DB_SCHEMA` (defaults to `public` until cutover)
+- `[scripts/seed.mjs](../scripts/seed.mjs)` + `[scripts/supabase-client.mjs](../scripts/supabase-client.mjs)` — schema-aware service client
+- `[.env.example](../.env.example)` — documents schema env vars
+- `[supabase/config.toml](../supabase/config.toml)` — exposes `pickup_frisbee` locally
+- Cron migrations renamed/prepared: `[034](../supabase/migrations/034_push_outbox_cron.sql)`, `[017](../supabase/migrations/017_server_cycle_reset_twelve_hours.sql)`, `[049](../supabase/migrations/049_activity_retention.sql)`
 
 ### Client pattern
 
@@ -156,10 +176,12 @@ createClient(url, anonKey, {
 });
 ```
 
-| App | When to set `VITE_SUPABASE_DB_SCHEMA` |
-|-----|--------------------------------------|
-| disc-check (this repo) | Wave 1 Preview + Production |
-| class-library | Wave 2 Preview + Production |
+
+| App                    | When to set `VITE_SUPABASE_DB_SCHEMA` |
+| ---------------------- | ------------------------------------- |
+| disc-check (this repo) | Wave 1 Preview + Production           |
+| class-library          | Wave 2 Preview + Production           |
+
 
 ### Exit criteria
 
@@ -179,31 +201,31 @@ createClient(url, anonKey, {
 **Where:** Class Library project `iunqmpxpwhybqyfxcsdt`
 
 1. Full DB reset (library prod data on this project is wiped — accepted; brief library outage until Wave 2).
-2. Run [`supabase/schema.sql`](../supabase/schema.sql) in SQL Editor (schema + objects created in one script).
+2. Run `[supabase/schema.sql](../supabase/schema.sql)` in SQL Editor (schema + objects created in one script).
 3. **Dashboard → API → Exposed schemas:** add `pickup_frisbee`.
 4. Seed:
-   ```bash
+  ```bash
    # .env.local → staging URL, service role, VITE_SUPABASE_DB_SCHEMA=pickup_frisbee
    npm run db:seed
-   ```
+  ```
 5. Deploy edge functions (see [Edge functions and pg_cron](#edge-functions-and-pg_cron)).
 6. Run cron SQL with **staging** project URL:
-   ```sql
+  ```sql
    SELECT set_config('pickup_frisbee.supabase_url', 'https://iunqmpxpwhybqyfxcsdt.supabase.co', false);
-   ```
+  ```
    Then run migrations `017`, `034`, `049` (or equivalent cron setup).
 7. Confirm vault secret `service_role_key` on staging.
 8. Optional: separate VAPID keys for staging push.
 
-### 1b — Vercel Preview (disc-check)
+### 1b — Vercel Preview (disc-check) — **Done**
 
-> **Action needed:** Set Preview env vars in the [Vercel dashboard](https://vercel.com/achang0406s-projects/disc-check/settings/environment-variables) (Preview target, all branches). The CLI requires a non-`main` Git branch for Preview-scoped vars.
 
-| Variable | Value |
-|----------|-------|
-| `VITE_SUPABASE_URL` | `https://iunqmpxpwhybqyfxcsdt.supabase.co` |
-| `VITE_SUPABASE_ANON_KEY` | Staging anon key (Supabase → stage apps → Settings → API) |
-| `VITE_SUPABASE_DB_SCHEMA` | `pickup_frisbee` |
+| Variable                  | Value                                                     |
+| ------------------------- | --------------------------------------------------------- |
+| `VITE_SUPABASE_URL`       | `https://iunqmpxpwhybqyfxcsdt.supabase.co`                |
+| `VITE_SUPABASE_ANON_KEY`  | Staging anon key (Supabase → stage apps → Settings → API) |
+| `VITE_SUPABASE_DB_SCHEMA` | `pickup_frisbee`                                          |
+
 
 **Development** env (for `vercel dev`) points at staging with `pickup_frisbee`.
 
@@ -211,7 +233,7 @@ Never reuse Production URL for Preview.
 
 ### 1c — Smoke test Preview
 
-- [ ] Seeded groups/games visible
+- [x] Seeded groups/games visible
 - [ ] Realtime (RSVP live update)
 - [ ] RPCs, chat, admin flows
 - [ ] Push optional (staging VAPID)
@@ -222,8 +244,8 @@ Never reuse Production URL for Preview.
 
 **Maintenance window — pickup-frisbee prod only.**
 
-1. Drop disc-check app objects in **`public` only** (tables, functions, triggers, Realtime entries — not `auth`, `storage`, extensions).
-2. Run [`supabase/schema.sql`](../supabase/schema.sql).
+1. Drop disc-check app objects in `**public` only** (tables, functions, triggers, Realtime entries — not `auth`, `storage`, extensions).
+2. Run `[supabase/schema.sql](../supabase/schema.sql)`.
 3. **API → Exposed schemas:** add `pickup_frisbee`.
 4. Seed prod with `VITE_SUPABASE_DB_SCHEMA=pickup_frisbee`.
 
@@ -240,11 +262,13 @@ Run in the **same session as 1d** if push must not gap:
 
 ### 1f — Vercel Production (disc-check)
 
-| Variable | Value |
-|----------|-------|
-| `VITE_SUPABASE_URL` | Prod hub URL |
-| `VITE_SUPABASE_ANON_KEY` | Prod hub anon key |
-| `VITE_SUPABASE_DB_SCHEMA` | `pickup_frisbee` |
+
+| Variable                  | Value             |
+| ------------------------- | ----------------- |
+| `VITE_SUPABASE_URL`       | Prod hub URL      |
+| `VITE_SUPABASE_ANON_KEY`  | Prod hub anon key |
+| `VITE_SUPABASE_DB_SCHEMA` | `pickup_frisbee`  |
+
 
 Deploy. Do **not** change class-library Production yet.
 
@@ -253,7 +277,7 @@ Deploy. Do **not** change class-library Production yet.
 - [ ] Full pickup-frisbee checklist on prod
 - [ ] No leftover disc-check app tables in `public` on prod hub
 - [ ] Push + cron (if enabled)
-- [ ] Start **weekly staging keep-alive** ([`.github/workflows/supabase-keepalive.yml`](../.github/workflows/supabase-keepalive.yml) — free tier pauses after 7 days without API traffic)
+- [ ] Start **weekly staging keep-alive** (`[.github/workflows/supabase-keepalive.yml](../.github/workflows/supabase-keepalive.yml)` — free tier pauses after 7 days without API traffic)
 
 **Wave 1 exit:** pickup-frisbee stable on prod and Preview; library prod still on `iunqmpxp` `public`.
 
@@ -265,7 +289,7 @@ Deploy. Do **not** change class-library Production yet.
 
 **Goal:** library on shared hub; ex-library project becomes staging-only for both apps.
 
-Work happens in the **`class-library`** repo unless noted.
+Work happens in the `**class-library`** repo unless noted.
 
 ### Prep — class-library repo
 
@@ -282,11 +306,13 @@ Work happens in the **`class-library`** repo unless noted.
 
 ### 2b — Vercel Preview (class-library)
 
-| Variable | Value |
-|----------|-------|
-| `VITE_SUPABASE_URL` | Staging project URL |
-| `VITE_SUPABASE_ANON_KEY` | Staging anon key |
-| `VITE_SUPABASE_DB_SCHEMA` | `lyanne_library` |
+
+| Variable                  | Value               |
+| ------------------------- | ------------------- |
+| `VITE_SUPABASE_URL`       | Staging project URL |
+| `VITE_SUPABASE_ANON_KEY`  | Staging anon key    |
+| `VITE_SUPABASE_DB_SCHEMA` | `lyanne_library`    |
+
 
 ### 2c — Smoke test Preview
 
@@ -305,11 +331,13 @@ Work happens in the **`class-library`** repo unless noted.
 
 ### 2e — Vercel Production (class-library)
 
-| Variable | Value |
-|----------|-------|
-| `VITE_SUPABASE_URL` | Prod hub URL (same as pickup-frisbee) |
-| `VITE_SUPABASE_ANON_KEY` | Prod hub anon key (same) |
-| `VITE_SUPABASE_DB_SCHEMA` | `lyanne_library` |
+
+| Variable                  | Value                                 |
+| ------------------------- | ------------------------------------- |
+| `VITE_SUPABASE_URL`       | Prod hub URL (same as pickup-frisbee) |
+| `VITE_SUPABASE_ANON_KEY`  | Prod hub anon key (same)              |
+| `VITE_SUPABASE_DB_SCHEMA` | `lyanne_library`                      |
+
 
 ### 2f — Smoke test prod
 
@@ -346,10 +374,12 @@ createClient(url, serviceKey, { db: { schema: "pickup_frisbee" } });
 
 ### Edge function rename (recommended)
 
-| Current | Suggested deploy folder |
-|---------|-------------------------|
-| `notify-push` | `pickup-frisbee-notify-push/` |
+
+| Current               | Suggested deploy folder               |
+| --------------------- | ------------------------------------- |
+| `notify-push`         | `pickup-frisbee-notify-push/`         |
 | `process-push-outbox` | `pickup-frisbee-process-push-outbox/` |
+
 
 Shared TS → `supabase/functions/_shared/pickup_frisbee/`. Update cron URLs if function paths change.
 
@@ -357,13 +387,15 @@ Skipping renames is acceptable; old paths keep working after redeploy.
 
 ### pg_cron job names
 
-| Legacy name | New name |
-|-------------|----------|
-| `disc-check-process-push-outbox` | `pickup_frisbee_process_push_outbox` |
-| `disc-check-reset-stale-cycles` | `pickup_frisbee_reset_stale_cycles` |
+
+| Legacy name                           | New name                                  |
+| ------------------------------------- | ----------------------------------------- |
+| `disc-check-process-push-outbox`      | `pickup_frisbee_process_push_outbox`      |
+| `disc-check-reset-stale-cycles`       | `pickup_frisbee_reset_stale_cycles`       |
 | `disc-check-prune-activity-retention` | `pickup_frisbee_prune_activity_retention` |
 
-Cron SQL lives in [`supabase/migrations/`](../supabase/migrations/) (`017`, `034`, `049`). Set project URL before running on each environment:
+
+Cron SQL lives in `[supabase/migrations/](../supabase/migrations/)` (`017`, `034`, `049`). Set project URL before running on each environment:
 
 ```sql
 SELECT set_config('pickup_frisbee.supabase_url', 'https://YOUR_REF.supabase.co', false);
@@ -395,11 +427,13 @@ pg_dump --schema=pickup_frisbee --no-owner --no-acl … > pickup_frisbee.sql
 
 After move: update Vercel URL + keys; keep `VITE_SUPABASE_DB_SCHEMA=pickup_frisbee`. `lyanne_library` stays on the shared hub.
 
-| Signal | Action |
-|--------|--------|
-| pickup-frisbee noisy; library fine | Extract pickup to own project |
-| Whole hub tight on 500 MB | Extract heavy app or self-host |
-| One project enough | Upgrade Supabase plan first |
+
+| Signal                             | Action                         |
+| ---------------------------------- | ------------------------------ |
+| pickup-frisbee noisy; library fine | Extract pickup to own project  |
+| Whole hub tight on 500 MB          | Extract heavy app or self-host |
+| One project enough                 | Upgrade Supabase plan first    |
+
 
 ---
 
@@ -407,53 +441,63 @@ After move: update Vercel URL + keys; keep `VITE_SUPABASE_DB_SCHEMA=pickup_frisb
 
 ### Wave 0
 
-| Risk | Mitigation |
-|------|------------|
-| Incomplete SQL refactor | Grep `public.` / `search_path = public`; test on staging before Wave 1d |
-| Missed Realtime / RPC names | Checklist every `ALTER PUBLICATION` and RPC |
+
+| Risk                        | Mitigation                                                              |
+| --------------------------- | ----------------------------------------------------------------------- |
+| Incomplete SQL refactor     | Grep `public.` / `search_path = public`; test on staging before Wave 1d |
+| Missed Realtime / RPC names | Checklist every `ALTER PUBLICATION` and RPC                             |
+
 
 **User impact:** None (repo-only).
 
 ### Wave 1
 
-| Risk | Mitigation |
-|------|------------|
-| Dropping wrong object in `public` on prod | Scripted drop list from app tables only; never `DROP SCHEMA public` |
-| Wave 1a reset affects library prod on same project | No users / wipe OK — brief library outage until Wave 2 |
-| Preview points at prod | Preview-only Vercel env vars |
-| Edge/cron gap after 1d | Run 1d + 1e same session |
-| Staging pauses after 7 days | Weekly keep-alive after 1a |
-| Old `disc-check-*` crons fire on dropped tables | Unschedule before or right after drop |
+
+| Risk                                               | Mitigation                                                          |
+| -------------------------------------------------- | ------------------------------------------------------------------- |
+| Dropping wrong object in `public` on prod          | Scripted drop list from app tables only; never `DROP SCHEMA public` |
+| Wave 1a reset affects library prod on same project | No users / wipe OK — brief library outage until Wave 2              |
+| Preview points at prod                             | Preview-only Vercel env vars                                        |
+| Edge/cron gap after 1d                             | Run 1d + 1e same session                                            |
+| Staging pauses after 7 days                        | Weekly keep-alive after 1a                                          |
+| Old `disc-check-`* crons fire on dropped tables    | Unschedule before or right after drop                               |
+
 
 **User impact:** pickup-frisbee prod down during 1d–1f.
 
 ### Wave 2
 
-| Risk | Mitigation |
-|------|------------|
-| Library schema grants/RLS wrong | Smoke test Preview before prod cutover |
-| Prod hub apply breaks pickup | Only add `lyanne_library` |
-| Missing `VITE_SUPABASE_DB_SCHEMA` on class-library | Set all three Vercel vars |
+
+| Risk                                               | Mitigation                             |
+| -------------------------------------------------- | -------------------------------------- |
+| Library schema grants/RLS wrong                    | Smoke test Preview before prod cutover |
+| Prod hub apply breaks pickup                       | Only add `lyanne_library`              |
+| Missing `VITE_SUPABASE_DB_SCHEMA` on class-library | Set all three Vercel vars              |
+
 
 **User impact:** class-library prod down during 2d–2e only.
 
 ### Cross-wave
 
-| Risk | Mitigation |
-|------|------------|
-| Free tier 500 MB shared | Monitor size; extract if one app grows |
-| Prod hub pause (7 days no API) | DiscCheck traffic + keep-alive |
+
+| Risk                                  | Mitigation                                    |
+| ------------------------------------- | --------------------------------------------- |
+| Free tier 500 MB shared               | Monitor size; extract if one app grows        |
+| Prod hub pause (7 days no API)        | DiscCheck traffic + keep-alive                |
 | One leaked anon key hits both schemas | Accepted at personal scale; tighten RLS later |
+
 
 ---
 
 ## Quick reference
 
-| Task | Command / file |
-|------|----------------|
-| Apply schema (fresh) | [`supabase/schema.sql`](../supabase/schema.sql) |
-| Seed | `npm run db:seed` with `VITE_SUPABASE_DB_SCHEMA=pickup_frisbee` |
-| Local schema config | [`supabase/config.toml`](../supabase/config.toml) |
-| Staging keep-alive | [`.github/workflows/supabase-keepalive.yml`](../.github/workflows/supabase-keepalive.yml) |
 
-**Next step:** Wave **1a** — reset staging project and apply `pickup_frisbee` schema.
+| Task                 | Command / file                                                                            |
+| -------------------- | ----------------------------------------------------------------------------------------- |
+| Apply schema (fresh) | `[supabase/schema.sql](../supabase/schema.sql)`                                           |
+| Seed                 | `npm run db:seed` with `VITE_SUPABASE_DB_SCHEMA=pickup_frisbee`                           |
+| Local schema config  | `[supabase/config.toml](../supabase/config.toml)`                                         |
+| Staging keep-alive   | `[.github/workflows/supabase-keepalive.yml](../.github/workflows/supabase-keepalive.yml)` |
+
+
+**Next step:** Wave **1c** — smoke test Preview (groups/games, Realtime, RPCs, chat, admin).
