@@ -1,11 +1,16 @@
 -- Phase 2a: drain push_outbox every 2 minutes (requires pg_cron + pg_net).
+-- Set project URL before running on staging/prod:
+--   SELECT set_config('pickup_frisbee.supabase_url', 'https://YOUR_REF.supabase.co', false);
 
 CREATE EXTENSION IF NOT EXISTS pg_net WITH SCHEMA extensions;
 
 DO $$
 DECLARE
   job_id BIGINT;
-  project_url TEXT := 'https://mczxxonwvsztbrqmjzlu.supabase.co';
+  project_url TEXT := coalesce(
+    nullif(trim(current_setting('pickup_frisbee.supabase_url', true)), ''),
+    'https://mczxxonwvsztbrqmjzlu.supabase.co'
+  );
   service_key TEXT;
 BEGIN
   IF NOT EXISTS (SELECT 1 FROM pg_namespace WHERE nspname = 'cron') THEN
@@ -27,14 +32,14 @@ BEGIN
   SELECT cron.job.jobid
   INTO job_id
   FROM cron.job
-  WHERE jobname = 'disc-check-process-push-outbox';
+  WHERE jobname IN ('disc-check-process-push-outbox', 'pickup_frisbee_process_push_outbox');
 
   IF job_id IS NOT NULL THEN
     PERFORM cron.unschedule(job_id);
   END IF;
 
   PERFORM cron.schedule(
-    'disc-check-process-push-outbox',
+    'pickup_frisbee_process_push_outbox',
     '*/2 * * * *',
     format(
       $cron$

@@ -1,7 +1,11 @@
 -- Run in Supabase SQL Editor after creating a project.
 -- Dashboard → SQL → New query → paste and run.
+-- App schema: pickup_frisbee (set VITE_SUPABASE_DB_SCHEMA=pickup_frisbee in the client)
 
-CREATE TABLE IF NOT EXISTS groups (
+CREATE SCHEMA IF NOT EXISTS pickup_frisbee;
+GRANT USAGE ON SCHEMA pickup_frisbee TO anon, authenticated, service_role;
+
+CREATE TABLE IF NOT EXISTS pickup_frisbee.groups (
   id TEXT PRIMARY KEY,
   name TEXT NOT NULL,
   description TEXT,
@@ -9,9 +13,9 @@ CREATE TABLE IF NOT EXISTS groups (
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
-CREATE TABLE IF NOT EXISTS games (
+CREATE TABLE IF NOT EXISTS pickup_frisbee.games (
   id TEXT PRIMARY KEY,
-  group_id TEXT NOT NULL REFERENCES groups(id) ON DELETE CASCADE,
+  group_id TEXT NOT NULL REFERENCES pickup_frisbee.groups(id) ON DELETE CASCADE,
   name TEXT NOT NULL,
   location TEXT NOT NULL,
   address TEXT,
@@ -26,11 +30,11 @@ CREATE TABLE IF NOT EXISTS games (
   CONSTRAINT games_group_weekday_unique UNIQUE (group_id, weekday)
 );
 
-CREATE INDEX IF NOT EXISTS games_group_id_idx ON games (group_id);
+CREATE INDEX IF NOT EXISTS games_group_id_idx ON pickup_frisbee.games (group_id);
 
-CREATE TABLE IF NOT EXISTS rsvps (
+CREATE TABLE IF NOT EXISTS pickup_frisbee.rsvps (
   id BIGSERIAL PRIMARY KEY,
-  game_id TEXT NOT NULL REFERENCES games(id) ON DELETE CASCADE,
+  game_id TEXT NOT NULL REFERENCES pickup_frisbee.games(id) ON DELETE CASCADE,
   user_id TEXT NOT NULL,
   name TEXT NOT NULL,
   plus_ones INTEGER NOT NULL DEFAULT 0,
@@ -40,11 +44,11 @@ CREATE TABLE IF NOT EXISTS rsvps (
   UNIQUE (game_id, user_id)
 );
 
-CREATE INDEX IF NOT EXISTS rsvps_game_id_idx ON rsvps (game_id);
+CREATE INDEX IF NOT EXISTS rsvps_game_id_idx ON pickup_frisbee.rsvps (game_id);
 
-CREATE TABLE IF NOT EXISTS game_check_ins (
+CREATE TABLE IF NOT EXISTS pickup_frisbee.game_check_ins (
   id BIGSERIAL PRIMARY KEY,
-  game_id TEXT NOT NULL REFERENCES games(id) ON DELETE CASCADE,
+  game_id TEXT NOT NULL REFERENCES pickup_frisbee.games(id) ON DELETE CASCADE,
   user_id TEXT NOT NULL,
   name TEXT NOT NULL,
   plus_ones INTEGER NOT NULL DEFAULT 0,
@@ -54,11 +58,11 @@ CREATE TABLE IF NOT EXISTS game_check_ins (
   UNIQUE (game_id, user_id, cycle_at)
 );
 
-CREATE INDEX IF NOT EXISTS game_check_ins_game_id_idx ON game_check_ins (game_id);
+CREATE INDEX IF NOT EXISTS game_check_ins_game_id_idx ON pickup_frisbee.game_check_ins (game_id);
 
-CREATE TABLE IF NOT EXISTS game_guests (
+CREATE TABLE IF NOT EXISTS pickup_frisbee.game_guests (
   id BIGSERIAL PRIMARY KEY,
-  game_id TEXT NOT NULL REFERENCES games(id) ON DELETE CASCADE,
+  game_id TEXT NOT NULL REFERENCES pickup_frisbee.games(id) ON DELETE CASCADE,
   name TEXT NOT NULL,
   cycle_at TIMESTAMPTZ NOT NULL,
   guest_phase TEXT NOT NULL DEFAULT 'live',
@@ -66,11 +70,11 @@ CREATE TABLE IF NOT EXISTS game_guests (
   CONSTRAINT game_guests_guest_phase_check CHECK (guest_phase IN ('pregame', 'live'))
 );
 
-CREATE INDEX IF NOT EXISTS game_guests_game_id_idx ON game_guests (game_id);
+CREATE INDEX IF NOT EXISTS game_guests_game_id_idx ON pickup_frisbee.game_guests (game_id);
 CREATE INDEX IF NOT EXISTS game_guests_game_cycle_phase_idx
-  ON game_guests (game_id, cycle_at, guest_phase);
+  ON pickup_frisbee.game_guests (game_id, cycle_at, guest_phase);
 
-CREATE TABLE IF NOT EXISTS profiles (
+CREATE TABLE IF NOT EXISTS pickup_frisbee.profiles (
   id TEXT PRIMARY KEY,
   name TEXT NOT NULL,
   phone TEXT,
@@ -80,50 +84,50 @@ CREATE TABLE IF NOT EXISTS profiles (
 );
 
 CREATE UNIQUE INDEX IF NOT EXISTS profiles_phone_unique_idx
-  ON profiles (phone)
+  ON pickup_frisbee.profiles (phone)
   WHERE phone IS NOT NULL;
 
-ALTER TABLE groups ENABLE ROW LEVEL SECURITY;
-ALTER TABLE games ENABLE ROW LEVEL SECURITY;
-ALTER TABLE rsvps ENABLE ROW LEVEL SECURITY;
-ALTER TABLE game_check_ins ENABLE ROW LEVEL SECURITY;
-ALTER TABLE game_guests ENABLE ROW LEVEL SECURITY;
-ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
+ALTER TABLE pickup_frisbee.groups ENABLE ROW LEVEL SECURITY;
+ALTER TABLE pickup_frisbee.games ENABLE ROW LEVEL SECURITY;
+ALTER TABLE pickup_frisbee.rsvps ENABLE ROW LEVEL SECURITY;
+ALTER TABLE pickup_frisbee.game_check_ins ENABLE ROW LEVEL SECURITY;
+ALTER TABLE pickup_frisbee.game_guests ENABLE ROW LEVEL SECURITY;
+ALTER TABLE pickup_frisbee.profiles ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "groups_public_read" ON groups FOR SELECT USING (true);
-CREATE POLICY "games_public_read" ON games FOR SELECT USING (true);
-CREATE POLICY "rsvps_public_read" ON rsvps FOR SELECT USING (true);
-CREATE POLICY "rsvps_public_insert" ON rsvps FOR INSERT WITH CHECK (true);
-CREATE POLICY "rsvps_public_update" ON rsvps FOR UPDATE USING (true);
-CREATE POLICY "rsvps_public_delete" ON rsvps FOR DELETE USING (true);
-CREATE POLICY "check_ins_public_read" ON game_check_ins FOR SELECT USING (true);
-CREATE POLICY "check_ins_public_insert" ON game_check_ins FOR INSERT WITH CHECK (true);
-CREATE POLICY "check_ins_public_update" ON game_check_ins FOR UPDATE USING (true);
-CREATE POLICY "check_ins_public_delete" ON game_check_ins FOR DELETE USING (true);
-CREATE POLICY "guests_public_read" ON game_guests FOR SELECT USING (true);
-CREATE POLICY "guests_public_insert" ON game_guests FOR INSERT WITH CHECK (true);
-CREATE POLICY "guests_public_update" ON game_guests FOR UPDATE USING (true);
-CREATE POLICY "guests_public_delete" ON game_guests FOR DELETE USING (true);
-CREATE POLICY "profiles_public_read" ON profiles FOR SELECT USING (true);
-CREATE POLICY "profiles_public_insert" ON profiles FOR INSERT WITH CHECK (true);
-CREATE POLICY "profiles_public_update" ON profiles FOR UPDATE USING (true);
-CREATE POLICY "profiles_public_delete" ON profiles FOR DELETE USING (true);
+CREATE POLICY "groups_public_read" ON pickup_frisbee.groups FOR SELECT USING (true);
+CREATE POLICY "games_public_read" ON pickup_frisbee.games FOR SELECT USING (true);
+CREATE POLICY "rsvps_public_read" ON pickup_frisbee.rsvps FOR SELECT USING (true);
+CREATE POLICY "rsvps_public_insert" ON pickup_frisbee.rsvps FOR INSERT WITH CHECK (true);
+CREATE POLICY "rsvps_public_update" ON pickup_frisbee.rsvps FOR UPDATE USING (true);
+CREATE POLICY "rsvps_public_delete" ON pickup_frisbee.rsvps FOR DELETE USING (true);
+CREATE POLICY "check_ins_public_read" ON pickup_frisbee.game_check_ins FOR SELECT USING (true);
+CREATE POLICY "check_ins_public_insert" ON pickup_frisbee.game_check_ins FOR INSERT WITH CHECK (true);
+CREATE POLICY "check_ins_public_update" ON pickup_frisbee.game_check_ins FOR UPDATE USING (true);
+CREATE POLICY "check_ins_public_delete" ON pickup_frisbee.game_check_ins FOR DELETE USING (true);
+CREATE POLICY "guests_public_read" ON pickup_frisbee.game_guests FOR SELECT USING (true);
+CREATE POLICY "guests_public_insert" ON pickup_frisbee.game_guests FOR INSERT WITH CHECK (true);
+CREATE POLICY "guests_public_update" ON pickup_frisbee.game_guests FOR UPDATE USING (true);
+CREATE POLICY "guests_public_delete" ON pickup_frisbee.game_guests FOR DELETE USING (true);
+CREATE POLICY "profiles_public_read" ON pickup_frisbee.profiles FOR SELECT USING (true);
+CREATE POLICY "profiles_public_insert" ON pickup_frisbee.profiles FOR INSERT WITH CHECK (true);
+CREATE POLICY "profiles_public_update" ON pickup_frisbee.profiles FOR UPDATE USING (true);
+CREATE POLICY "profiles_public_delete" ON pickup_frisbee.profiles FOR DELETE USING (true);
 
-ALTER TABLE rsvps REPLICA IDENTITY FULL;
-ALTER TABLE groups REPLICA IDENTITY FULL;
-ALTER TABLE games REPLICA IDENTITY FULL;
-ALTER TABLE game_check_ins REPLICA IDENTITY FULL;
-ALTER TABLE game_guests REPLICA IDENTITY FULL;
+ALTER TABLE pickup_frisbee.rsvps REPLICA IDENTITY FULL;
+ALTER TABLE pickup_frisbee.groups REPLICA IDENTITY FULL;
+ALTER TABLE pickup_frisbee.games REPLICA IDENTITY FULL;
+ALTER TABLE pickup_frisbee.game_check_ins REPLICA IDENTITY FULL;
+ALTER TABLE pickup_frisbee.game_guests REPLICA IDENTITY FULL;
 
 -- Enable Realtime for RSVP, game, check-in, and walk-in live updates.
 -- If these lines error because the tables are already added, that's OK.
-ALTER PUBLICATION supabase_realtime ADD TABLE rsvps;
-ALTER PUBLICATION supabase_realtime ADD TABLE groups;
-ALTER PUBLICATION supabase_realtime ADD TABLE games;
-ALTER PUBLICATION supabase_realtime ADD TABLE game_check_ins;
-ALTER PUBLICATION supabase_realtime ADD TABLE game_guests;
+ALTER PUBLICATION supabase_realtime ADD TABLE pickup_frisbee.rsvps;
+ALTER PUBLICATION supabase_realtime ADD TABLE pickup_frisbee.groups;
+ALTER PUBLICATION supabase_realtime ADD TABLE pickup_frisbee.games;
+ALTER PUBLICATION supabase_realtime ADD TABLE pickup_frisbee.game_check_ins;
+ALTER PUBLICATION supabase_realtime ADD TABLE pickup_frisbee.game_guests;
 
-CREATE OR REPLACE FUNCTION get_current_occurrence_start(
+CREATE OR REPLACE FUNCTION pickup_frisbee.get_current_occurrence_start(
   p_weekday SMALLINT,
   p_start_time TIME,
   p_timezone TEXT,
@@ -165,7 +169,7 @@ BEGIN
 END;
 $$;
 
-CREATE OR REPLACE FUNCTION is_game_live(
+CREATE OR REPLACE FUNCTION pickup_frisbee.is_game_live(
   p_weekday SMALLINT,
   p_start_time TIME,
   p_timezone TEXT,
@@ -187,7 +191,7 @@ BEGIN
 END;
 $$;
 
-CREATE OR REPLACE FUNCTION is_rsvp_locked(
+CREATE OR REPLACE FUNCTION pickup_frisbee.is_rsvp_locked(
   p_weekday SMALLINT,
   p_start_time TIME,
   p_timezone TEXT,
@@ -210,18 +214,18 @@ END;
 $$;
 
 -- Weekly RSVP reset: clears signups when the pickup week rolls over (~12h after game start).
-CREATE OR REPLACE FUNCTION is_cycle_reset_in_progress()
+CREATE OR REPLACE FUNCTION pickup_frisbee.is_cycle_reset_in_progress()
 RETURNS BOOLEAN
 LANGUAGE sql
 STABLE
 AS $$
-  SELECT COALESCE(current_setting('disc_check.resetting_cycle', true), '') = 'true';
+  SELECT COALESCE(current_setting('pickup_frisbee.resetting_cycle', true), '') = 'true';
 $$;
 
-CREATE TABLE IF NOT EXISTS game_push_state (
-  game_id TEXT NOT NULL REFERENCES games(id) ON DELETE CASCADE,
+CREATE TABLE IF NOT EXISTS pickup_frisbee.game_push_state (
+  game_id TEXT NOT NULL REFERENCES pickup_frisbee.games(id) ON DELETE CASCADE,
   cycle_at TIMESTAMPTZ NOT NULL,
-  group_id TEXT NOT NULL REFERENCES groups(id) ON DELETE CASCADE,
+  group_id TEXT NOT NULL REFERENCES pickup_frisbee.groups(id) ON DELETE CASCADE,
   target INTEGER NOT NULL,
   game_status TEXT NOT NULL,
   rsvp_headcount INTEGER NOT NULL DEFAULT 0,
@@ -236,14 +240,29 @@ CREATE TABLE IF NOT EXISTS game_push_state (
 );
 
 CREATE INDEX IF NOT EXISTS game_push_state_next_live_at_idx
-  ON game_push_state (next_live_at)
+  ON pickup_frisbee.game_push_state (next_live_at)
   WHERE next_live_at IS NOT NULL AND game_status <> 'cancelled';
 
-CREATE OR REPLACE FUNCTION upsert_game_push_state_for_cycle(p_game_id TEXT, p_cycle TIMESTAMPTZ)
+CREATE TABLE IF NOT EXISTS pickup_frisbee.push_outbox (
+  id BIGSERIAL PRIMARY KEY,
+  group_id TEXT NOT NULL REFERENCES pickup_frisbee.groups(id) ON DELETE CASCADE,
+  game_id TEXT REFERENCES pickup_frisbee.games(id) ON DELETE SET NULL,
+  event_type TEXT NOT NULL,
+  payload JSONB,
+  exclude_subscriber_ids TEXT[] NOT NULL DEFAULT '{}',
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  processed_at TIMESTAMPTZ
+);
+
+CREATE INDEX IF NOT EXISTS push_outbox_unprocessed_idx
+  ON pickup_frisbee.push_outbox (created_at)
+  WHERE processed_at IS NULL;
+
+CREATE OR REPLACE FUNCTION pickup_frisbee.upsert_game_push_state_for_cycle(p_game_id TEXT, p_cycle TIMESTAMPTZ)
 RETURNS void
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = public
+SET search_path = pickup_frisbee
 AS $$
 DECLARE
   v_group_id TEXT;
@@ -314,14 +333,14 @@ BEGIN
 END;
 $$;
 
-CREATE OR REPLACE FUNCTION reset_game_rsvp_cycle(p_game_id TEXT, p_cycle TIMESTAMPTZ)
+CREATE OR REPLACE FUNCTION pickup_frisbee.reset_game_rsvp_cycle(p_game_id TEXT, p_cycle TIMESTAMPTZ)
 RETURNS void
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = public
+SET search_path = pickup_frisbee
 AS $$
 BEGIN
-  PERFORM set_config('disc_check.resetting_cycle', 'true', true);
+  PERFORM set_config('pickup_frisbee.resetting_cycle', 'true', true);
   DELETE FROM game_guests WHERE game_id = p_game_id;
   DELETE FROM game_check_ins WHERE game_id = p_game_id;
   DELETE FROM rsvps WHERE game_id = p_game_id;
@@ -330,7 +349,7 @@ BEGIN
 END;
 $$;
 
-CREATE OR REPLACE FUNCTION enforce_rsvp_window()
+CREATE OR REPLACE FUNCTION pickup_frisbee.enforce_rsvp_window()
 RETURNS trigger
 LANGUAGE plpgsql
 AS $$
@@ -368,11 +387,11 @@ BEGIN
 END;
 $$;
 
-CREATE OR REPLACE FUNCTION reset_stale_game_cycles()
+CREATE OR REPLACE FUNCTION pickup_frisbee.reset_stale_game_cycles()
 RETURNS void
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = public
+SET search_path = pickup_frisbee
 AS $$
 DECLARE
   g RECORD;
@@ -395,7 +414,7 @@ BEGIN
 END;
 $$;
 
-CREATE OR REPLACE FUNCTION enforce_check_in_window()
+CREATE OR REPLACE FUNCTION pickup_frisbee.enforce_check_in_window()
 RETURNS trigger
 LANGUAGE plpgsql
 AS $$
@@ -429,7 +448,7 @@ BEGIN
 END;
 $$;
 
-CREATE OR REPLACE FUNCTION enforce_check_in_delete()
+CREATE OR REPLACE FUNCTION pickup_frisbee.enforce_check_in_delete()
 RETURNS trigger
 LANGUAGE plpgsql
 AS $$
@@ -459,7 +478,7 @@ BEGIN
 END;
 $$;
 
-CREATE OR REPLACE FUNCTION enforce_guest_window()
+CREATE OR REPLACE FUNCTION pickup_frisbee.enforce_guest_window()
 RETURNS trigger
 LANGUAGE plpgsql
 AS $$
@@ -526,59 +545,59 @@ BEGIN
 END;
 $$;
 
-DROP TRIGGER IF EXISTS rsvps_enforce_window ON rsvps;
-DROP TRIGGER IF EXISTS rsvps_enforce_window_insert_delete ON rsvps;
-DROP TRIGGER IF EXISTS rsvps_enforce_window_update ON rsvps;
+DROP TRIGGER IF EXISTS rsvps_enforce_window ON pickup_frisbee.rsvps;
+DROP TRIGGER IF EXISTS rsvps_enforce_window_insert_delete ON pickup_frisbee.rsvps;
+DROP TRIGGER IF EXISTS rsvps_enforce_window_update ON pickup_frisbee.rsvps;
 
 CREATE TRIGGER rsvps_enforce_window_insert_delete
-  BEFORE INSERT OR DELETE ON rsvps
+  BEFORE INSERT OR DELETE ON pickup_frisbee.rsvps
   FOR EACH ROW
-  EXECUTE FUNCTION enforce_rsvp_window();
+  EXECUTE FUNCTION pickup_frisbee.enforce_rsvp_window();
 
 CREATE TRIGGER rsvps_enforce_window_update
-  BEFORE UPDATE OF plus_ones, bringing_kit, game_id, user_id ON rsvps
+  BEFORE UPDATE OF plus_ones, bringing_kit, game_id, user_id ON pickup_frisbee.rsvps
   FOR EACH ROW
-  EXECUTE FUNCTION enforce_rsvp_window();
+  EXECUTE FUNCTION pickup_frisbee.enforce_rsvp_window();
 
-DROP TRIGGER IF EXISTS game_check_ins_enforce_window ON game_check_ins;
-DROP TRIGGER IF EXISTS game_check_ins_enforce_insert ON game_check_ins;
-DROP TRIGGER IF EXISTS game_check_ins_enforce_update ON game_check_ins;
+DROP TRIGGER IF EXISTS game_check_ins_enforce_window ON pickup_frisbee.game_check_ins;
+DROP TRIGGER IF EXISTS game_check_ins_enforce_insert ON pickup_frisbee.game_check_ins;
+DROP TRIGGER IF EXISTS game_check_ins_enforce_update ON pickup_frisbee.game_check_ins;
 
 CREATE TRIGGER game_check_ins_enforce_insert
-  BEFORE INSERT ON game_check_ins
+  BEFORE INSERT ON pickup_frisbee.game_check_ins
   FOR EACH ROW
-  EXECUTE FUNCTION enforce_check_in_window();
+  EXECUTE FUNCTION pickup_frisbee.enforce_check_in_window();
 
 CREATE TRIGGER game_check_ins_enforce_update
-  BEFORE UPDATE OF plus_ones, bringing_kit, game_id, user_id, cycle_at ON game_check_ins
+  BEFORE UPDATE OF plus_ones, bringing_kit, game_id, user_id, cycle_at ON pickup_frisbee.game_check_ins
   FOR EACH ROW
-  EXECUTE FUNCTION enforce_check_in_window();
+  EXECUTE FUNCTION pickup_frisbee.enforce_check_in_window();
 
-DROP TRIGGER IF EXISTS game_check_ins_enforce_delete ON game_check_ins;
+DROP TRIGGER IF EXISTS game_check_ins_enforce_delete ON pickup_frisbee.game_check_ins;
 CREATE TRIGGER game_check_ins_enforce_delete
-  BEFORE DELETE ON game_check_ins
+  BEFORE DELETE ON pickup_frisbee.game_check_ins
   FOR EACH ROW
-  EXECUTE FUNCTION enforce_check_in_delete();
+  EXECUTE FUNCTION pickup_frisbee.enforce_check_in_delete();
 
-DROP TRIGGER IF EXISTS game_guests_enforce_window ON game_guests;
-DROP TRIGGER IF EXISTS game_guests_enforce_insert_delete ON game_guests;
-DROP TRIGGER IF EXISTS game_guests_enforce_update ON game_guests;
+DROP TRIGGER IF EXISTS game_guests_enforce_window ON pickup_frisbee.game_guests;
+DROP TRIGGER IF EXISTS game_guests_enforce_insert_delete ON pickup_frisbee.game_guests;
+DROP TRIGGER IF EXISTS game_guests_enforce_update ON pickup_frisbee.game_guests;
 
 CREATE TRIGGER game_guests_enforce_insert_delete
-  BEFORE INSERT OR DELETE ON game_guests
+  BEFORE INSERT OR DELETE ON pickup_frisbee.game_guests
   FOR EACH ROW
-  EXECUTE FUNCTION enforce_guest_window();
+  EXECUTE FUNCTION pickup_frisbee.enforce_guest_window();
 
 CREATE TRIGGER game_guests_enforce_update
-  BEFORE UPDATE OF game_id, cycle_at ON game_guests
+  BEFORE UPDATE OF game_id, cycle_at ON pickup_frisbee.game_guests
   FOR EACH ROW
-  EXECUTE FUNCTION enforce_guest_window();
+  EXECUTE FUNCTION pickup_frisbee.enforce_guest_window();
 
-CREATE OR REPLACE FUNCTION sync_game_push_state_denorm()
+CREATE OR REPLACE FUNCTION pickup_frisbee.sync_game_push_state_denorm()
 RETURNS trigger
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = public
+SET search_path = pickup_frisbee
 AS $$
 DECLARE
   v_next_live TIMESTAMPTZ;
@@ -621,7 +640,7 @@ BEGIN
 END;
 $$;
 
-CREATE OR REPLACE FUNCTION enqueue_push_event(
+CREATE OR REPLACE FUNCTION pickup_frisbee.enqueue_push_event(
   p_event_type TEXT,
   p_group_id TEXT,
   p_game_id TEXT DEFAULT NULL,
@@ -631,7 +650,7 @@ CREATE OR REPLACE FUNCTION enqueue_push_event(
 RETURNS VOID
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = public
+SET search_path = pickup_frisbee
 AS $$
 BEGIN
   IF p_group_id IS NULL OR trim(p_group_id) = '' THEN
@@ -658,7 +677,7 @@ BEGIN
 END;
 $$;
 
-CREATE OR REPLACE FUNCTION badge_milestone_rank(p_milestone TEXT)
+CREATE OR REPLACE FUNCTION pickup_frisbee.badge_milestone_rank(p_milestone TEXT)
 RETURNS INTEGER
 LANGUAGE sql
 IMMUTABLE
@@ -672,7 +691,7 @@ AS $$
   END;
 $$;
 
-CREATE OR REPLACE FUNCTION compute_badge_milestone(p_headcount INTEGER, p_target INTEGER)
+CREATE OR REPLACE FUNCTION pickup_frisbee.compute_badge_milestone(p_headcount INTEGER, p_target INTEGER)
 RETURNS TEXT
 LANGUAGE plpgsql
 IMMUTABLE
@@ -704,7 +723,7 @@ BEGIN
 END;
 $$;
 
-CREATE OR REPLACE FUNCTION rsvp_milestone_to_event(p_milestone TEXT)
+CREATE OR REPLACE FUNCTION pickup_frisbee.rsvp_milestone_to_event(p_milestone TEXT)
 RETURNS TEXT
 LANGUAGE sql
 IMMUTABLE
@@ -718,7 +737,7 @@ AS $$
   END;
 $$;
 
-CREATE OR REPLACE FUNCTION checkin_milestone_to_event(p_milestone TEXT)
+CREATE OR REPLACE FUNCTION pickup_frisbee.checkin_milestone_to_event(p_milestone TEXT)
 RETURNS TEXT
 LANGUAGE sql
 IMMUTABLE
@@ -732,7 +751,7 @@ AS $$
   END;
 $$;
 
-CREATE OR REPLACE FUNCTION compute_pregame_badge_milestone(p_headcount INTEGER, p_target INTEGER)
+CREATE OR REPLACE FUNCTION pickup_frisbee.compute_pregame_badge_milestone(p_headcount INTEGER, p_target INTEGER)
 RETURNS TEXT
 LANGUAGE plpgsql
 IMMUTABLE
@@ -754,11 +773,11 @@ BEGIN
 END;
 $$;
 
-CREATE OR REPLACE FUNCTION supersede_pending_rsvp_badge(p_game_id TEXT, p_new_rank INTEGER)
+CREATE OR REPLACE FUNCTION pickup_frisbee.supersede_pending_rsvp_badge(p_game_id TEXT, p_new_rank INTEGER)
 RETURNS void
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = public
+SET search_path = pickup_frisbee
 AS $$
 BEGIN
   IF p_game_id IS NULL OR trim(p_game_id) = '' THEN
@@ -790,11 +809,11 @@ BEGIN
 END;
 $$;
 
-CREATE OR REPLACE FUNCTION supersede_pending_checkin_badge(p_game_id TEXT, p_new_rank INTEGER)
+CREATE OR REPLACE FUNCTION pickup_frisbee.supersede_pending_checkin_badge(p_game_id TEXT, p_new_rank INTEGER)
 RETURNS void
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = public
+SET search_path = pickup_frisbee
 AS $$
 BEGIN
   IF p_game_id IS NULL OR trim(p_game_id) = '' THEN
@@ -822,11 +841,11 @@ BEGIN
 END;
 $$;
 
-CREATE OR REPLACE FUNCTION try_enqueue_rsvp_badge_upgrade(p_game_id TEXT, p_cycle TIMESTAMPTZ)
+CREATE OR REPLACE FUNCTION pickup_frisbee.try_enqueue_rsvp_badge_upgrade(p_game_id TEXT, p_cycle TIMESTAMPTZ)
 RETURNS BOOLEAN
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = public
+SET search_path = pickup_frisbee
 AS $$
 DECLARE
   v_group_id TEXT;
@@ -900,11 +919,11 @@ BEGIN
 END;
 $$;
 
-CREATE OR REPLACE FUNCTION try_enqueue_checkin_badge_upgrade(p_game_id TEXT, p_cycle TIMESTAMPTZ)
+CREATE OR REPLACE FUNCTION pickup_frisbee.try_enqueue_checkin_badge_upgrade(p_game_id TEXT, p_cycle TIMESTAMPTZ)
 RETURNS BOOLEAN
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = public
+SET search_path = pickup_frisbee
 AS $$
 DECLARE
   v_group_id TEXT;
@@ -975,22 +994,22 @@ BEGIN
 END;
 $$;
 
-CREATE OR REPLACE FUNCTION supersede_pending_badge(p_game_id TEXT, p_new_rank INTEGER)
+CREATE OR REPLACE FUNCTION pickup_frisbee.supersede_pending_badge(p_game_id TEXT, p_new_rank INTEGER)
 RETURNS void
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = public
+SET search_path = pickup_frisbee
 AS $$
 BEGIN
   PERFORM supersede_pending_rsvp_badge(p_game_id, p_new_rank);
 END;
 $$;
 
-CREATE OR REPLACE FUNCTION maintain_rsvp_push_headcount()
+CREATE OR REPLACE FUNCTION pickup_frisbee.maintain_rsvp_push_headcount()
 RETURNS trigger
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = public
+SET search_path = pickup_frisbee
 AS $$
 DECLARE
   v_game_id TEXT;
@@ -1060,11 +1079,11 @@ BEGIN
 END;
 $$;
 
-CREATE OR REPLACE FUNCTION maintain_pregame_guest_push_headcount()
+CREATE OR REPLACE FUNCTION pickup_frisbee.maintain_pregame_guest_push_headcount()
 RETURNS trigger
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = public
+SET search_path = pickup_frisbee
 AS $$
 DECLARE
   v_game_id TEXT;
@@ -1115,11 +1134,11 @@ BEGIN
 END;
 $$;
 
-CREATE OR REPLACE FUNCTION maintain_checkin_push_headcount()
+CREATE OR REPLACE FUNCTION pickup_frisbee.maintain_checkin_push_headcount()
 RETURNS trigger
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = public
+SET search_path = pickup_frisbee
 AS $$
 DECLARE
   v_game_id TEXT;
@@ -1185,63 +1204,63 @@ BEGIN
 END;
 $$;
 
-DROP TRIGGER IF EXISTS rsvps_maintain_push_headcount ON rsvps;
-DROP TRIGGER IF EXISTS rsvps_maintain_push_headcount_ins_del ON rsvps;
-DROP TRIGGER IF EXISTS rsvps_maintain_push_headcount_update ON rsvps;
+DROP TRIGGER IF EXISTS rsvps_maintain_push_headcount ON pickup_frisbee.rsvps;
+DROP TRIGGER IF EXISTS rsvps_maintain_push_headcount_ins_del ON pickup_frisbee.rsvps;
+DROP TRIGGER IF EXISTS rsvps_maintain_push_headcount_update ON pickup_frisbee.rsvps;
 
 CREATE TRIGGER rsvps_maintain_push_headcount_ins_del
-  AFTER INSERT OR DELETE ON rsvps
+  AFTER INSERT OR DELETE ON pickup_frisbee.rsvps
   FOR EACH ROW
-  EXECUTE FUNCTION maintain_rsvp_push_headcount();
+  EXECUTE FUNCTION pickup_frisbee.maintain_rsvp_push_headcount();
 
 CREATE TRIGGER rsvps_maintain_push_headcount_update
-  AFTER UPDATE OF plus_ones ON rsvps
+  AFTER UPDATE OF plus_ones ON pickup_frisbee.rsvps
   FOR EACH ROW
-  EXECUTE FUNCTION maintain_rsvp_push_headcount();
+  EXECUTE FUNCTION pickup_frisbee.maintain_rsvp_push_headcount();
 
-DROP TRIGGER IF EXISTS game_guests_maintain_pregame_push_headcount ON game_guests;
+DROP TRIGGER IF EXISTS game_guests_maintain_pregame_push_headcount ON pickup_frisbee.game_guests;
 CREATE TRIGGER game_guests_maintain_pregame_push_headcount
-  AFTER INSERT OR DELETE ON game_guests
+  AFTER INSERT OR DELETE ON pickup_frisbee.game_guests
   FOR EACH ROW
-  EXECUTE FUNCTION maintain_pregame_guest_push_headcount();
+  EXECUTE FUNCTION pickup_frisbee.maintain_pregame_guest_push_headcount();
 
-DROP TRIGGER IF EXISTS game_check_ins_maintain_push_headcount_ins_del ON game_check_ins;
-DROP TRIGGER IF EXISTS game_check_ins_maintain_push_headcount_update ON game_check_ins;
+DROP TRIGGER IF EXISTS game_check_ins_maintain_push_headcount_ins_del ON pickup_frisbee.game_check_ins;
+DROP TRIGGER IF EXISTS game_check_ins_maintain_push_headcount_update ON pickup_frisbee.game_check_ins;
 
 CREATE TRIGGER game_check_ins_maintain_push_headcount_ins_del
-  AFTER INSERT OR DELETE ON game_check_ins
+  AFTER INSERT OR DELETE ON pickup_frisbee.game_check_ins
   FOR EACH ROW
-  EXECUTE FUNCTION maintain_checkin_push_headcount();
+  EXECUTE FUNCTION pickup_frisbee.maintain_checkin_push_headcount();
 
 CREATE TRIGGER game_check_ins_maintain_push_headcount_update
-  AFTER UPDATE OF plus_ones ON game_check_ins
+  AFTER UPDATE OF plus_ones ON pickup_frisbee.game_check_ins
   FOR EACH ROW
-  EXECUTE FUNCTION maintain_checkin_push_headcount();
+  EXECUTE FUNCTION pickup_frisbee.maintain_checkin_push_headcount();
 
-DROP TRIGGER IF EXISTS game_guests_maintain_live_push_headcount ON game_guests;
+DROP TRIGGER IF EXISTS game_guests_maintain_live_push_headcount ON pickup_frisbee.game_guests;
 CREATE TRIGGER game_guests_maintain_live_push_headcount
-  AFTER INSERT OR DELETE ON game_guests
+  AFTER INSERT OR DELETE ON pickup_frisbee.game_guests
   FOR EACH ROW
-  EXECUTE FUNCTION maintain_checkin_push_headcount();
+  EXECUTE FUNCTION pickup_frisbee.maintain_checkin_push_headcount();
 
-DROP TRIGGER IF EXISTS games_sync_push_state ON games;
+DROP TRIGGER IF EXISTS games_sync_push_state ON pickup_frisbee.games;
 CREATE TRIGGER games_sync_push_state
-  AFTER UPDATE OF status, target, weekday, start_time, timezone, group_id ON games
+  AFTER UPDATE OF status, target, weekday, start_time, timezone, group_id ON pickup_frisbee.games
   FOR EACH ROW
-  EXECUTE FUNCTION sync_game_push_state_denorm();
+  EXECUTE FUNCTION pickup_frisbee.sync_game_push_state_denorm();
 
-CREATE TABLE IF NOT EXISTS app_config (
+CREATE TABLE IF NOT EXISTS pickup_frisbee.app_config (
   key TEXT PRIMARY KEY,
   value TEXT NOT NULL
 );
 
-ALTER TABLE app_config ENABLE ROW LEVEL SECURITY;
+ALTER TABLE pickup_frisbee.app_config ENABLE ROW LEVEL SECURITY;
 
-CREATE OR REPLACE FUNCTION enqueue_due_phase_live_events()
+CREATE OR REPLACE FUNCTION pickup_frisbee.enqueue_due_phase_live_events()
 RETURNS INTEGER
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = public
+SET search_path = pickup_frisbee
 AS $$
 DECLARE
   v_row RECORD;
@@ -1292,32 +1311,32 @@ BEGIN
 END;
 $$;
 
-GRANT EXECUTE ON FUNCTION reset_game_rsvp_cycle(TEXT, TIMESTAMPTZ) TO service_role;
-REVOKE ALL ON FUNCTION enqueue_push_event(TEXT, TEXT, TEXT, TEXT[], JSONB) FROM PUBLIC;
-GRANT EXECUTE ON FUNCTION enqueue_push_event(TEXT, TEXT, TEXT, TEXT[], JSONB) TO service_role;
-REVOKE ALL ON FUNCTION badge_milestone_rank(TEXT) FROM PUBLIC;
-REVOKE ALL ON FUNCTION compute_badge_milestone(INTEGER, INTEGER) FROM PUBLIC;
-REVOKE ALL ON FUNCTION rsvp_milestone_to_event(TEXT) FROM PUBLIC;
-REVOKE ALL ON FUNCTION checkin_milestone_to_event(TEXT) FROM PUBLIC;
-REVOKE ALL ON FUNCTION compute_pregame_badge_milestone(INTEGER, INTEGER) FROM PUBLIC;
-REVOKE ALL ON FUNCTION supersede_pending_badge(TEXT, INTEGER) FROM PUBLIC;
-REVOKE ALL ON FUNCTION supersede_pending_rsvp_badge(TEXT, INTEGER) FROM PUBLIC;
-REVOKE ALL ON FUNCTION supersede_pending_checkin_badge(TEXT, INTEGER) FROM PUBLIC;
-REVOKE ALL ON FUNCTION try_enqueue_rsvp_badge_upgrade(TEXT, TIMESTAMPTZ) FROM PUBLIC;
-REVOKE ALL ON FUNCTION try_enqueue_checkin_badge_upgrade(TEXT, TIMESTAMPTZ) FROM PUBLIC;
-GRANT EXECUTE ON FUNCTION supersede_pending_rsvp_badge(TEXT, INTEGER) TO service_role;
-GRANT EXECUTE ON FUNCTION supersede_pending_checkin_badge(TEXT, INTEGER) TO service_role;
-GRANT EXECUTE ON FUNCTION try_enqueue_rsvp_badge_upgrade(TEXT, TIMESTAMPTZ) TO service_role;
-GRANT EXECUTE ON FUNCTION try_enqueue_checkin_badge_upgrade(TEXT, TIMESTAMPTZ) TO service_role;
-GRANT EXECUTE ON FUNCTION compute_badge_milestone(INTEGER, INTEGER) TO service_role;
-GRANT EXECUTE ON FUNCTION supersede_pending_badge(TEXT, INTEGER) TO service_role;
-REVOKE ALL ON FUNCTION enqueue_due_phase_live_events() FROM PUBLIC;
-GRANT EXECUTE ON FUNCTION enqueue_due_phase_live_events() TO service_role;
-REVOKE ALL ON FUNCTION upsert_game_push_state_for_cycle(TEXT, TIMESTAMPTZ) FROM PUBLIC;
-GRANT EXECUTE ON FUNCTION upsert_game_push_state_for_cycle(TEXT, TIMESTAMPTZ) TO service_role;
-GRANT EXECUTE ON FUNCTION reset_stale_game_cycles() TO service_role;
+GRANT EXECUTE ON FUNCTION pickup_frisbee.reset_game_rsvp_cycle(TEXT, TIMESTAMPTZ) TO service_role;
+REVOKE ALL ON FUNCTION pickup_frisbee.enqueue_push_event(TEXT, TEXT, TEXT, TEXT[], JSONB) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION pickup_frisbee.enqueue_push_event(TEXT, TEXT, TEXT, TEXT[], JSONB) TO service_role;
+REVOKE ALL ON FUNCTION pickup_frisbee.badge_milestone_rank(TEXT) FROM PUBLIC;
+REVOKE ALL ON FUNCTION pickup_frisbee.compute_badge_milestone(INTEGER, INTEGER) FROM PUBLIC;
+REVOKE ALL ON FUNCTION pickup_frisbee.rsvp_milestone_to_event(TEXT) FROM PUBLIC;
+REVOKE ALL ON FUNCTION pickup_frisbee.checkin_milestone_to_event(TEXT) FROM PUBLIC;
+REVOKE ALL ON FUNCTION pickup_frisbee.compute_pregame_badge_milestone(INTEGER, INTEGER) FROM PUBLIC;
+REVOKE ALL ON FUNCTION pickup_frisbee.supersede_pending_badge(TEXT, INTEGER) FROM PUBLIC;
+REVOKE ALL ON FUNCTION pickup_frisbee.supersede_pending_rsvp_badge(TEXT, INTEGER) FROM PUBLIC;
+REVOKE ALL ON FUNCTION pickup_frisbee.supersede_pending_checkin_badge(TEXT, INTEGER) FROM PUBLIC;
+REVOKE ALL ON FUNCTION pickup_frisbee.try_enqueue_rsvp_badge_upgrade(TEXT, TIMESTAMPTZ) FROM PUBLIC;
+REVOKE ALL ON FUNCTION pickup_frisbee.try_enqueue_checkin_badge_upgrade(TEXT, TIMESTAMPTZ) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION pickup_frisbee.supersede_pending_rsvp_badge(TEXT, INTEGER) TO service_role;
+GRANT EXECUTE ON FUNCTION pickup_frisbee.supersede_pending_checkin_badge(TEXT, INTEGER) TO service_role;
+GRANT EXECUTE ON FUNCTION pickup_frisbee.try_enqueue_rsvp_badge_upgrade(TEXT, TIMESTAMPTZ) TO service_role;
+GRANT EXECUTE ON FUNCTION pickup_frisbee.try_enqueue_checkin_badge_upgrade(TEXT, TIMESTAMPTZ) TO service_role;
+GRANT EXECUTE ON FUNCTION pickup_frisbee.compute_badge_milestone(INTEGER, INTEGER) TO service_role;
+GRANT EXECUTE ON FUNCTION pickup_frisbee.supersede_pending_badge(TEXT, INTEGER) TO service_role;
+REVOKE ALL ON FUNCTION pickup_frisbee.enqueue_due_phase_live_events() FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION pickup_frisbee.enqueue_due_phase_live_events() TO service_role;
+REVOKE ALL ON FUNCTION pickup_frisbee.upsert_game_push_state_for_cycle(TEXT, TIMESTAMPTZ) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION pickup_frisbee.upsert_game_push_state_for_cycle(TEXT, TIMESTAMPTZ) TO service_role;
+GRANT EXECUTE ON FUNCTION pickup_frisbee.reset_stale_game_cycles() TO service_role;
 
-CREATE OR REPLACE FUNCTION normalize_phone(p_phone TEXT)
+CREATE OR REPLACE FUNCTION pickup_frisbee.normalize_phone(p_phone TEXT)
 RETURNS TEXT
 LANGUAGE plpgsql
 IMMUTABLE
@@ -1342,11 +1361,11 @@ BEGIN
 END;
 $$;
 
-CREATE OR REPLACE FUNCTION find_profile_by_phone(p_phone TEXT)
+CREATE OR REPLACE FUNCTION pickup_frisbee.find_profile_by_phone(p_phone TEXT)
 RETURNS JSONB
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = public
+SET search_path = pickup_frisbee
 AS $$
 DECLARE
   normalized TEXT;
@@ -1371,11 +1390,11 @@ BEGIN
 END;
 $$;
 
-CREATE OR REPLACE FUNCTION upsert_profile(p_profile JSONB)
+CREATE OR REPLACE FUNCTION pickup_frisbee.upsert_profile(p_profile JSONB)
 RETURNS JSONB
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = public
+SET search_path = pickup_frisbee
 AS $$
 DECLARE
   v_id TEXT;
@@ -1423,14 +1442,14 @@ BEGIN
 END;
 $$;
 
-GRANT EXECUTE ON FUNCTION find_profile_by_phone(TEXT) TO anon, authenticated, service_role;
-GRANT EXECUTE ON FUNCTION upsert_profile(JSONB) TO anon, authenticated, service_role;
+GRANT EXECUTE ON FUNCTION pickup_frisbee.find_profile_by_phone(TEXT) TO anon, authenticated, service_role;
+GRANT EXECUTE ON FUNCTION pickup_frisbee.upsert_profile(JSONB) TO anon, authenticated, service_role;
 
-CREATE OR REPLACE FUNCTION verify_group_admin_secret(p_group_id TEXT, p_secret TEXT)
+CREATE OR REPLACE FUNCTION pickup_frisbee.verify_group_admin_secret(p_group_id TEXT, p_secret TEXT)
 RETURNS void
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = public
+SET search_path = pickup_frisbee
 AS $$
 BEGIN
   IF p_group_id IS NULL OR trim(p_group_id) = '' OR p_secret IS NULL OR NOT EXISTS (
@@ -1441,11 +1460,11 @@ BEGIN
 END;
 $$;
 
-CREATE OR REPLACE FUNCTION verify_group_admin(p_group_id TEXT, p_secret TEXT)
+CREATE OR REPLACE FUNCTION pickup_frisbee.verify_group_admin(p_group_id TEXT, p_secret TEXT)
 RETURNS BOOLEAN
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = public
+SET search_path = pickup_frisbee
 AS $$
 BEGIN
   RETURN p_group_id IS NOT NULL AND trim(p_group_id) <> '' AND p_secret IS NOT NULL AND EXISTS (
@@ -1454,11 +1473,11 @@ BEGIN
 END;
 $$;
 
-CREATE OR REPLACE FUNCTION admin_upsert_group(p_secret TEXT, p_group JSONB)
+CREATE OR REPLACE FUNCTION pickup_frisbee.admin_upsert_group(p_secret TEXT, p_group JSONB)
 RETURNS void
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = public
+SET search_path = pickup_frisbee
 AS $$
 DECLARE
   v_id TEXT;
@@ -1490,11 +1509,11 @@ BEGIN
 END;
 $$;
 
-CREATE OR REPLACE FUNCTION admin_upsert_game(p_secret TEXT, p_game JSONB)
+CREATE OR REPLACE FUNCTION pickup_frisbee.admin_upsert_game(p_secret TEXT, p_game JSONB)
 RETURNS void
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = public
+SET search_path = pickup_frisbee
 AS $$
 DECLARE
   v_id TEXT;
@@ -1615,11 +1634,11 @@ BEGIN
 END;
 $$;
 
-CREATE OR REPLACE FUNCTION admin_delete_game(p_secret TEXT, p_game_id TEXT)
+CREATE OR REPLACE FUNCTION pickup_frisbee.admin_delete_game(p_secret TEXT, p_game_id TEXT)
 RETURNS void
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = public
+SET search_path = pickup_frisbee
 AS $$
 DECLARE
   v_group_id TEXT;
@@ -1639,14 +1658,14 @@ BEGIN
 END;
 $$;
 
-GRANT EXECUTE ON FUNCTION verify_group_admin(TEXT, TEXT) TO anon, authenticated, service_role;
-GRANT EXECUTE ON FUNCTION admin_upsert_group(TEXT, JSONB) TO anon, authenticated, service_role;
-GRANT EXECUTE ON FUNCTION admin_upsert_game(TEXT, JSONB) TO anon, authenticated, service_role;
-GRANT EXECUTE ON FUNCTION admin_delete_game(TEXT, TEXT) TO anon, authenticated, service_role;
+GRANT EXECUTE ON FUNCTION pickup_frisbee.verify_group_admin(TEXT, TEXT) TO anon, authenticated, service_role;
+GRANT EXECUTE ON FUNCTION pickup_frisbee.admin_upsert_group(TEXT, JSONB) TO anon, authenticated, service_role;
+GRANT EXECUTE ON FUNCTION pickup_frisbee.admin_upsert_game(TEXT, JSONB) TO anon, authenticated, service_role;
+GRANT EXECUTE ON FUNCTION pickup_frisbee.admin_delete_game(TEXT, TEXT) TO anon, authenticated, service_role;
 
-CREATE TABLE IF NOT EXISTS push_subscriptions (
+CREATE TABLE IF NOT EXISTS pickup_frisbee.push_subscriptions (
   id BIGSERIAL PRIMARY KEY,
-  group_id TEXT NOT NULL REFERENCES groups(id) ON DELETE CASCADE,
+  group_id TEXT NOT NULL REFERENCES pickup_frisbee.groups(id) ON DELETE CASCADE,
   subscriber_id TEXT NOT NULL,
   endpoint TEXT NOT NULL UNIQUE,
   subscription JSONB NOT NULL,
@@ -1655,19 +1674,19 @@ CREATE TABLE IF NOT EXISTS push_subscriptions (
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
-CREATE INDEX IF NOT EXISTS push_subscriptions_group_id_idx ON push_subscriptions (group_id);
-CREATE INDEX IF NOT EXISTS push_subscriptions_subscriber_id_idx ON push_subscriptions (subscriber_id);
+CREATE INDEX IF NOT EXISTS push_subscriptions_group_id_idx ON pickup_frisbee.push_subscriptions (group_id);
+CREATE INDEX IF NOT EXISTS push_subscriptions_subscriber_id_idx ON pickup_frisbee.push_subscriptions (subscriber_id);
 
-ALTER TABLE push_subscriptions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE pickup_frisbee.push_subscriptions ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "push_subscriptions_public_read" ON push_subscriptions FOR SELECT USING (true);
-CREATE POLICY "push_subscriptions_public_insert" ON push_subscriptions FOR INSERT WITH CHECK (true);
-CREATE POLICY "push_subscriptions_public_update" ON push_subscriptions FOR UPDATE USING (true);
-CREATE POLICY "push_subscriptions_public_delete" ON push_subscriptions FOR DELETE USING (true);
+CREATE POLICY "push_subscriptions_public_read" ON pickup_frisbee.push_subscriptions FOR SELECT USING (true);
+CREATE POLICY "push_subscriptions_public_insert" ON pickup_frisbee.push_subscriptions FOR INSERT WITH CHECK (true);
+CREATE POLICY "push_subscriptions_public_update" ON pickup_frisbee.push_subscriptions FOR UPDATE USING (true);
+CREATE POLICY "push_subscriptions_public_delete" ON pickup_frisbee.push_subscriptions FOR DELETE USING (true);
 
-CREATE TABLE IF NOT EXISTS group_chat_messages (
+CREATE TABLE IF NOT EXISTS pickup_frisbee.group_chat_messages (
   id TEXT PRIMARY KEY,
-  group_id TEXT NOT NULL REFERENCES groups(id) ON DELETE CASCADE,
+  group_id TEXT NOT NULL REFERENCES pickup_frisbee.groups(id) ON DELETE CASCADE,
   sender_id TEXT NOT NULL,
   sender_name TEXT NOT NULL,
   sender_color TEXT NOT NULL,
@@ -1676,36 +1695,36 @@ CREATE TABLE IF NOT EXISTS group_chat_messages (
 );
 
 CREATE INDEX IF NOT EXISTS group_chat_messages_group_id_created_at_idx
-  ON group_chat_messages (group_id, created_at DESC);
+  ON pickup_frisbee.group_chat_messages (group_id, created_at DESC);
 
-ALTER TABLE group_chat_messages ENABLE ROW LEVEL SECURITY;
+ALTER TABLE pickup_frisbee.group_chat_messages ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "group_chat_messages_public_read" ON group_chat_messages FOR SELECT USING (true);
-CREATE POLICY "group_chat_messages_public_insert" ON group_chat_messages FOR INSERT WITH CHECK (true);
+CREATE POLICY "group_chat_messages_public_read" ON pickup_frisbee.group_chat_messages FOR SELECT USING (true);
+CREATE POLICY "group_chat_messages_public_insert" ON pickup_frisbee.group_chat_messages FOR INSERT WITH CHECK (true);
 
-ALTER TABLE group_chat_messages REPLICA IDENTITY FULL;
+ALTER TABLE pickup_frisbee.group_chat_messages REPLICA IDENTITY FULL;
 
-ALTER PUBLICATION supabase_realtime ADD TABLE group_chat_messages;
+ALTER PUBLICATION supabase_realtime ADD TABLE pickup_frisbee.group_chat_messages;
 
-CREATE OR REPLACE FUNCTION public.trim_group_chat_messages()
+CREATE OR REPLACE FUNCTION pickup_frisbee.trim_group_chat_messages()
 RETURNS TRIGGER
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = public
+SET search_path = pickup_frisbee
 AS $$
 DECLARE
   max_messages CONSTANT INTEGER := 100;
   excess INTEGER;
 BEGIN
   SELECT COUNT(*) - max_messages INTO excess
-  FROM public.group_chat_messages
+  FROM pickup_frisbee.group_chat_messages
   WHERE group_id = NEW.group_id;
 
   IF excess > 0 THEN
-    DELETE FROM public.group_chat_messages
+    DELETE FROM pickup_frisbee.group_chat_messages
     WHERE id IN (
       SELECT id
-      FROM public.group_chat_messages
+      FROM pickup_frisbee.group_chat_messages
       WHERE group_id = NEW.group_id
       ORDER BY created_at ASC, id ASC
       LIMIT excess
@@ -1716,26 +1735,26 @@ BEGIN
 END;
 $$;
 
-DROP TRIGGER IF EXISTS trim_group_chat_messages_after_insert ON group_chat_messages;
+DROP TRIGGER IF EXISTS trim_group_chat_messages_after_insert ON pickup_frisbee.group_chat_messages;
 
 CREATE TRIGGER trim_group_chat_messages_after_insert
-AFTER INSERT ON group_chat_messages
+AFTER INSERT ON pickup_frisbee.group_chat_messages
 FOR EACH ROW
-EXECUTE FUNCTION public.trim_group_chat_messages();
+EXECUTE FUNCTION pickup_frisbee.trim_group_chat_messages();
 
-CREATE TABLE IF NOT EXISTS chat_push_state (
-  group_id TEXT PRIMARY KEY REFERENCES groups(id) ON DELETE CASCADE,
+CREATE TABLE IF NOT EXISTS pickup_frisbee.chat_push_state (
+  group_id TEXT PRIMARY KEY REFERENCES pickup_frisbee.groups(id) ON DELETE CASCADE,
   window_senders JSONB NOT NULL DEFAULT '[]'::jsonb,
   distinct_sender_count INTEGER NOT NULL DEFAULT 0 CHECK (distinct_sender_count >= 0),
   last_push_at TIMESTAMPTZ,
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
-CREATE OR REPLACE FUNCTION maintain_chat_push_state(p_group_id TEXT, p_sender_id TEXT)
+CREATE OR REPLACE FUNCTION pickup_frisbee.maintain_chat_push_state(p_group_id TEXT, p_sender_id TEXT)
 RETURNS void
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = public
+SET search_path = pickup_frisbee
 AS $$
 DECLARE
   v_window_cutoff TIMESTAMPTZ := NOW() - INTERVAL '30 minutes';
@@ -1854,11 +1873,11 @@ BEGIN
 END;
 $$;
 
-CREATE OR REPLACE FUNCTION trg_group_chat_maintain_push_state()
+CREATE OR REPLACE FUNCTION pickup_frisbee.trg_group_chat_maintain_push_state()
 RETURNS TRIGGER
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = public
+SET search_path = pickup_frisbee
 AS $$
 BEGIN
   PERFORM maintain_chat_push_state(NEW.group_id, NEW.sender_id);
@@ -1866,19 +1885,19 @@ BEGIN
 END;
 $$;
 
-DROP TRIGGER IF EXISTS group_chat_messages_maintain_push_state ON group_chat_messages;
+DROP TRIGGER IF EXISTS group_chat_messages_maintain_push_state ON pickup_frisbee.group_chat_messages;
 
 CREATE TRIGGER group_chat_messages_maintain_push_state
-AFTER INSERT ON group_chat_messages
+AFTER INSERT ON pickup_frisbee.group_chat_messages
 FOR EACH ROW
-EXECUTE FUNCTION trg_group_chat_maintain_push_state();
+EXECUTE FUNCTION pickup_frisbee.trg_group_chat_maintain_push_state();
 
-REVOKE ALL ON FUNCTION maintain_chat_push_state(TEXT, TEXT) FROM PUBLIC;
-REVOKE ALL ON FUNCTION trg_group_chat_maintain_push_state() FROM PUBLIC;
+REVOKE ALL ON FUNCTION pickup_frisbee.maintain_chat_push_state(TEXT, TEXT) FROM PUBLIC;
+REVOKE ALL ON FUNCTION pickup_frisbee.trg_group_chat_maintain_push_state() FROM PUBLIC;
 
-CREATE TABLE IF NOT EXISTS group_chat_message_reactions (
-  message_id TEXT NOT NULL REFERENCES group_chat_messages(id) ON DELETE CASCADE,
-  group_id TEXT NOT NULL REFERENCES groups(id) ON DELETE CASCADE,
+CREATE TABLE IF NOT EXISTS pickup_frisbee.group_chat_message_reactions (
+  message_id TEXT NOT NULL REFERENCES pickup_frisbee.group_chat_messages(id) ON DELETE CASCADE,
+  group_id TEXT NOT NULL REFERENCES pickup_frisbee.groups(id) ON DELETE CASCADE,
   reactor_id TEXT NOT NULL,
   emoji TEXT NOT NULL,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -1894,34 +1913,34 @@ CREATE TABLE IF NOT EXISTS group_chat_message_reactions (
 );
 
 CREATE INDEX IF NOT EXISTS group_chat_message_reactions_group_message_idx
-  ON group_chat_message_reactions (group_id, message_id);
+  ON pickup_frisbee.group_chat_message_reactions (group_id, message_id);
 
-ALTER TABLE group_chat_message_reactions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE pickup_frisbee.group_chat_message_reactions ENABLE ROW LEVEL SECURITY;
 
 CREATE POLICY "group_chat_message_reactions_public_read"
-  ON group_chat_message_reactions FOR SELECT USING (true);
+  ON pickup_frisbee.group_chat_message_reactions FOR SELECT USING (true);
 CREATE POLICY "group_chat_message_reactions_public_insert"
-  ON group_chat_message_reactions FOR INSERT WITH CHECK (true);
+  ON pickup_frisbee.group_chat_message_reactions FOR INSERT WITH CHECK (true);
 CREATE POLICY "group_chat_message_reactions_public_update"
-  ON group_chat_message_reactions FOR UPDATE USING (true);
+  ON pickup_frisbee.group_chat_message_reactions FOR UPDATE USING (true);
 CREATE POLICY "group_chat_message_reactions_public_delete"
-  ON group_chat_message_reactions FOR DELETE USING (true);
+  ON pickup_frisbee.group_chat_message_reactions FOR DELETE USING (true);
 
-ALTER TABLE group_chat_message_reactions REPLICA IDENTITY FULL;
+ALTER TABLE pickup_frisbee.group_chat_message_reactions REPLICA IDENTITY FULL;
 
-ALTER PUBLICATION supabase_realtime ADD TABLE group_chat_message_reactions;
+ALTER PUBLICATION supabase_realtime ADD TABLE pickup_frisbee.group_chat_message_reactions;
 
-CREATE OR REPLACE FUNCTION public.trg_group_chat_reaction_set_group_id()
+CREATE OR REPLACE FUNCTION pickup_frisbee.trg_group_chat_reaction_set_group_id()
 RETURNS TRIGGER
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = public
+SET search_path = pickup_frisbee
 AS $$
 DECLARE
   v_group_id TEXT;
 BEGIN
   SELECT group_id INTO v_group_id
-  FROM public.group_chat_messages
+  FROM pickup_frisbee.group_chat_messages
   WHERE id = NEW.message_id;
 
   IF v_group_id IS NULL THEN
@@ -1933,11 +1952,97 @@ BEGIN
 END;
 $$;
 
-DROP TRIGGER IF EXISTS group_chat_message_reactions_set_group_id ON group_chat_message_reactions;
+DROP TRIGGER IF EXISTS group_chat_message_reactions_set_group_id ON pickup_frisbee.group_chat_message_reactions;
 
 CREATE TRIGGER group_chat_message_reactions_set_group_id
-  BEFORE INSERT OR UPDATE ON group_chat_message_reactions
+  BEFORE INSERT OR UPDATE ON pickup_frisbee.group_chat_message_reactions
   FOR EACH ROW
-  EXECUTE FUNCTION trg_group_chat_reaction_set_group_id();
+  EXECUTE FUNCTION pickup_frisbee.trg_group_chat_reaction_set_group_id();
 
-REVOKE ALL ON FUNCTION trg_group_chat_reaction_set_group_id() FROM PUBLIC;
+REVOKE ALL ON FUNCTION pickup_frisbee.trg_group_chat_reaction_set_group_id() FROM PUBLIC;
+
+CREATE OR REPLACE FUNCTION pickup_frisbee.prune_push_outbox(p_retention_days INTEGER DEFAULT 30)
+RETURNS INTEGER
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = pickup_frisbee
+AS $$
+DECLARE
+  v_deleted INTEGER;
+BEGIN
+  IF p_retention_days IS NULL OR p_retention_days < 1 THEN
+    RAISE EXCEPTION 'prune_push_outbox retention_days must be at least 1';
+  END IF;
+
+  DELETE FROM push_outbox
+  WHERE processed_at IS NOT NULL
+    AND processed_at < NOW() - make_interval(days => p_retention_days);
+
+  GET DIAGNOSTICS v_deleted = ROW_COUNT;
+  RETURN v_deleted;
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION pickup_frisbee.prune_game_push_state(p_retention_days INTEGER DEFAULT 90)
+RETURNS INTEGER
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = pickup_frisbee
+AS $$
+DECLARE
+  v_deleted INTEGER;
+BEGIN
+  IF p_retention_days IS NULL OR p_retention_days < 1 THEN
+    RAISE EXCEPTION 'prune_game_push_state retention_days must be at least 1';
+  END IF;
+
+  DELETE FROM game_push_state gps
+  WHERE gps.cycle_at < NOW() - make_interval(days => p_retention_days)
+    AND NOT EXISTS (
+      SELECT 1
+      FROM games g
+      WHERE g.id = gps.game_id
+        AND g.rsvp_cycle_at = gps.cycle_at
+    );
+
+  GET DIAGNOSTICS v_deleted = ROW_COUNT;
+  RETURN v_deleted;
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION pickup_frisbee.prune_activity_retention()
+RETURNS JSONB
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = pickup_frisbee
+AS $$
+DECLARE
+  v_push_outbox INTEGER;
+  v_game_push_state INTEGER;
+BEGIN
+  v_push_outbox := prune_push_outbox(30);
+  v_game_push_state := prune_game_push_state(90);
+
+  RETURN jsonb_build_object(
+    'push_outbox_deleted', v_push_outbox,
+    'game_push_state_deleted', v_game_push_state,
+    'pruned_at', NOW()
+  );
+END;
+$$;
+
+REVOKE ALL ON FUNCTION pickup_frisbee.prune_push_outbox(INTEGER) FROM PUBLIC;
+REVOKE ALL ON FUNCTION pickup_frisbee.prune_game_push_state(INTEGER) FROM PUBLIC;
+REVOKE ALL ON FUNCTION pickup_frisbee.prune_activity_retention() FROM PUBLIC;
+
+GRANT EXECUTE ON FUNCTION pickup_frisbee.prune_push_outbox(INTEGER) TO service_role;
+GRANT EXECUTE ON FUNCTION pickup_frisbee.prune_game_push_state(INTEGER) TO service_role;
+GRANT EXECUTE ON FUNCTION pickup_frisbee.prune_activity_retention() TO service_role;
+
+-- PostgREST / Supabase API grants for exposed schema
+GRANT ALL ON ALL TABLES IN SCHEMA pickup_frisbee TO anon, authenticated, service_role;
+GRANT ALL ON ALL SEQUENCES IN SCHEMA pickup_frisbee TO anon, authenticated, service_role;
+GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA pickup_frisbee TO anon, authenticated, service_role;
+ALTER DEFAULT PRIVILEGES IN SCHEMA pickup_frisbee GRANT ALL ON TABLES TO anon, authenticated, service_role;
+ALTER DEFAULT PRIVILEGES IN SCHEMA pickup_frisbee GRANT ALL ON SEQUENCES TO anon, authenticated, service_role;
+ALTER DEFAULT PRIVILEGES IN SCHEMA pickup_frisbee GRANT EXECUTE ON FUNCTIONS TO anon, authenticated, service_role;

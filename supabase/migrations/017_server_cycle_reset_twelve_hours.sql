@@ -213,19 +213,19 @@ DECLARE
   job_id BIGINT;
 BEGIN
   IF EXISTS (SELECT 1 FROM pg_namespace WHERE nspname = 'cron') THEN
-    SELECT cron.job.jobid
+  SELECT cron.job.jobid
     INTO job_id
     FROM cron.job
-    WHERE jobname = 'disc-check-reset-stale-cycles';
+    WHERE jobname IN ('disc-check-reset-stale-cycles', 'pickup_frisbee_reset_stale_cycles');
 
     IF job_id IS NOT NULL THEN
       PERFORM cron.unschedule(job_id);
     END IF;
 
     PERFORM cron.schedule(
-      'disc-check-reset-stale-cycles',
+      'pickup_frisbee_reset_stale_cycles',
       '*/10 * * * *',
-      $cron$SELECT reset_stale_game_cycles();$cron$
+      $cron$SELECT pickup_frisbee.reset_stale_game_cycles();$cron$
     );
   END IF;
 END;

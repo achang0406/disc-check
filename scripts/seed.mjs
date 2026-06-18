@@ -1,6 +1,6 @@
 import dotenv from "dotenv";
-import { createClient } from "@supabase/supabase-js";
 import { SEED_GAMES, SEED_GROUPS } from "./seed-data.mjs";
+import { createServiceClient } from "./supabase-client.mjs";
 
 const REMOVED_TEST_GROUP_ID = "test";
 const REMOVED_TEST_GAME_IDS = [
@@ -15,15 +15,7 @@ const REMOVED_TEST_GAME_IDS = [
 dotenv.config({ path: ".env.local" });
 dotenv.config();
 
-const url = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
-const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-if (!url || !serviceKey) {
-  console.error("Set SUPABASE_URL (or VITE_SUPABASE_URL) and SUPABASE_SERVICE_ROLE_KEY in .env.local");
-  process.exit(1);
-}
-
-const supabase = createClient(url, serviceKey);
+const supabase = createServiceClient();
 
 const passcodeOverride = process.env.GROUP_ADMIN_PASSCODE || process.env.VITE_ADMIN_PASSCODE;
 const defaultGroupId = SEED_GROUPS[0]?.id ?? "default";

@@ -91,16 +91,16 @@ BEGIN
   SELECT cron.job.jobid
   INTO job_id
   FROM cron.job
-  WHERE jobname = 'disc-check-prune-activity-retention';
+  WHERE jobname IN ('disc-check-prune-activity-retention', 'pickup_frisbee_prune_activity_retention');
 
   IF job_id IS NOT NULL THEN
     PERFORM cron.unschedule(job_id);
   END IF;
 
   PERFORM cron.schedule(
-    'disc-check-prune-activity-retention',
+    'pickup_frisbee_prune_activity_retention',
     '0 4 * * *',
-    $cron$SELECT prune_activity_retention();$cron$
+    $cron$SELECT pickup_frisbee.prune_activity_retention();$cron$
   );
 END;
 $$;
