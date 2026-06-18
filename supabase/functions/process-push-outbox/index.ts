@@ -109,10 +109,17 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const supabase = createClient(
-      Deno.env.get("SUPABASE_URL")!,
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
-    );
+    const url = Deno.env.get("SUPABASE_URL");
+    const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+    const dbSchema = Deno.env.get("SUPABASE_DB_SCHEMA") ?? "pickup_frisbee";
+
+    if (!url || !serviceKey) {
+      return jsonResponse({ error: "Supabase is not configured" }, 503);
+    }
+
+    const supabase = createClient(url, serviceKey, {
+      db: { schema: dbSchema },
+    });
 
     const { data: phaseLiveEnqueued, error: phaseLiveError } = await supabase.rpc(
       "enqueue_due_phase_live_events",

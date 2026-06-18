@@ -24,10 +24,17 @@ export type PushSendResult = {
 };
 
 function getServiceClient(): SupabaseClient {
-  return createClient(
-    Deno.env.get("SUPABASE_URL")!,
-    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
-  );
+  const url = Deno.env.get("SUPABASE_URL");
+  const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+  const dbSchema = Deno.env.get("SUPABASE_DB_SCHEMA") ?? "pickup_frisbee";
+
+  if (!url || !serviceKey) {
+    throw new Error("SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY must be set");
+  }
+
+  return createClient(url, serviceKey, {
+    db: { schema: dbSchema },
+  });
 }
 
 export function isPushConfigured(): boolean {

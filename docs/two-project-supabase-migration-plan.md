@@ -16,7 +16,8 @@ Related repos:
 | Wave | Status | Notes |
 |------|--------|-------|
 | **0** — Repo prep | **Done** | `schema.sql` → `pickup_frisbee`; client + seed schema env; cron renames in migrations |
-| **1** — pickup-frisbee staging → prod | Pending | Next: Wave 1a |
+| **1a** — Staging database | **Done** | `iunqmpxp` — `pickup_frisbee` schema, seed, edge functions, crons |
+| **1b** — Vercel Preview | **Manual step** | Set Preview env in [Vercel dashboard](https://vercel.com/achang0406s-projects/disc-check/settings/environment-variables) (CLI requires a feature branch) |
 | **2** — lyanne_library staging → prod | Pending | After 1–2 stable days on prod |
 | **3** — Docs + regression | Pending | |
 
@@ -164,7 +165,8 @@ createClient(url, anonKey, {
 
 - [x] Refactored SQL in git
 - [x] Client and seed read schema env
-- [ ] SQL applies cleanly on staging (validate in Wave 1a)
+- [x] Code pushed to `main` (commit `6aa2469`)
+- [ ] SQL applies cleanly on staging — **Wave 1a** (no remote Supabase migration required for Wave 0; prod remains on `public`)
 
 ---
 
@@ -195,13 +197,15 @@ createClient(url, anonKey, {
 
 ### 1b — Vercel Preview (disc-check)
 
-Set as **Preview-only** env vars:
+> **Action needed:** Set Preview env vars in the [Vercel dashboard](https://vercel.com/achang0406s-projects/disc-check/settings/environment-variables) (Preview target, all branches). The CLI requires a non-`main` Git branch for Preview-scoped vars.
 
 | Variable | Value |
 |----------|-------|
-| `VITE_SUPABASE_URL` | Staging project URL |
-| `VITE_SUPABASE_ANON_KEY` | Staging anon key |
+| `VITE_SUPABASE_URL` | `https://iunqmpxpwhybqyfxcsdt.supabase.co` |
+| `VITE_SUPABASE_ANON_KEY` | Staging anon key (Supabase → stage apps → Settings → API) |
 | `VITE_SUPABASE_DB_SCHEMA` | `pickup_frisbee` |
+
+**Development** env (for `vercel dev`) points at staging with `pickup_frisbee`.
 
 Never reuse Production URL for Preview.
 
