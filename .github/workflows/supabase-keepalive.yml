@@ -1,25 +1,25 @@
-# Keeps the Supabase free-tier project active (pauses after ~7 days of inactivity).
-# Activity must hit the database — a static Vercel page load is not enough.
-#
 # Required GitHub repo secrets (Settings → Secrets and variables → Actions):
-#   SUPABASE_URL       — Project URL from Supabase → Settings → API
-#   SUPABASE_ANON_KEY  — anon public key from the same page
+#   SUPABASE_URL       — Staging project URL (iunqmpxp…)
+#   SUPABASE_ANON_KEY  — Staging anon public key
+#
+# Pings pickup_frisbee schema on the shared staging project (Wave 1i).
 
 name: Supabase keepalive
 
 on:
   schedule:
-    - cron: "0 12 * * *"
+    - cron: "0 12 * * 1"
   workflow_dispatch:
 
 jobs:
   ping:
     runs-on: ubuntu-latest
     steps:
-      - name: Ping Supabase REST API
+      - name: Ping Supabase REST API (pickup_frisbee)
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+          SUPABASE_DB_SCHEMA: pickup_frisbee
         run: |
           if [ -z "$SUPABASE_URL" ] || [ -z "$SUPABASE_ANON_KEY" ]; then
             echo "Missing SUPABASE_URL or SUPABASE_ANON_KEY repository secret."
@@ -29,6 +29,8 @@ jobs:
           curl -fsS \
             "${SUPABASE_URL}/rest/v1/groups?select=id&limit=1" \
             -H "apikey: ${SUPABASE_ANON_KEY}" \
-            -H "Authorization: Bearer ${SUPABASE_ANON_KEY}"
+            -H "Authorization: Bearer ${SUPABASE_ANON_KEY}" \
+            -H "Accept-Profile: ${SUPABASE_DB_SCHEMA}" \
+            -H "Content-Profile: ${SUPABASE_DB_SCHEMA}"
 
-          echo "Supabase keepalive OK"
+          echo "Supabase keepalive OK (${SUPABASE_DB_SCHEMA})"

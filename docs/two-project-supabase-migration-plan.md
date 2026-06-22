@@ -25,9 +25,9 @@ Related repos:
 | **1d** — Prod add `pickup_frisbee`    | **Done** | `mczxxonw` — schema applied, API exposed, seeded; `public` untouched                   |
 | **1e** — Pre-cutover prod validation  | **Done** | PostgREST, RPC, RSVP, chat, Realtime pub on prod `pickup_frisbee`; live prod on `public` |
 | **1f** — Cutover window               | **Done** | Production on `pickup_frisbee`; edge v13/v5 + `pickup_frisbee_*` crons on prod hub       |
-| **1g** — Post-cutover smoke test      | Pending  | Full pickup-frisbee checklist on Production; optional 24–48h soak before 1h                |
-| **1h** — Drop legacy `public` objects | Pending  | After 1g stable — remove disc-check app tables from prod hub `public` only               |
-| **1i** — Staging keep-alive           | Pending  | Enable weekly `[supabase-keepalive.yml](../.github/workflows/supabase-keepalive.yml)`  |
+| **1g** — Post-cutover smoke test      | **Done** | Production bundle + API smoke (groups, RPC, RSVP, chat, push drain) on `pickup_frisbee` |
+| **1h** — Drop legacy `public` objects | **Done** | 13 legacy tables + app functions removed from prod hub `public`; Realtime pub cleanup   |
+| **1i** — Staging keep-alive           | **Done** | Weekly workflow + staging secrets; pings `pickup_frisbee` schema                         |
 | **2 prep** — class-library repo       | Pending  | `004_lyanne_library_schema.sql` + `VITE_SUPABASE_DB_SCHEMA` in class-library             |
 | **2a** — Staging library schema       | Pending  | Apply `lyanne_library` on staging project alongside `pickup_frisbee`                     |
 | **2b** — Vercel Preview (library)     | Pending  | class-library Preview → staging URL + `lyanne_library`                                   |
@@ -323,15 +323,19 @@ Deploy. Do **not** change class-library Production yet.
 
 **Rollback (while `public` still exists):** Revert Vercel Production schema env to unset/`public`, redeploy edge with `SUPABASE_DB_SCHEMA=public`, reschedule old crons.
 
-### 1g — Post-cutover smoke test
+### 1g — Post-cutover smoke test — **Done**
 
-- [ ] Full pickup-frisbee checklist on **Production** (now on `pickup_frisbee`)
-- [ ] Push + cron (if enabled)
-- [ ] Optional soak: 24–48h stable before 1h
+- [x] Production bundle: `mczxxonw` URL + `pickup_frisbee` schema on pickupfrisbee.com
+- [x] PostgREST groups/games on prod `pickup_frisbee`
+- [x] RPC `verify_group_admin`
+- [x] RSVP insert/delete
+- [x] Chat insert/delete
+- [x] `process-push-outbox` invoke OK (empty outbox)
+- [x] Crons: `pickup_frisbee_*` only (no `disc-check-*`)
 
-**Do not drop `public` yet.**
+**Applied:** 2026-06-22. Push delivery still requires users to re-toggle bell (0 subs in `pickup_frisbee` at cutover).
 
-### 1h — Drop legacy `public` app objects
+### 1h — Drop legacy `public` app objects — **Done**
 
 **Where:** prod hub
 
@@ -344,9 +348,12 @@ Deploy. Do **not** change class-library Production yet.
 
 **Rollback after 1h:** Not possible without backup — only run after confidence is high.
 
-### 1i — Keep-alive
+**Applied:** 2026-06-22 via `[scripts/prod-drop-public-app-objects.sql](../scripts/prod-drop-public-app-objects.sql)`. Verified: zero app tables in `public`; Realtime pub lists `pickup_frisbee` only; prod API still serves Kirkland Disc.
 
-- [ ] Start **weekly staging keep-alive** (`[.github/workflows/supabase-keepalive.yml](../.github/workflows/supabase-keepalive.yml)` — free tier pauses after 7 days without API traffic)
+### 1i — Keep-alive — **Done**
+
+- [x] Weekly staging keep-alive (`[.github/workflows/supabase-keepalive.yml](../.github/workflows/supabase-keepalive.yml)`) — pings `pickup_frisbee` with `Accept-Profile`
+- [x] GitHub secrets `SUPABASE_URL` / `SUPABASE_ANON_KEY` → staging project (`iunqmpxp`)
 
 **Wave 1 exit:** pickup-frisbee stable on prod and Preview; legacy disc-check objects removed from prod hub `public`.
 
@@ -571,4 +578,4 @@ After move: update Vercel URL + keys; keep `VITE_SUPABASE_DB_SCHEMA=pickup_frisb
 | Staging keep-alive   | `[.github/workflows/supabase-keepalive.yml](../.github/workflows/supabase-keepalive.yml)` |
 
 
-**Next step:** Wave **1g** — post-cutover smoke test on Production (push + full checklist; optional 24–48h soak before **1h**).
+**Next step:** Wave **2 prep** — `lyanne_library` schema in class-library repo (wait 1–2 days if you want extra soak time on Wave 1).
