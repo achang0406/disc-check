@@ -36,7 +36,7 @@ Related repos:
 | **2e** — Vercel Production (library)  | **Done** | Production → prod hub + `lyanne_library`; deployed class-library.vercel.app            |
 | **2f** — Smoke test prod (library)    | **Done** | Books + checkout on prod hub; pickup-frisbee groups regression OK                        |
 | **2g** — Staging-only ex-library      | **Done** | `iunqmpxp` hosts `pickup_frisbee` + `lyanne_library`; prod hub hosts both app schemas    |
-| **3** — Docs + regression             | Pending  | READMEs, `.env.example`, full prod + Preview regression, keep-alive active             |
+| **3** — Docs + regression             | **Done** | READMEs, `.env.example`, prod `public` verified empty, regression + keepalive both schemas |
 
 
 ---
@@ -119,7 +119,7 @@ Postgres schema names cannot contain hyphens. App display names stay kebab-case.
 | Project           | Ref                    | Role                                                  |
 | ----------------- | ---------------------- | ----------------------------------------------------- |
 | **DiscCheck**     | `mczxxonwvsztbrqmjzlu` | **Prod hub** — edge functions, pg_cron, vault         |
-| **Class Library** | `iunqmpxpwhybqyfxcsdt` | **Staging** after Wave 1a; library prod until Wave 2e |
+| **Class Library** | `iunqmpxpwhybqyfxcsdt` | **Staging** — both `pickup_frisbee` + `lyanne_library` |
 
 
 ### During migration
@@ -409,13 +409,17 @@ Production env: prod hub URL, prod anon, `lyanne_library`. Deployed to class-lib
 
 ---
 
-## Wave 3 — Docs + decommission
+## Wave 3 — Docs + decommission — **Done**
 
-- Update READMEs and `.env.example` in both repos
-- Confirm prod hub `public` has no stray disc-check app tables (after Wave **1h**)
-- Update local dev docs (`.env.local` URLs)
-- Full regression: prod + Preview for both apps
-- Keep staging keep-alive active
+- [x] READMEs updated in disc-check and class-library (two-project architecture, schema env)
+- [x] `.env.example` updated — defaults `pickup_frisbee` / `lyanne_library`; staging vs prod notes
+- [x] Prod hub `public` has no disc-check app tables (verified post-1h)
+- [x] Full regression: PostgREST + Production bundles for both apps on prod hub
+- [x] Staging keep-alive pings both `pickup_frisbee` and `lyanne_library`
+
+**Applied:** 2026-06-22
+
+**Migration complete.** Both apps on prod hub; both Previews on staging project.
 
 ---
 
@@ -560,4 +564,4 @@ After move: update Vercel URL + keys; keep `VITE_SUPABASE_DB_SCHEMA=pickup_frisb
 | Staging keep-alive   | `[.github/workflows/supabase-keepalive-stage.yml](../.github/workflows/supabase-keepalive-stage.yml)` |
 
 
-**Next step:** Wave **3** — READMEs, `.env.example` cleanup, full prod + Preview regression for both apps.
+**Status:** Migration **complete** (Waves 0–3).

@@ -2,7 +2,7 @@
 #   SUPABASE_URL       — Staging project URL (iunqmpxp…)
 #   SUPABASE_ANON_KEY  — Staging anon public key
 #
-# Pings pickup_frisbee schema on the shared staging project (Wave 1i).
+# Pings both app schemas on the shared staging project.
 
 name: Supabase keepalive (stage)
 
@@ -15,22 +15,29 @@ jobs:
   ping:
     runs-on: ubuntu-latest
     steps:
-      - name: Ping Supabase REST API (pickup_frisbee)
+      - name: Ping staging Supabase (pickup_frisbee + lyanne_library)
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
-          SUPABASE_DB_SCHEMA: pickup_frisbee
         run: |
           if [ -z "$SUPABASE_URL" ] || [ -z "$SUPABASE_ANON_KEY" ]; then
             echo "Missing SUPABASE_URL or SUPABASE_ANON_KEY repository secret."
             exit 1
           fi
 
-          curl -fsS \
-            "${SUPABASE_URL}/rest/v1/groups?select=id&limit=1" \
-            -H "apikey: ${SUPABASE_ANON_KEY}" \
-            -H "Authorization: Bearer ${SUPABASE_ANON_KEY}" \
-            -H "Accept-Profile: ${SUPABASE_DB_SCHEMA}" \
-            -H "Content-Profile: ${SUPABASE_DB_SCHEMA}"
+          for schema in pickup_frisbee lyanne_library; do
+            if [ "$schema" = "pickup_frisbee" ]; then
+              path="groups?select=id&limit=1"
+            else
+              path="books?select=id&limit=1"
+            fi
 
-          echo "Supabase keepalive OK (${SUPABASE_DB_SCHEMA})"
+            curl -fsS \
+              "${SUPABASE_URL}/rest/v1/${path}" \
+              -H "apikey: ${SUPABASE_ANON_KEY}" \
+              -H "Authorization: Bearer ${SUPABASE_ANON_KEY}" \
+              -H "Accept-Profile: ${schema}" \
+              -H "Content-Profile: ${schema}"
+
+            echo "Supabase keepalive OK (${schema})"
+          done
