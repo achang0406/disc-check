@@ -21,8 +21,22 @@ Related repos:
 | **0** — Repo prep                     | **Done** | `schema.sql` → `pickup_frisbee`; client + seed schema env; cron renames in migrations    |
 | **1a** — Staging database             | **Done** | `iunqmpxp` — `pickup_frisbee` schema, seed, edge functions, crons                        |
 | **1b** — Vercel Preview               | **Done** | Preview → staging URL, staging anon, `pickup_frisbee`; verified in latest Preview bundle |
-| **2** — lyanne_library staging → prod | Pending  | After 1–2 stable days on prod                                                            |
-| **3** — Docs + regression             | Pending  |                                                                                          |
+| **1c** — Preview smoke test           | **Done** | Groups/games, Realtime, RPCs, chat, admin on staging Preview                           |
+| **1d** — Prod add `pickup_frisbee`    | **Done** | `mczxxonw` — schema applied, API exposed, seeded; `public` untouched                   |
+| **1e** — Pre-cutover prod validation  | **Done** | PostgREST, RPC, RSVP, chat, Realtime pub on prod `pickup_frisbee`; live prod on `public` |
+| **1f** — Cutover window               | Pending  | Vercel Production → `pickup_frisbee`; prod edge + `pickup_frisbee_*` crons               |
+| **1g** — Post-cutover smoke test      | Pending  | Full pickup-frisbee checklist on Production; optional 24–48h soak before 1h                |
+| **1h** — Drop legacy `public` objects | Pending  | After 1g stable — remove disc-check app tables from prod hub `public` only               |
+| **1i** — Staging keep-alive           | Pending  | Enable weekly `[supabase-keepalive.yml](../.github/workflows/supabase-keepalive.yml)`  |
+| **2 prep** — class-library repo       | Pending  | `004_lyanne_library_schema.sql` + `VITE_SUPABASE_DB_SCHEMA` in class-library             |
+| **2a** — Staging library schema       | Pending  | Apply `lyanne_library` on staging project alongside `pickup_frisbee`                     |
+| **2b** — Vercel Preview (library)     | Pending  | class-library Preview → staging URL + `lyanne_library`                                   |
+| **2c** — Preview smoke test (library) | Pending  | Seeded books, kiosk + teacher flows on Preview                                           |
+| **2d** — Prod add `lyanne_library`    | Pending  | Additive apply on prod hub; validate before 2e cutover                                   |
+| **2e** — Vercel Production (library)  | Pending  | class-library Production → prod hub + `lyanne_library`                                   |
+| **2f** — Smoke test prod (library)    | Pending  | Library on shared hub + pickup-frisbee regression                                        |
+| **2g** — Staging-only ex-library      | Pending  | Confirm `iunqmpxp` is shared staging for both apps                                     |
+| **3** — Docs + regression             | Pending  | READMEs, `.env.example`, full prod + Preview regression, keep-alive active             |
 
 
 ---
@@ -233,16 +247,16 @@ createClient(url, anonKey, {
 
 Never reuse Production URL for Preview.
 
-### 1c — Smoke test Preview
+### 1c — Smoke test Preview — **Done**
 
 - [x] Seeded groups/games visible
-- [ ] Realtime (RSVP live update)
-- [ ] RPCs, chat, admin flows
+- [x] Realtime (RSVP live update)
+- [x] RPCs, chat, admin flows
 - [ ] Push optional (staging VAPID)
 
 **Prod cutover pattern (1d–1i):** add `pickup_frisbee` alongside live `public` → validate on prod hub → cut over Vercel + edge + cron → smoke test → drop legacy `public` app objects only after confirmed stable.
 
-### 1d — Prod hub: add `pickup_frisbee` (no drop)
+### 1d — Prod hub: add `pickup_frisbee` (no drop) — **Done**
 
 **Where:** DiscCheck project `mczxxonwvsztbrqmjzlu`
 
@@ -263,18 +277,23 @@ Do **not** full-reset the prod database — preserves vault secrets and platform
 
 **Rollback:** Drop `pickup_frisbee` schema if apply was wrong (only before cutover in 1f).
 
-### 1e — Pre-cutover prod validation
+**Applied:** 2026-06-22 via `supabase db push` (migration `20260622184328_wave_1d_pickup_frisbee_schema.sql`) + `supabase config push` (API schemas). Seeded `default` / Kirkland Disc + `g1`.
+
+### 1e — Pre-cutover prod validation — **Done**
 
 **Where:** prod hub, schema `pickup_frisbee` only
 
 **No maintenance window.** Live users still on `public`.
 
-Validate the same checklist as [§1c](#1c--smoke-test-preview), but against the **prod ref** without touching Vercel Production:
+Validate the same checklist as [§1c](#1c--smoke-test-preview--done), but against the **prod ref** without touching Vercel Production:
 
-- PostgREST with `Accept-Profile: pickup_frisbee` → seeded groups/games
-- Realtime (RSVP live update) on `pickup_frisbee` tables
-- RPCs, chat, admin flows
-- Push tests wait until after **1f** (edge/cron still on `public` until cutover)
+- [x] PostgREST with `Accept-Profile: pickup_frisbee` → seeded groups/games
+- [x] Realtime publication includes `pickup_frisbee` tables (rsvps, games, groups, chat, etc.)
+- [x] RPC `verify_group_admin`
+- [x] RSVP insert/delete
+- [x] Chat insert/delete
+- [x] Live `public` prod unchanged (Kirkland Goaltimate still served)
+- [ ] Push tests wait until after **1f** (edge/cron still on `public` until cutover)
 
 **Exit gate:** All required checks pass before starting 1f. If not, fix SQL/seed and re-run; `public` prod unaffected.
 
@@ -550,4 +569,4 @@ After move: update Vercel URL + keys; keep `VITE_SUPABASE_DB_SCHEMA=pickup_frisb
 | Staging keep-alive   | `[.github/workflows/supabase-keepalive.yml](../.github/workflows/supabase-keepalive.yml)` |
 
 
-**Next step:** Wave **1c** — smoke test Preview (groups/games, Realtime, RPCs, chat, admin).
+**Next step:** Wave **1f** — cutover window (Vercel Production `pickup_frisbee`, prod edge + cron).
