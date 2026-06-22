@@ -4,7 +4,7 @@
 #
 # Pings pickup_frisbee schema on the shared staging project (Wave 1i).
 
-name: Supabase keepalive
+name: Supabase keepalive (stage)
 
 on:
   schedule:

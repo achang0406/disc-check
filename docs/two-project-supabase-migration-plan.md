@@ -352,7 +352,7 @@ Deploy. Do **not** change class-library Production yet.
 
 ### 1i — Keep-alive — **Done**
 
-- [x] Weekly staging keep-alive (`[.github/workflows/supabase-keepalive.yml](../.github/workflows/supabase-keepalive.yml)`) — pings `pickup_frisbee` with `Accept-Profile`
+- [x] Weekly staging keep-alive (`[.github/workflows/supabase-keepalive-stage.yml](../.github/workflows/supabase-keepalive-stage.yml)`) — pings `pickup_frisbee` with `Accept-Profile`
 - [x] GitHub secrets `SUPABASE_URL` / `SUPABASE_ANON_KEY` → staging project (`iunqmpxp`)
 
 **Wave 1 exit:** pickup-frisbee stable on prod and Preview; legacy disc-check objects removed from prod hub `public`.
@@ -575,7 +575,7 @@ After move: update Vercel URL + keys; keep `VITE_SUPABASE_DB_SCHEMA=pickup_frisb
 | Apply schema (fresh) | `[supabase/schema.sql](../supabase/schema.sql)`                                           |
 | Seed                 | `npm run db:seed` with `VITE_SUPABASE_DB_SCHEMA=pickup_frisbee`                           |
 | Local schema config  | `[supabase/config.toml](../supabase/config.toml)`                                         |
-| Staging keep-alive   | `[.github/workflows/supabase-keepalive.yml](../.github/workflows/supabase-keepalive.yml)` |
+| Staging keep-alive   | `[.github/workflows/supabase-keepalive-stage.yml](../.github/workflows/supabase-keepalive-stage.yml)` |
 
 
 **Next step:** Wave **2 prep** — `lyanne_library` schema in class-library repo (wait 1–2 days if you want extra soak time on Wave 1).
