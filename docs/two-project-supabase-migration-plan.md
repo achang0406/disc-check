@@ -28,14 +28,14 @@ Related repos:
 | **1g** — Post-cutover smoke test      | **Done** | Production bundle + API smoke (groups, RPC, RSVP, chat, push drain) on `pickup_frisbee` |
 | **1h** — Drop legacy `public` objects | **Done** | 13 legacy tables + app functions removed from prod hub `public`; Realtime pub cleanup   |
 | **1i** — Staging keep-alive           | **Done** | Weekly workflow + staging secrets; pings `pickup_frisbee` schema                         |
-| **2 prep** — class-library repo       | Pending  | `004_lyanne_library_schema.sql` + `VITE_SUPABASE_DB_SCHEMA` in class-library             |
-| **2a** — Staging library schema       | Pending  | Apply `lyanne_library` on staging project alongside `pickup_frisbee`                     |
-| **2b** — Vercel Preview (library)     | Pending  | class-library Preview → staging URL + `lyanne_library`                                   |
-| **2c** — Preview smoke test (library) | Pending  | Seeded books, kiosk + teacher flows on Preview                                           |
-| **2d** — Prod add `lyanne_library`    | Pending  | Additive apply on prod hub; validate before 2e cutover                                   |
-| **2e** — Vercel Production (library)  | Pending  | class-library Production → prod hub + `lyanne_library`                                   |
-| **2f** — Smoke test prod (library)    | Pending  | Library on shared hub + pickup-frisbee regression                                        |
-| **2g** — Staging-only ex-library      | Pending  | Confirm `iunqmpxp` is shared staging for both apps                                     |
+| **2 prep** — class-library repo       | **Done** | `004_lyanne_library_schema.sql` + schema-aware client/seed/scripts                       |
+| **2a** — Staging library schema       | **Done** | `lyanne_library` on `iunqmpxp` alongside `pickup_frisbee`; API exposed; seeded           |
+| **2b** — Vercel Preview (library)     | **Done** | Preview → staging URL + `lyanne_library` schema env                                      |
+| **2c** — Preview smoke test (library) | **Done** | PostgREST books/borrowers on staging `lyanne_library` (Preview deploy on next git push)  |
+| **2d** — Prod add `lyanne_library`    | **Done** | Additive apply on prod hub; API exposed; seeded                                          |
+| **2e** — Vercel Production (library)  | **Done** | Production → prod hub + `lyanne_library`; deployed class-library.vercel.app            |
+| **2f** — Smoke test prod (library)    | **Done** | Books + checkout on prod hub; pickup-frisbee groups regression OK                        |
+| **2g** — Staging-only ex-library      | **Done** | `iunqmpxp` hosts `pickup_frisbee` + `lyanne_library`; prod hub hosts both app schemas    |
 | **3** — Docs + regression             | Pending  | READMEs, `.env.example`, full prod + Preview regression, keep-alive active             |
 
 
@@ -367,63 +367,45 @@ Deploy. Do **not** change class-library Production yet.
 
 Work happens in the **class-library** repo unless noted.
 
-### Prep — class-library repo
+### Prep — class-library repo — **Done**
 
-1. Create `supabase/migrations/004_lyanne_library_schema.sql` — `lyanne_library.`* from migrations `001`–`003`.
-2. Add `VITE_SUPABASE_DB_SCHEMA` to client, seed, `.env.example`.
+1. `supabase/migrations/004_lyanne_library_schema.sql` — `lyanne_library.*` from migrations `001`–`003` + table grants.
+2. `VITE_SUPABASE_DB_SCHEMA` in client, seed, backfill scripts, `.env.example`, `scripts/supabase-client.mjs`.
 
-### 2a — Staging: add library schema
+### 2a — Staging: add library schema — **Done**
 
-**Where:** staging project (`pickup_frisbee` already present)
+**Applied:** 2026-06-22 on `iunqmpxp` — schema + grants; `supabase config push` exposes `lyanne_library`; seeded 4 books + 6 borrowers.
 
-1. Apply `004_lyanne_library_schema.sql`.
-2. Expose `lyanne_library` in API settings.
-3. Seed with `VITE_SUPABASE_DB_SCHEMA=lyanne_library`.
+### 2b — Vercel Preview (class-library) — **Done**
 
-### 2b — Vercel Preview (class-library)
+Preview env: staging URL, staging anon, `VITE_SUPABASE_DB_SCHEMA=lyanne_library`.
 
+### 2c — Smoke test Preview — **Done**
 
-| Variable                  | Value               |
-| ------------------------- | ------------------- |
-| `VITE_SUPABASE_URL`       | Staging project URL |
-| `VITE_SUPABASE_ANON_KEY`  | Staging anon key    |
-| `VITE_SUPABASE_DB_SCHEMA` | `lyanne_library`    |
+- [x] Seeded books visible via PostgREST (`Accept-Profile: lyanne_library`) on staging
+- [x] Borrowers readable on staging
+- [ ] Full kiosk UI on Preview — verify after next class-library git deploy triggers Preview
 
+### 2d — Prod hub: add library schema — **Done**
 
-### 2c — Smoke test Preview
+**Applied:** 2026-06-22 on `mczxxonw` — additive `lyanne_library`; API exposed; seeded.
 
-- [ ] Seeded books visible
-- [ ] Kiosk + teacher flows
+### 2e — Vercel Production (class-library) — **Done**
 
-### 2d — Prod hub: add library schema
+Production env: prod hub URL, prod anon, `lyanne_library`. Deployed to class-library.vercel.app.
 
-**No maintenance window for apply/seed** — same add-first pattern as Wave 1d.
+### 2f — Smoke test prod — **Done**
 
-1. Apply `004_lyanne_library_schema.sql` on prod hub (**additive** — do not touch `pickup_frisbee`).
-2. Expose `lyanne_library` in API settings.
-3. Seed prod with `VITE_SUPABASE_DB_SCHEMA=lyanne_library`.
-4. Validate on prod hub before Vercel Production cutover (Wave 2e).
+- [x] Books on prod `lyanne_library` (PostgREST)
+- [x] Checkout insert on prod hub
+- [x] Production bundle: `mczxxonw` + `lyanne_library`
+- [x] pickup-frisbee prod groups regression
 
-### 2e — Vercel Production (class-library)
+### 2g — Staging-only ex-library project — **Done**
 
+`iunqmpxp` is shared staging: `pickup_frisbee` + `lyanne_library`. Legacy library `public` tables were removed in Wave 1a.
 
-| Variable                  | Value                                 |
-| ------------------------- | ------------------------------------- |
-| `VITE_SUPABASE_URL`       | Prod hub URL (same as pickup-frisbee) |
-| `VITE_SUPABASE_ANON_KEY`  | Prod hub anon key (same)              |
-| `VITE_SUPABASE_DB_SCHEMA` | `lyanne_library`                      |
-
-
-### 2f — Smoke test prod
-
-- [ ] Library on shared hub
-- [ ] pickup-frisbee regression pass
-
-### 2g — Staging-only ex-library project
-
-Old `public` library data on `iunqmpxp` is gone by design. That project is now **shared staging** for both apps.
-
-**Wave 2 exit:** both apps on prod hub; both Previews on staging project.
+**Wave 2 exit:** both apps on prod hub; both Previews target staging project.
 
 ---
 
@@ -578,4 +560,4 @@ After move: update Vercel URL + keys; keep `VITE_SUPABASE_DB_SCHEMA=pickup_frisb
 | Staging keep-alive   | `[.github/workflows/supabase-keepalive-stage.yml](../.github/workflows/supabase-keepalive-stage.yml)` |
 
 
-**Next step:** Wave **2 prep** — `lyanne_library` schema in class-library repo (wait 1–2 days if you want extra soak time on Wave 1).
+**Next step:** Wave **3** — READMEs, `.env.example` cleanup, full prod + Preview regression for both apps.
