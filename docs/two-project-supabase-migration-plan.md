@@ -24,7 +24,7 @@ Related repos:
 | **1c** — Preview smoke test           | **Done** | Groups/games, Realtime, RPCs, chat, admin on staging Preview                           |
 | **1d** — Prod add `pickup_frisbee`    | **Done** | `mczxxonw` — schema applied, API exposed, seeded; `public` untouched                   |
 | **1e** — Pre-cutover prod validation  | **Done** | PostgREST, RPC, RSVP, chat, Realtime pub on prod `pickup_frisbee`; live prod on `public` |
-| **1f** — Cutover window               | Pending  | Vercel Production → `pickup_frisbee`; prod edge + `pickup_frisbee_*` crons               |
+| **1f** — Cutover window               | **Done** | Production on `pickup_frisbee`; edge v13/v5 + `pickup_frisbee_*` crons on prod hub       |
 | **1g** — Post-cutover smoke test      | Pending  | Full pickup-frisbee checklist on Production; optional 24–48h soak before 1h                |
 | **1h** — Drop legacy `public` objects | Pending  | After 1g stable — remove disc-check app tables from prod hub `public` only               |
 | **1i** — Staging keep-alive           | Pending  | Enable weekly `[supabase-keepalive.yml](../.github/workflows/supabase-keepalive.yml)`  |
@@ -293,7 +293,7 @@ Validate the same checklist as [§1c](#1c--smoke-test-preview--done), but agains
 - [x] RSVP insert/delete
 - [x] Chat insert/delete
 - [x] Live `public` prod unchanged (Kirkland Goaltimate still served)
-- [ ] Push tests wait until after **1f** (edge/cron still on `public` until cutover)
+- [x] Push infra deferred to **1g** (edge/cron cut over in **1f**)
 
 **Exit gate:** All required checks pass before starting 1f. If not, fix SQL/seed and re-run; `public` prod unaffected.
 
@@ -318,6 +318,8 @@ Run in a **single session**, in order:
 4. Confirm vault `service_role_key` and cron URLs point at prod hub.
 
 Deploy. Do **not** change class-library Production yet.
+
+**Applied:** 2026-06-17 — Vercel Production `VITE_SUPABASE_DB_SCHEMA=pickup_frisbee`; edge `notify-push` v5 + `process-push-outbox` v13 (schema default `pickup_frisbee` in code; CLI cannot set `SUPABASE_DB_SCHEMA` secret); crons via `[scripts/prod-cron-setup.sql](../scripts/prod-cron-setup.sql)`. Manual `process-push-outbox` invoke OK. Push subscriptions: 0 in `pickup_frisbee` (2 legacy in `public`) — users re-toggle bell after cutover.
 
 **Rollback (while `public` still exists):** Revert Vercel Production schema env to unset/`public`, redeploy edge with `SUPABASE_DB_SCHEMA=public`, reschedule old crons.
 
@@ -569,4 +571,4 @@ After move: update Vercel URL + keys; keep `VITE_SUPABASE_DB_SCHEMA=pickup_frisb
 | Staging keep-alive   | `[.github/workflows/supabase-keepalive.yml](../.github/workflows/supabase-keepalive.yml)` |
 
 
-**Next step:** Wave **1f** — cutover window (Vercel Production `pickup_frisbee`, prod edge + cron).
+**Next step:** Wave **1g** — post-cutover smoke test on Production (push + full checklist; optional 24–48h soak before **1h**).
