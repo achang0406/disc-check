@@ -16,13 +16,13 @@ Related repos:
 ## Progress
 
 
-| Wave                                  | Status          | Notes                                                                                                                                                    |
-| ------------------------------------- | --------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **0** — Repo prep                     | **Done**        | `schema.sql` → `pickup_frisbee`; client + seed schema env; cron renames in migrations                                                                    |
-| **1a** — Staging database             | **Done**        | `iunqmpxp` — `pickup_frisbee` schema, seed, edge functions, crons                                                                                        |
-| **1b** — Vercel Preview               | **Done**        | Preview → staging URL, staging anon, `pickup_frisbee`; verified in latest Preview bundle                                                                 |
-| **2** — lyanne_library staging → prod | Pending         | After 1–2 stable days on prod                                                                                                                            |
-| **3** — Docs + regression             | Pending         |                                                                                                                                                          |
+| Wave                                  | Status   | Notes                                                                                    |
+| ------------------------------------- | -------- | ---------------------------------------------------------------------------------------- |
+| **0** — Repo prep                     | **Done** | `schema.sql` → `pickup_frisbee`; client + seed schema env; cron renames in migrations    |
+| **1a** — Staging database             | **Done** | `iunqmpxp` — `pickup_frisbee` schema, seed, edge functions, crons                        |
+| **1b** — Vercel Preview               | **Done** | Preview → staging URL, staging anon, `pickup_frisbee`; verified in latest Preview bundle |
+| **2** — lyanne_library staging → prod | Pending  | After 1–2 stable days on prod                                                            |
+| **3** — Docs + regression             | Pending  |                                                                                          |
 
 
 ---
@@ -64,7 +64,7 @@ flowchart LR
 | Wave  | Scope                | Prod downtime                     |
 | ----- | -------------------- | --------------------------------- |
 | **0** | disc-check repo only | None                              |
-| **1** | pickup-frisbee only  | pickup-frisbee prod (steps 1d–1f) |
+| **1** | pickup-frisbee only  | Brief downtime at **1f cutover** only; 1d–1e and 1h are zero-downtime |
 | **2** | lyanne_library only  | class-library prod (steps 2d–2e)  |
 | **3** | Docs + regression    | None                              |
 
@@ -111,11 +111,13 @@ Postgres schema names cannot contain hyphens. App display names stay kebab-case.
 ### During migration
 
 
-| When          | Prod hub (`mczxxonw`)               | Class Library project (`iunqmpxp`)       |
-| ------------- | ----------------------------------- | ---------------------------------------- |
-| Before Wave 1 | disc-check in `public`              | class-library in `public` (library prod) |
-| After Wave 1  | `pickup_frisbee`                    | unchanged — still library prod           |
-| After Wave 2  | `pickup_frisbee` + `lyanne_library` | staging only — both schemas              |
+| When          | Prod hub (`mczxxonw`)                                      | Class Library project (`iunqmpxp`)       |
+| ------------- | ---------------------------------------------------------- | ---------------------------------------- |
+| Before Wave 1 | disc-check in `public`                                     | class-library in `public` (library prod) |
+| After 1d–1e   | `public` (live) + `pickup_frisbee` (validated, not live)   | staging: `pickup_frisbee`                |
+| After 1f–1g   | `pickup_frisbee` (live) + `public` (legacy, unused)        | staging: `pickup_frisbee`                |
+| After 1h      | `pickup_frisbee` only (legacy `public` app objects dropped) | staging: `pickup_frisbee`                |
+| After Wave 2  | `pickup_frisbee` + `lyanne_library`                        | staging only — both schemas              |
 
 
 ### Target end state
@@ -238,29 +240,51 @@ Never reuse Production URL for Preview.
 - [ ] RPCs, chat, admin flows
 - [ ] Push optional (staging VAPID)
 
-### 1d — Prod hub database
+**Prod cutover pattern (1d–1i):** add `pickup_frisbee` alongside live `public` → validate on prod hub → cut over Vercel + edge + cron → smoke test → drop legacy `public` app objects only after confirmed stable.
+
+### 1d — Prod hub: add `pickup_frisbee` (no drop)
 
 **Where:** DiscCheck project `mczxxonwvsztbrqmjzlu`
 
-**Maintenance window — pickup-frisbee prod only.**
+**No maintenance window.** Live prod continues on `public`.
 
-1. Drop disc-check app objects in `**public` only** (tables, functions, triggers, Realtime entries — not `auth`, `storage`, extensions).
-2. Run `[supabase/schema.sql](../supabase/schema.sql)`.
-3. **API → Exposed schemas:** add `pickup_frisbee`.
-4. Seed prod with `VITE_SUPABASE_DB_SCHEMA=pickup_frisbee`.
+1. Run `[supabase/schema.sql](../supabase/schema.sql)` in SQL Editor (**additive only** — creates `pickup_frisbee`; leaves `public` untouched).
+2. **Dashboard → API → Exposed schemas:** add `pickup_frisbee` (keep `public` exposed).
+3. Seed prod against the new schema:
+  ```bash
+   # .env.prod.local → prod hub URL, service role, VITE_SUPABASE_DB_SCHEMA=pickup_frisbee
+   npm run db:seed
+  ```
+4. Do **not** unschedule old `disc-check-*` cron jobs.
+5. Do **not** redeploy prod edge functions yet.
+6. Do **not** change Vercel Production env.
 
 Do **not** full-reset the prod database — preserves vault secrets and platform config.
 
-### 1e — Prod edge functions + cron
+**Rollback:** Drop `pickup_frisbee` schema if apply was wrong (only before cutover in 1f).
 
-Run in the **same session as 1d** if push must not gap:
+### 1e — Pre-cutover prod validation
 
-1. Unschedule old `disc-check-*` cron jobs.
-2. Schedule `pickup_frisbee_*` jobs (see cron table below).
-3. Redeploy edge functions with `db: { schema: "pickup_frisbee" }`.
-4. Confirm vault `service_role_key` and cron URLs point at prod hub.
+**Where:** prod hub, schema `pickup_frisbee` only
 
-### 1f — Vercel Production (disc-check)
+**No maintenance window.** Live users still on `public`.
+
+Validate the same checklist as [§1c](#1c--smoke-test-preview), but against the **prod ref** without touching Vercel Production:
+
+- PostgREST with `Accept-Profile: pickup_frisbee` → seeded groups/games
+- Realtime (RSVP live update) on `pickup_frisbee` tables
+- RPCs, chat, admin flows
+- Push tests wait until after **1f** (edge/cron still on `public` until cutover)
+
+**Exit gate:** All required checks pass before starting 1f. If not, fix SQL/seed and re-run; `public` prod unaffected.
+
+### 1f — Cutover window
+
+**Maintenance window — pickup-frisbee prod only (minutes).**
+
+Run in a **single session**, in order:
+
+1. **Vercel Production** — set and deploy:
 
 
 | Variable                  | Value             |
@@ -270,16 +294,40 @@ Run in the **same session as 1d** if push must not gap:
 | `VITE_SUPABASE_DB_SCHEMA` | `pickup_frisbee`  |
 
 
+2. **Edge functions:** redeploy `notify-push` + `process-push-outbox` with `SUPABASE_DB_SCHEMA=pickup_frisbee` secret on prod hub.
+3. **pg_cron:** unschedule old `disc-check-*` jobs; schedule `pickup_frisbee_*` jobs (prod URL) via `[034](../supabase/migrations/034_push_outbox_cron.sql)` or prod equivalent of `[scripts/staging-cron-setup.sql](../scripts/staging-cron-setup.sql)`.
+4. Confirm vault `service_role_key` and cron URLs point at prod hub.
+
 Deploy. Do **not** change class-library Production yet.
 
-### 1g — Smoke test prod + keep-alive
+**Rollback (while `public` still exists):** Revert Vercel Production schema env to unset/`public`, redeploy edge with `SUPABASE_DB_SCHEMA=public`, reschedule old crons.
 
-- [ ] Full pickup-frisbee checklist on prod
-- [ ] No leftover disc-check app tables in `public` on prod hub
+### 1g — Post-cutover smoke test
+
+- [ ] Full pickup-frisbee checklist on **Production** (now on `pickup_frisbee`)
 - [ ] Push + cron (if enabled)
+- [ ] Optional soak: 24–48h stable before 1h
+
+**Do not drop `public` yet.**
+
+### 1h — Drop legacy `public` app objects
+
+**Where:** prod hub
+
+**No user-facing downtime** if cutover is stable (app no longer reads `public`).
+
+1. Confirm Production has used `pickup_frisbee` successfully (1g + optional soak).
+2. Unschedule any remaining `disc-check-*` crons (if not already done in 1f).
+3. Drop disc-check app objects in **`public` only** (tables, functions, triggers, Realtime entries — not `auth`, `storage`, extensions). **Never** `DROP SCHEMA public`.
+4. Verify: no stray disc-check app tables remain in `public`.
+
+**Rollback after 1h:** Not possible without backup — only run after confidence is high.
+
+### 1i — Keep-alive
+
 - [ ] Start **weekly staging keep-alive** (`[.github/workflows/supabase-keepalive.yml](../.github/workflows/supabase-keepalive.yml)` — free tier pauses after 7 days without API traffic)
 
-**Wave 1 exit:** pickup-frisbee stable on prod and Preview; library prod still on `iunqmpxp` `public`.
+**Wave 1 exit:** pickup-frisbee stable on prod and Preview; legacy disc-check objects removed from prod hub `public`.
 
 ---
 
@@ -289,11 +337,11 @@ Deploy. Do **not** change class-library Production yet.
 
 **Goal:** library on shared hub; ex-library project becomes staging-only for both apps.
 
-Work happens in the `**class-library`** repo unless noted.
+Work happens in the **class-library** repo unless noted.
 
 ### Prep — class-library repo
 
-1. Create `supabase/migrations/004_lyanne_library_schema.sql` — `lyanne_library.*` from migrations `001`–`003`.
+1. Create `supabase/migrations/004_lyanne_library_schema.sql` — `lyanne_library.`* from migrations `001`–`003`.
 2. Add `VITE_SUPABASE_DB_SCHEMA` to client, seed, `.env.example`.
 
 ### 2a — Staging: add library schema
@@ -321,13 +369,12 @@ Work happens in the `**class-library`** repo unless noted.
 
 ### 2d — Prod hub: add library schema
 
-**Maintenance window — class-library prod only (minutes).**
+**No maintenance window for apply/seed** — same add-first pattern as Wave 1d.
 
-1. Apply `004_lyanne_library_schema.sql` on prod hub.
+1. Apply `004_lyanne_library_schema.sql` on prod hub (**additive** — do not touch `pickup_frisbee`).
 2. Expose `lyanne_library` in API settings.
 3. Seed prod with `VITE_SUPABASE_DB_SCHEMA=lyanne_library`.
-
-**Do not touch `pickup_frisbee`.**
+4. Validate on prod hub before Vercel Production cutover (Wave 2e).
 
 ### 2e — Vercel Production (class-library)
 
@@ -355,7 +402,7 @@ Old `public` library data on `iunqmpxp` is gone by design. That project is now *
 ## Wave 3 — Docs + decommission
 
 - Update READMEs and `.env.example` in both repos
-- Confirm prod hub `public` has no stray disc-check app tables
+- Confirm prod hub `public` has no stray disc-check app tables (after Wave **1h**)
 - Update local dev docs (`.env.local` URLs)
 - Full regression: prod + Preview for both apps
 - Keep staging keep-alive active
@@ -364,7 +411,9 @@ Old `public` library data on `iunqmpxp` is gone by design. That project is now *
 
 ## Edge functions and pg_cron
 
-**Pickup-frisbee only** — deploy in Wave **1a** (staging) and **1e** (prod). `lyanne_library` needs no edge functions or crons today.
+**Pickup-frisbee only** — deploy in Wave **1a** (staging) and **1f** (prod cutover). `lyanne_library` needs no edge functions or crons today.
+
+During **1d–1e**, prod edge functions and crons stay on `public`. Do not redeploy prod edge until **1f** or push/cron would target the wrong schema while users still read `public`.
 
 Schemas isolate **data**; crons and edge functions are **project-level**. Service clients inside functions must set:
 
@@ -453,17 +502,18 @@ After move: update Vercel URL + keys; keep `VITE_SUPABASE_DB_SCHEMA=pickup_frisb
 ### Wave 1
 
 
-| Risk                                               | Mitigation                                                          |
-| -------------------------------------------------- | ------------------------------------------------------------------- |
-| Dropping wrong object in `public` on prod          | Scripted drop list from app tables only; never `DROP SCHEMA public` |
-| Wave 1a reset affects library prod on same project | No users / wipe OK — brief library outage until Wave 2              |
-| Preview points at prod                             | Preview-only Vercel env vars                                        |
-| Edge/cron gap after 1d                             | Run 1d + 1e same session                                            |
-| Staging pauses after 7 days                        | Weekly keep-alive after 1a                                          |
-| Old `disc-check-`* crons fire on dropped tables    | Unschedule before or right after drop                               |
+| Risk                                               | Mitigation                                                                 |
+| -------------------------------------------------- | -------------------------------------------------------------------------- |
+| Dropping wrong object in `public` on prod          | Drop only in **1h** after cutover confirmed; scripted list; never `DROP SCHEMA public` |
+| Parallel schemas on prod hub (1d–1g)               | Do not switch edge/cron/Vercel until **1f**; live prod stays on `public` until then |
+| Wave 1a reset affects library prod on same project | No users / wipe OK — brief library outage until Wave 2                     |
+| Preview points at prod                             | Preview-only Vercel env vars                                               |
+| Edge/cron gap after 1f                             | Run Vercel flip, edge redeploy, and cron switch in same **1f** session     |
+| Staging pauses after 7 days                        | Weekly keep-alive after 1a                                                 |
+| Old `disc-check-*` crons fire on dropped tables    | Unschedule in **1f**; drop `public` objects only in **1h**                 |
 
 
-**User impact:** pickup-frisbee prod down during 1d–1f.
+**User impact:** pickup-frisbee prod down briefly during **1f cutover** only.
 
 ### Wave 2
 
