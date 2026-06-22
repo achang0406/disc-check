@@ -43,8 +43,8 @@ function runNpmScript(script) {
 }
 
 async function drainOutbox() {
-  console.log("\n==> drain process-push-outbox");
-  const response = await fetch(`${url}/functions/v1/process-push-outbox`, {
+  console.log("\n==> drain pickup-frisbee-process-push-outbox");
+  const response = await fetch(`${url}/functions/v1/pickup-frisbee-process-push-outbox`, {
     method: "POST",
     headers: {
       Authorization: `Bearer ${serviceKey}`,

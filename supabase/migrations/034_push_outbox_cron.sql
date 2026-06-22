@@ -52,7 +52,7 @@ BEGIN
         body := '{}'::jsonb
       );
       $cron$,
-      project_url || '/functions/v1/process-push-outbox',
+      project_url || '/functions/v1/pickup-frisbee-process-push-outbox',
       service_key
     )
   );

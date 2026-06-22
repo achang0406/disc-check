@@ -313,7 +313,7 @@ Run in a **single session**, in order:
 | `VITE_SUPABASE_DB_SCHEMA` | `pickup_frisbee`  |
 
 
-2. **Edge functions:** redeploy `notify-push` + `process-push-outbox` with `SUPABASE_DB_SCHEMA=pickup_frisbee` secret on prod hub.
+2. **Edge functions:** redeploy `pickup-frisbee-notify-push` + `pickup-frisbee-process-push-outbox` (schema default `pickup_frisbee` in code).
 3. **pg_cron:** unschedule old `disc-check-*` jobs; schedule `pickup_frisbee_*` jobs (prod URL) via `[034](../supabase/migrations/034_push_outbox_cron.sql)` or prod equivalent of `[scripts/staging-cron-setup.sql](../scripts/staging-cron-setup.sql)`.
 4. Confirm vault `service_role_key` and cron URLs point at prod hub.
 
@@ -449,18 +449,18 @@ Schemas isolate **data**; crons and edge functions are **project-level**. Servic
 createClient(url, serviceKey, { db: { schema: "pickup_frisbee" } });
 ```
 
-### Edge function rename (recommended)
+### Edge function rename — **Done**
 
 
-| Current               | Suggested deploy folder               |
-| --------------------- | ------------------------------------- |
-| `notify-push`         | `pickup-frisbee-notify-push/`         |
-| `process-push-outbox` | `pickup-frisbee-process-push-outbox/` |
+| Legacy slug           | Deploy folder / URL slug                |
+| --------------------- | --------------------------------------- |
+| `notify-push`         | `pickup-frisbee-notify-push/`           |
+| `process-push-outbox` | `pickup-frisbee-process-push-outbox/`   |
 
 
-Shared TS → `supabase/functions/_shared/pickup_frisbee/`. Update cron URLs if function paths change.
+Deployed on **staging** (`iunqmpxp`) and **prod hub** (`mczxxonw`); legacy unprefixed functions deleted. Cron jobs call `/functions/v1/pickup-frisbee-process-push-outbox`.
 
-Skipping renames is acceptable; old paths keep working after redeploy.
+Shared TS remains in `supabase/functions/_shared/` (not nested under `pickup_frisbee/` — optional future cleanup).
 
 ### pg_cron job names
 

@@ -31,7 +31,7 @@ function assert(condition, message) {
 }
 
 async function drainOutbox() {
-  const response = await fetch(`${url}/functions/v1/process-push-outbox`, {
+  const response = await fetch(`${url}/functions/v1/pickup-frisbee-process-push-outbox`, {
     method: "POST",
     headers: {
       Authorization: `Bearer ${serviceKey}`,
