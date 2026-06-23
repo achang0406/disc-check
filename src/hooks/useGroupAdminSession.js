@@ -69,6 +69,12 @@ export function logoutGroupAdmin(groupId) {
   notifyAdminSessionChanged();
 }
 
+export function setGroupAdminPasscode(groupId, passcode) {
+  if (!groupId || !passcode) return;
+  storeSession(groupId, passcode);
+  notifyAdminSessionChanged();
+}
+
 export function useGroupAdminSession(groupId) {
   const [isAdmin, setIsAdmin] = useState(() => isGroupAdminAuthenticated(groupId));
 

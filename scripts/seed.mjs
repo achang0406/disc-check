@@ -1,4 +1,8 @@
 import dotenv from "dotenv";
+import {
+  DEFAULT_GROUP_ADMIN_PASSCODE,
+  DEFAULT_PLATFORM_ADMIN_PASSCODE,
+} from "../src/constants/adminPasscodes.js";
 import { SEED_GAMES, SEED_GROUPS } from "./seed-data.mjs";
 import { createServiceClient } from "./supabase-client.mjs";
 
@@ -17,7 +21,12 @@ dotenv.config();
 
 const supabase = createServiceClient();
 
-const passcodeOverride = process.env.GROUP_ADMIN_PASSCODE || process.env.VITE_ADMIN_PASSCODE;
+const groupPasscode =
+  process.env.GROUP_ADMIN_PASSCODE || DEFAULT_GROUP_ADMIN_PASSCODE;
+const platformPasscode =
+  process.env.PLATFORM_ADMIN_PASSCODE
+  || process.env.VITE_ADMIN_PASSCODE
+  || DEFAULT_PLATFORM_ADMIN_PASSCODE;
 const defaultGroupId = SEED_GROUPS[0]?.id ?? "default";
 
 async function cleanup() {
@@ -63,7 +72,7 @@ const groupsResult = await supabase.from("groups").upsert(
     id: group.id,
     name: group.name,
     description: group.description ?? null,
-    admin_passcode: passcodeOverride || group.adminPasscode,
+    admin_passcode: groupPasscode,
   })),
   { onConflict: "id" },
 );
@@ -72,12 +81,6 @@ if (groupsResult.error) {
   console.error("Group seed failed:", groupsResult.error.message);
   process.exit(1);
 }
-
-const platformPasscode = process.env.PLATFORM_ADMIN_PASSCODE
-  || process.env.GROUP_ADMIN_PASSCODE
-  || process.env.VITE_ADMIN_PASSCODE
-  || passcodeOverride
-  || "0000";
 
 const appConfigResult = await supabase.from("app_config").upsert(
   [{ key: "admin_passcode", value: platformPasscode }],

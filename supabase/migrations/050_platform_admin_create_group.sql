@@ -1,7 +1,7 @@
 -- Platform admin: verify app_config passcode and create new groups (pickup_frisbee schema).
 
 INSERT INTO pickup_frisbee.app_config (key, value)
-VALUES ('admin_passcode', '0000')
+VALUES ('admin_passcode', '6789')
 ON CONFLICT (key) DO NOTHING;
 
 CREATE OR REPLACE FUNCTION pickup_frisbee.verify_platform_admin(p_secret TEXT)

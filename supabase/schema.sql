@@ -1500,6 +1500,10 @@ BEGIN
   v_description := NULLIF(trim(COALESCE(p_group->>'description', '')), '');
   v_passcode := NULLIF(trim(COALESCE(p_group->>'admin_passcode', '')), '');
 
+  IF v_passcode IS NOT NULL AND (length(v_passcode) <> 4 OR v_passcode !~ '^\d{4}$') THEN
+    RAISE EXCEPTION 'group admin passcode must be 4 digits';
+  END IF;
+
   UPDATE groups
   SET
     name = v_name,
@@ -1664,7 +1668,7 @@ GRANT EXECUTE ON FUNCTION pickup_frisbee.admin_upsert_game(TEXT, JSONB) TO anon,
 GRANT EXECUTE ON FUNCTION pickup_frisbee.admin_delete_game(TEXT, TEXT) TO anon, authenticated, service_role;
 
 INSERT INTO pickup_frisbee.app_config (key, value)
-VALUES ('admin_passcode', '0000')
+VALUES ('admin_passcode', '6789')
 ON CONFLICT (key) DO NOTHING;
 
 CREATE OR REPLACE FUNCTION pickup_frisbee.verify_platform_admin(p_secret TEXT)

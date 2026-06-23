@@ -1,6 +1,6 @@
 import { useCallback, useState } from "react";
 import { createGame, deleteGame, updateGame, updateGroup } from "../lib/data.js";
-import { getGroupAdminPasscode } from "./useGroupAdminSession.js";
+import { getGroupAdminPasscode, setGroupAdminPasscode } from "./useGroupAdminSession.js";
 
 export function useGroupAdminActions({ groupId, showToast, refresh, groupGameCount = 0 }) {
   const [gameModal, setGameModal] = useState(null);
@@ -89,6 +89,9 @@ export function useGroupAdminActions({ groupId, showToast, refresh, groupGameCou
       setSaving(true);
       try {
         await updateGroup(secret, { id: groupId, ...form });
+        if (form.adminPasscode) {
+          setGroupAdminPasscode(groupId, form.adminPasscode);
+        }
         showToast("Group updated");
         await refresh();
         setGroupModal(false);

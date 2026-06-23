@@ -1,12 +1,15 @@
 import { useState } from "react";
 import Button from "../ui/Button.jsx";
+import AdminPasscodeInput from "../ui/AdminPasscodeInput.jsx";
 import Field from "../ui/Field.jsx";
 import ModalShell from "../ui/ModalShell.jsx";
+import { isValidAdminPasscode } from "../../utils/adminPasscode.js";
 
 function buildForm(initial) {
   return {
     name: initial?.name ?? "",
     description: initial?.description ?? "",
+    adminPasscode: "",
   };
 }
 
@@ -22,10 +25,16 @@ export default function GroupFormModal({ group, saving, onSave, onClose }) {
       return;
     }
 
+    if (form.adminPasscode && !isValidAdminPasscode(form.adminPasscode)) {
+      setError("Group passcode must be 4 digits");
+      return;
+    }
+
     setError("");
     onSave({
       name: form.name.trim(),
       description: form.description.trim(),
+      ...(form.adminPasscode ? { adminPasscode: form.adminPasscode } : {}),
     });
   };
 
@@ -63,7 +72,27 @@ export default function GroupFormModal({ group, saving, onSave, onClose }) {
           onChange={(event) => setField("description", event.target.value)}
         />
       </Field>
-      {error && form.name.trim() ? <p className="field__error">{error}</p> : null}
+      <Field
+        label="Group admin passcode"
+        hint="Leave blank to keep the current passcode, or enter a new 4-digit code"
+        error={
+          error && form.name.trim() && form.adminPasscode && !isValidAdminPasscode(form.adminPasscode)
+            ? error
+            : undefined
+        }
+      >
+        <AdminPasscodeInput
+          value={form.adminPasscode}
+          onChange={(next) => {
+            setField("adminPasscode", next);
+            setError("");
+          }}
+          disabled={saving}
+        />
+      </Field>
+      {error && form.name.trim() && (!form.adminPasscode || isValidAdminPasscode(form.adminPasscode)) ? (
+        <p className="field__error">{error}</p>
+      ) : null}
     </ModalShell>
   );
 }

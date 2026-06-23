@@ -215,13 +215,17 @@ export async function syncProfileToServer(profile, { previousPhone } = {}) {
 
 export async function updateGroup(secret, group) {
   const supabase = getSupabase();
+  const payload = {
+    id: group.id,
+    name: group.name?.trim(),
+    description: group.description?.trim() || null,
+  };
+  if (group.adminPasscode?.trim()) {
+    payload.admin_passcode = group.adminPasscode.trim();
+  }
   const { error } = await supabase.rpc("admin_upsert_group", {
     p_secret: secret,
-    p_group: {
-      id: group.id,
-      name: group.name?.trim(),
-      description: group.description?.trim() || null,
-    },
+    p_group: payload,
   });
   if (error) throw error;
   return fetchAppData();
