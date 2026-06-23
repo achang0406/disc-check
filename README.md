@@ -59,7 +59,7 @@ Open `http://localhost:5173`.
 
 ## Admin
 
-Each group has its own admin passcode (seeded via `scripts/seed-data.mjs` or `GROUP_ADMIN_PASSCODE`). On a **group page**, tap the PickupFrisbee title five times and enter that group's 4-digit passcode. Admins can **Edit group**, **+ Add game**, and edit/delete games in that group only.
+Each group has its own admin passcode (default `0000` when running `npm run db:seed`; platform admin `6789` in `app_config`). On a **group page**, tap the PickupFrisbee title five times and enter that group's 4-digit passcode. Admins can **Edit group**, **+ Add game**, and edit/delete games in that group only.
 
 Passcodes are verified server-side via Supabase RPCs — suitable for a trusted pickup community, not multi-tenant security.
 

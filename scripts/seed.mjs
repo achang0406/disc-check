@@ -21,12 +21,6 @@ dotenv.config();
 
 const supabase = createServiceClient();
 
-const groupPasscode =
-  process.env.GROUP_ADMIN_PASSCODE || DEFAULT_GROUP_ADMIN_PASSCODE;
-const platformPasscode =
-  process.env.PLATFORM_ADMIN_PASSCODE
-  || process.env.VITE_ADMIN_PASSCODE
-  || DEFAULT_PLATFORM_ADMIN_PASSCODE;
 const defaultGroupId = SEED_GROUPS[0]?.id ?? "default";
 
 async function cleanup() {
@@ -72,7 +66,7 @@ const groupsResult = await supabase.from("groups").upsert(
     id: group.id,
     name: group.name,
     description: group.description ?? null,
-    admin_passcode: groupPasscode,
+    admin_passcode: DEFAULT_GROUP_ADMIN_PASSCODE,
   })),
   { onConflict: "id" },
 );
@@ -83,7 +77,7 @@ if (groupsResult.error) {
 }
 
 const appConfigResult = await supabase.from("app_config").upsert(
-  [{ key: "admin_passcode", value: platformPasscode }],
+  [{ key: "admin_passcode", value: DEFAULT_PLATFORM_ADMIN_PASSCODE }],
   { onConflict: "key" },
 );
 

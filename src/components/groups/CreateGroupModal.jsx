@@ -4,12 +4,11 @@ import AdminPasscodeInput from "../ui/AdminPasscodeInput.jsx";
 import Field from "../ui/Field.jsx";
 import ModalShell from "../ui/ModalShell.jsx";
 import { isValidAdminPasscode } from "../../utils/adminPasscode.js";
-import { DEFAULT_GROUP_ADMIN_PASSCODE } from "../../constants/adminPasscodes.js";
 
 const EMPTY_FORM = {
   name: "",
   description: "",
-  adminPasscode: DEFAULT_GROUP_ADMIN_PASSCODE,
+  adminPasscode: "",
 };
 
 export default function CreateGroupModal({ saving, onSave, onClose }) {

@@ -3,7 +3,6 @@ export const SEED_GROUPS = [
     id: "default",
     name: "Kirkland Disc",
     description: "Weekly pickup games in Kirkland.",
-    adminPasscode: "0000",
   },
 ];
 
