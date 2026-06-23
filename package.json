@@ -9,6 +9,8 @@
     "build": "vite build",
     "preview": "vite preview",
     "db:seed": "node scripts/seed.mjs",
+    "db:push": "supabase link --project-ref iunqmpxpwhybqyfxcsdt && supabase db push --linked --include-all",
+    "db:push:prod": "supabase link --project-ref mczxxonwvsztbrqmjzlu && supabase db push --linked --include-all",
     "verify:schedule": "node scripts/verify-game-schedule.mjs",
     "verify:2b-ii-push-state": "node scripts/verify-2b-ii-push-state.mjs",
     "verify:2b-iii": "node scripts/verify-2b-iii.mjs",

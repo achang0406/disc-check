@@ -106,6 +106,10 @@ function newGameId() {
   return `g_${crypto.randomUUID().slice(0, 8)}`;
 }
 
+function newGroupId() {
+  return `grp_${crypto.randomUUID().slice(0, 8)}`;
+}
+
 function formatProfileFromRpc(data) {
   if (!data) return null;
 
@@ -217,6 +221,22 @@ export async function updateGroup(secret, group) {
       id: group.id,
       name: group.name?.trim(),
       description: group.description?.trim() || null,
+    },
+  });
+  if (error) throw error;
+  return fetchAppData();
+}
+
+export async function createGroup(secret, payload) {
+  const supabase = getSupabase();
+  const group = { ...payload, id: newGroupId() };
+  const { error } = await supabase.rpc("admin_create_group", {
+    p_secret: secret,
+    p_group: {
+      id: group.id,
+      name: group.name?.trim(),
+      description: group.description?.trim() || null,
+      admin_passcode: group.adminPasscode?.trim(),
     },
   });
   if (error) throw error;

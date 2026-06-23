@@ -4,6 +4,13 @@
 # working directory name when running `supabase init`.
 project_id = "disc-check"
 
+# Remote Supabase projects (see package.json: npm run db:push → staging).
+[remotes.staging]
+project_id = "iunqmpxpwhybqyfxcsdt"
+
+[remotes.production]
+project_id = "mczxxonwvsztbrqmjzlu"
+
 [api]
 enabled = true
 # Port to use for the API URL.

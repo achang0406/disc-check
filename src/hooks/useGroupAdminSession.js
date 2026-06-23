@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { getSupabase, isSupabaseConfigured } from "../lib/supabase.js";
+import { ADMIN_SESSION_CHANGED, notifyAdminSessionChanged } from "./adminSessionEvents.js";
 
 const SESSION_TTL_MS = 24 * 60 * 60 * 1000;
 
@@ -58,12 +59,14 @@ export async function loginGroupAdmin(groupId, passcode) {
   if (error || !data) return false;
 
   storeSession(groupId, passcode);
+  notifyAdminSessionChanged();
   return true;
 }
 
 export function logoutGroupAdmin(groupId) {
   if (!groupId) return;
   sessionStorage.removeItem(sessionKey(groupId));
+  notifyAdminSessionChanged();
 }
 
 export function useGroupAdminSession(groupId) {
@@ -76,7 +79,11 @@ export function useGroupAdminSession(groupId) {
   useEffect(() => {
     const sync = () => setIsAdmin(isGroupAdminAuthenticated(groupId));
     window.addEventListener("storage", sync);
-    return () => window.removeEventListener("storage", sync);
+    window.addEventListener(ADMIN_SESSION_CHANGED, sync);
+    return () => {
+      window.removeEventListener("storage", sync);
+      window.removeEventListener(ADMIN_SESSION_CHANGED, sync);
+    };
   }, [groupId]);
 
   const login = useCallback(

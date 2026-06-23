@@ -73,6 +73,22 @@ if (groupsResult.error) {
   process.exit(1);
 }
 
+const platformPasscode = process.env.PLATFORM_ADMIN_PASSCODE
+  || process.env.GROUP_ADMIN_PASSCODE
+  || process.env.VITE_ADMIN_PASSCODE
+  || passcodeOverride
+  || "0000";
+
+const appConfigResult = await supabase.from("app_config").upsert(
+  [{ key: "admin_passcode", value: platformPasscode }],
+  { onConflict: "key" },
+);
+
+if (appConfigResult.error) {
+  console.error("Platform admin passcode seed failed:", appConfigResult.error.message);
+  process.exit(1);
+}
+
 const { error } = await supabase.from("games").upsert(
   SEED_GAMES.map((game) => ({
     id: game.id,

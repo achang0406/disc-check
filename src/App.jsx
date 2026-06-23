@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { BrowserRouter, Navigate, Route, Routes, useMatch } from "react-router-dom";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { BrowserRouter, Navigate, Route, Routes, useLocation, useMatch } from "react-router-dom";
 import FieldBackground from "./components/layout/FieldBackground.jsx";
 import LoadingScreen, { LOADING_EXIT_MS } from "./components/layout/LoadingScreen.jsx";
 import Toast from "./components/layout/Toast.jsx";
@@ -9,9 +9,13 @@ import AdminLoginModal from "./components/auth/AdminLoginModal.jsx";
 import GameFormModal from "./components/games/GameFormModal.jsx";
 import DeleteGameModal from "./components/games/DeleteGameModal.jsx";
 import GroupFormModal from "./components/groups/GroupFormModal.jsx";
+import CreateGroupModal from "./components/groups/CreateGroupModal.jsx";
 import { useAppData } from "./hooks/useAppData.js";
+import { logoutAllGroupAdmins } from "./hooks/adminSessionEvents.js";
 import { useGroupAdminActions } from "./hooks/useGroupAdmin.js";
 import { useGroupAdminSession } from "./hooks/useGroupAdminSession.js";
+import { usePlatformAdminActions } from "./hooks/usePlatformAdmin.js";
+import { usePlatformAdminSession } from "./hooks/usePlatformAdminSession.js";
 import { usePresence } from "./hooks/usePresence.js";
 import { useTheme } from "./hooks/useTheme.js";
 import { useToast } from "./hooks/useToast.js";
@@ -27,8 +31,11 @@ function AppRoutes() {
   const { toast, exiting, showToast, dismissToast } = useToast();
   const { theme, toggleTheme, cssVars } = useTheme();
   const app = useAppData(showToast);
+  const location = useLocation();
   const groupMatch = useMatch("/groups/:groupId");
   const groupId = groupMatch?.params?.groupId ?? null;
+  const landingMatch = useMatch({ path: "/", end: true });
+  const prevPathRef = useRef(null);
   const detailGroup = useMemo(
     () => (groupId ? app.groupsMeta.find((item) => item.id === groupId) ?? null : null),
     [groupId, app.groupsMeta],
@@ -41,16 +48,30 @@ function AppRoutes() {
   const addGameDisabledReason = "Maximum 7 games per group";
   const presence = usePresence(app.profile, groupId, detailGroup?.name ?? "");
   const groupAdminSession = useGroupAdminSession(groupId ?? "");
+  const platformAdminSession = usePlatformAdminSession();
   const groupAdmin = useGroupAdminActions({
     groupId: groupId ?? "",
     showToast,
     refresh: app.refresh,
     groupGameCount: groupGames.length,
   });
+  const platformAdmin = usePlatformAdminActions({
+    showToast,
+    refresh: app.refresh,
+  });
   const [loadingVisible, setLoadingVisible] = useState(true);
   const [loadingExiting, setLoadingExiting] = useState(false);
 
   useAppResume();
+
+  useEffect(() => {
+    const prevPath = prevPathRef.current;
+    if (prevPath !== null && prevPath !== location.pathname) {
+      platformAdminSession.logout();
+      logoutAllGroupAdmins();
+    }
+    prevPathRef.current = location.pathname;
+  }, [location.pathname, platformAdminSession.logout]);
 
   const resyncPushSubscription = useCallback(() => {
     const subscriberId = presence?.self?.id;
@@ -162,6 +183,28 @@ function AppRoutes() {
             />
           )}
 
+          {landingMatch && platformAdmin.showLogin && (
+            <AdminLoginModal
+              saving={false}
+              title="Platform admin"
+              description="Enter the 4-digit passcode to add groups."
+              onSubmit={async (passcode) => {
+                const ok = await platformAdminSession.login(passcode);
+                if (ok) platformAdmin.setShowLogin(false);
+                return ok;
+              }}
+              onClose={() => platformAdmin.setShowLogin(false)}
+            />
+          )}
+
+          {landingMatch && platformAdmin.createModal && (
+            <CreateGroupModal
+              saving={platformAdmin.saving}
+              onSave={platformAdmin.saveGroup}
+              onClose={platformAdmin.closeCreateModal}
+            />
+          )}
+
           {groupMatch && groupAdmin.showLogin && (
             <AdminLoginModal
               saving={false}
@@ -219,6 +262,10 @@ function AppRoutes() {
                   onProfileClick={app.openEditProfile}
                   theme={theme}
                   onToggleTheme={toggleTheme}
+                  isAdmin={platformAdminSession.isAdmin}
+                  onAdminLoginClick={() => platformAdmin.setShowLogin(true)}
+                  onAdminLogout={platformAdminSession.logout}
+                  onAddGroup={platformAdmin.openCreate}
                 />
               }
             />

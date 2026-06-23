@@ -31,6 +31,10 @@ export default function GroupsLandingScreen({
   onProfileClick,
   theme,
   onToggleTheme,
+  isAdmin,
+  onAdminLoginClick,
+  onAdminLogout,
+  onAddGroup,
 }) {
   const now = useGameClock();
   const sortedGroups = useMemo(
@@ -59,6 +63,14 @@ export default function GroupsLandingScreen({
         onToggleTheme={onToggleTheme}
         onProfileClick={onProfileClick}
         showInstallLink
+        showAdmin
+        adminAvailable
+        isAdmin={isAdmin}
+        onAdminLoginClick={onAdminLoginClick}
+        onAdminLogout={onAdminLogout}
+        onAddGroup={onAddGroup}
+        showAddGroup
+        showAddGame={false}
       />
 
       <main className="games-screen__main games-screen__main--landing">
