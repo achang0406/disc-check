@@ -1,0 +1,39 @@
+# Apply pending SQL migrations to production on merge to main.
+#
+# Required GitHub repo secrets (Settings → Secrets and variables → Actions):
+#   SUPABASE_ACCESS_TOKEN   — Personal access token (Supabase account → Access Tokens)
+#   PRODUCTION_PROJECT_ID   — mczxxonwvsztbrqmjzlu (DiscCheck prod hub)
+#   PRODUCTION_DB_PASSWORD  — Database password for the prod project
+#
+# Test migrations on staging manually before merging migration files to main.
+
+name: Supabase migrate (production)
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "supabase/migrations/**"
+  workflow_dispatch:
+
+jobs:
+  migrate:
+    runs-on: ubuntu-latest
+    env:
+      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+      SUPABASE_DB_PASSWORD: ${{ secrets.PRODUCTION_DB_PASSWORD }}
+      SUPABASE_PROJECT_ID: ${{ secrets.PRODUCTION_PROJECT_ID }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: Link production project
+        run: supabase link --project-ref "$SUPABASE_PROJECT_ID"
+
+      - name: Push migrations
+        run: supabase db push
