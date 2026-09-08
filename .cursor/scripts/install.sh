@@ -19,3 +19,9 @@ if bash /workspace/.cursor/scripts/bootstrap-supabase.sh; then
 else
   echo "[install] pre-warm skipped; start.sh will bring Supabase up on boot"
 fi
+
+# Stop the stack so the snapshot captures the pulled images and the DB volume
+# in a clean state (no mid-run Postgres). start.sh brings it back up on boot,
+# reusing the cached images and preserved data.
+echo "[install] stopping Supabase for a clean snapshot state"
+(cd /workspace && supabase stop) >/dev/null 2>&1 || true

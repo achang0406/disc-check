@@ -72,10 +72,26 @@ restore_migrations() {
   shopt -u nullglob
 }
 
+db_container()   { docker ps --filter "name=supabase_db_"   --format '{{.Names}}' | head -1; }
+rest_container() { docker ps --filter "name=supabase_rest_" --format '{{.Names}}' | head -1; }
+
+db_healthy() {
+  local db; db="$(db_container)"
+  [ -n "$db" ] && docker exec "$db" pg_isready -U postgres >/dev/null 2>&1
+}
+
 start_stack() {
-  if supabase status >/dev/null 2>&1; then
-    log "supabase already running"
+  # A running-but-unhealthy stack can happen when booting from a snapshot that
+  # captured Postgres mid-run; only treat the stack as up when the DB actually
+  # accepts connections, otherwise stop and start cleanly (the DB volume, and
+  # therefore the schema/seed, is preserved across a plain `supabase stop`).
+  if db_healthy; then
+    log "supabase already running and healthy"
     return 0
+  fi
+  if [ -n "$(db_container)" ]; then
+    log "supabase present but DB not healthy; restarting cleanly..."
+    supabase stop >/dev/null 2>&1 || true
   fi
   log "starting supabase stack..."
   disable_migrations
@@ -87,8 +103,14 @@ start_stack() {
   trap - EXIT
 }
 
-db_container()   { docker ps --filter "name=supabase_db_"   --format '{{.Names}}' | head -1; }
-rest_container() { docker ps --filter "name=supabase_rest_" --format '{{.Names}}' | head -1; }
+wait_db_ready() {
+  for _ in $(seq 1 60); do
+    db_healthy && return 0
+    sleep 1
+  done
+  log "WARN: Postgres did not become ready in time"
+  return 1
+}
 
 status_val() {
   # $1 = key name, e.g. API_URL
@@ -163,6 +185,7 @@ seed_if_empty() {
 ensure_docker
 fix_network
 start_stack
+wait_db_ready
 apply_schema_if_missing
 write_env_local
 ensure_rest_healthy
