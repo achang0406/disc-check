@@ -1,0 +1,16 @@
+{
+  "name": "PickupFrisbee (disc-check)",
+  "user": "ubuntu",
+  "build": {
+    "dockerfile": "Dockerfile"
+  },
+  "install": "bash .cursor/scripts/install.sh",
+  "start": "bash .cursor/scripts/start.sh",
+  "terminals": [
+    {
+      "name": "vite-dev",
+      "command": "cd /workspace && npm run dev"
+    }
+  ],
+  "ports": [5173, 54321, 54322, 54323]
+}
