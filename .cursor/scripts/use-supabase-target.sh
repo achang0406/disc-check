@@ -15,6 +15,9 @@
 #        PROD_SUPABASE_ANON_KEY    (required)  PROD_SUPABASE_SERVICE_ROLE_KEY    (optional)
 #        STAGING_SUPABASE_URL / PROD_SUPABASE_URL (optional; default to the documented refs)
 #
+# If .env.vercel.local is present (from `vercel env pull`), its VERCEL_* vars
+# (e.g. VERCEL_OIDC_TOKEN) are merged into .env.local on every switch.
+#
 # After switching, restart the "vite-dev" terminal (Ctrl-C, then `npm run dev`)
 # so Vite reloads the new .env.local.
 #

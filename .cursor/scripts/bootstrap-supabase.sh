@@ -26,6 +26,30 @@ TARGET="${SUPABASE_TARGET:-local}"
 STAGING_URL_DEFAULT="https://iunqmpxpwhybqyfxcsdt.supabase.co"
 PROD_URL_DEFAULT="https://mczxxonwvsztbrqmjzlu.supabase.co"
 
+# Vercel platform vars (e.g. VERCEL_OIDC_TOKEN) come from `vercel env pull`,
+# which writes .env.vercel.local (gitignored, VM-only). We merge only VERCEL_*
+# keys into the generated .env.local so the dev server and node scripts (which
+# read .env.local) can use the OIDC token, without clobbering the target's
+# Supabase config. Keys already present in .env.local are left untouched.
+VERCEL_ENV_FILE="$REPO/.env.vercel.local"
+
+merge_vercel_env() {
+  [ -f "$VERCEL_ENV_FILE" ] || return 0
+  [ -f "$REPO/.env.local" ] || return 0
+  local added=0 key
+  while IFS= read -r line || [ -n "$line" ]; do
+    case "$line" in ''|\#*) continue;; esac
+    key="${line%%=*}"
+    [ "$key" = "$line" ] && continue          # no '='
+    case "$key" in VERCEL_*) ;; *) continue;; esac
+    grep -q "^${key}=" "$REPO/.env.local" && continue
+    printf '%s\n' "$line" >> "$REPO/.env.local"
+    added=$((added + 1))
+  done < "$VERCEL_ENV_FILE"
+  [ "$added" -gt 0 ] && log "merged $added VERCEL_* var(s) from .env.vercel.local into .env.local"
+  return 0
+}
+
 # ===========================================================================
 # LOCAL TARGET
 # ===========================================================================
@@ -331,4 +355,5 @@ case "$TARGET" in
     exit 1
     ;;
 esac
+merge_vercel_env
 log "done"
