@@ -6,10 +6,14 @@
 #   .cursor/scripts/use-supabase-target.sh staging   # remote staging project
 #   .cursor/scripts/use-supabase-target.sh prod      # remote production hub
 #
-# Remote targets read their keys from Cloud Agent Secrets:
-#   STAGING_SUPABASE_ANON_KEY   (required)   STAGING_SUPABASE_SERVICE_ROLE_KEY (optional)
-#   PROD_SUPABASE_ANON_KEY      (required)   PROD_SUPABASE_SERVICE_ROLE_KEY    (optional)
-#   STAGING_SUPABASE_URL / PROD_SUPABASE_URL (optional; default to the documented refs)
+# Remote targets read their keys from, in order of precedence:
+#   1. A local dotenv file (repo convention), if present on the VM:
+#        staging -> .env.stage.local     prod -> .env.prod.local
+#      (both are gitignored, so they never ship in the repo).
+#   2. Cloud Agent Secrets:
+#        STAGING_SUPABASE_ANON_KEY (required)  STAGING_SUPABASE_SERVICE_ROLE_KEY (optional)
+#        PROD_SUPABASE_ANON_KEY    (required)  PROD_SUPABASE_SERVICE_ROLE_KEY    (optional)
+#        STAGING_SUPABASE_URL / PROD_SUPABASE_URL (optional; default to the documented refs)
 #
 # After switching, restart the "vite-dev" terminal (Ctrl-C, then `npm run dev`)
 # so Vite reloads the new .env.local.
