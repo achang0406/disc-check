@@ -21,6 +21,15 @@ log() { echo "[supabase-bootstrap] $*"; }
 
 TARGET="${SUPABASE_TARGET:-local}"
 
+# Local-stack services this app does not use. Excluding them (via `supabase
+# start -x`) trims the local stack from ~12 containers to ~5 (db, kong, rest,
+# realtime, auth), which speeds up both the build (fewer images pulled) and each
+# boot (fewer containers started). Set SUPABASE_EXCLUDE="" to run the full stack.
+# This is applied cloud-side only; supabase/config.toml is left unchanged so a
+# normal local `supabase start` still brings up everything.
+SUPABASE_EXCLUDE_DEFAULT="studio,imgproxy,storage-api,mailpit,edge-runtime,logflare,vector,postgres-meta,supavisor"
+SUPABASE_EXCLUDE="${SUPABASE_EXCLUDE-$SUPABASE_EXCLUDE_DEFAULT}"
+
 # Public project refs (documented in README.md). The URLs are not secret; only
 # the anon/service keys are. Each is overridable via the matching *_URL secret.
 STAGING_URL_DEFAULT="https://iunqmpxpwhybqyfxcsdt.supabase.co"
@@ -140,7 +149,12 @@ start_stack() {
   trap restore_migrations EXIT
   # --ignore-health-check: PostgREST is unhealthy until schema.sql is loaded
   # (the exposed pickup_frisbee/lyanne_library schemas do not exist yet).
-  supabase start --ignore-health-check
+  if [ -n "$SUPABASE_EXCLUDE" ]; then
+    log "excluding unused services: $SUPABASE_EXCLUDE"
+    supabase start --ignore-health-check -x "$SUPABASE_EXCLUDE"
+  else
+    supabase start --ignore-health-check
+  fi
   restore_migrations
   trap - EXIT
 }

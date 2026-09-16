@@ -7,7 +7,9 @@ set -euo pipefail
 cd /workspace
 
 echo "[install] npm ci"
-npm ci
+# --no-audit --no-fund skip registry audit/funding lookups that add time without
+# affecting the installed tree; the lockfile still pins exact versions.
+npm ci --no-audit --no-fund
 
 # Best-effort: pull the Supabase Docker images and initialise the local DB at
 # build time so they are baked into the snapshot and agent boots are fast. This
